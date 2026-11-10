@@ -160,7 +160,7 @@ impl CategoryController {
             .and_then(|id| id.parse::<i64>().ok())
             .unwrap_or(1);
         let rows = db::select(
-            "SELECT `a`.`id`, `a`.`code`, `a`.`admin_name`, `a`.`type`, `a`.`swatch_type` \
+            "SELECT DISTINCT `a`.`id`, `a`.`code`, `a`.`admin_name`, `a`.`type`, `a`.`swatch_type` \
              FROM `category_filterable_attributes` `cfa` \
              INNER JOIN `attributes` `a` ON `a`.`id` = `cfa`.`attribute_id` \
              WHERE `cfa`.`category_id` IN ( \
