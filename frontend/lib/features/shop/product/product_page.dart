@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -308,8 +307,7 @@ class _ProductGalleryState extends State<ProductGallery> {
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-                child: CachedNetworkImage(imageUrl: url ?? '', fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
+                child: Image.network(url ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
               ),
             );
           },
@@ -340,8 +338,7 @@ class _ProductGalleryState extends State<ProductGallery> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(imageUrl: url ?? '', fit: BoxFit.cover,
-                        errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
+                    child: Image.network(url ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
                   ),
                 ),
               );
@@ -354,8 +351,7 @@ class _ProductGalleryState extends State<ProductGallery> {
             aspectRatio: 0.95,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-              child: CachedNetworkImage(imageUrl: main ?? '', fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
+              child: Image.network(main ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
             ),
           ),
         ),

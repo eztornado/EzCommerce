@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -52,11 +51,11 @@ class _ProductCardState extends State<ProductCard> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(EzTheme.radiusLg),
                         child: image != null
-                            ? CachedNetworkImage(
-                                imageUrl: image,
+                            ? Image.network(
+                                image,
                                 fit: BoxFit.contain,
-                                errorWidget: (_, _, _) => const Icon(Icons.image_outlined,
-                                    size: 48, color: AppColors.zinc300),
+                                errorBuilder: (_, _, _) => const Icon(
+                                    Icons.image_outlined, size: 48, color: AppColors.zinc300),
                               )
                             : const Icon(Icons.image_outlined, size: 48, color: AppColors.zinc300),
                       ),
