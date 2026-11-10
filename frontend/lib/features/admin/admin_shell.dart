@@ -617,6 +617,11 @@ class AdminProductsPage extends StatelessWidget {
       title: 'Products',
       extraActions: (row) => [
         IconButton(
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          tooltip: 'Edit',
+          onPressed: () => context.go('/admin/products/edit/${row['id']}'),
+        ),
+        IconButton(
           icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
           onPressed: () async {
             final admin = context.read<AdminProvider>();

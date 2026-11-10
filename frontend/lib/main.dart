@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/api/api_client.dart';
 import 'core/state/app_state.dart';
 import 'core/theme/ez_theme.dart';
+import 'features/admin/admin_product_editor.dart';
 import 'features/admin/admin_shell.dart';
 import 'features/shop/account/account_pages.dart';
 import 'features/shop/auth/auth_pages.dart';
@@ -68,6 +69,11 @@ final GoRouter router = GoRouter(
       routes: [
         GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardPage()),
         GoRoute(path: '/admin/products', builder: (_, _) => const AdminProductsPage()),
+        GoRoute(
+          path: '/admin/products/edit/:id',
+          builder: (_, state) =>
+              AdminProductEditorPage(productId: state.pathParameters['id']!),
+        ),
         GoRoute(path: '/admin/orders', builder: (_, _) => const AdminOrdersPage()),
         GoRoute(path: '/admin/customers', builder: (_, _) => const AdminCustomersPage()),
         GoRoute(path: '/admin/settings', builder: (_, _) => const AdminSettingsPage()),

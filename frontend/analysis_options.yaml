@@ -16,6 +16,7 @@ analyzer:
     - ios/**
     - web/**
     - lib/core/utils/download_web.dart
+    - lib/core/utils/pick_image_web.dart
 
 linter:
   # The lint rules applied to this project can be customized in the
