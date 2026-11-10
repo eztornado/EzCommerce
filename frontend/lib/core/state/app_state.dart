@@ -226,19 +226,28 @@ class CatalogProvider extends ChangeNotifier {
       final records = ((list['data'] ?? const []) as List)
           .map((e) => Product(Map<String, dynamic>.from(e as Map)))
           .toList();
+      if (page == 1) _lastFilters = filters;
       _products = page == 1 ? records : [..._products, ...records];
     } catch (_) {}
     _loading = false;
     notifyListeners();
   }
 
-  Future<void> loadMore({int? categoryId, String? query, String sort = 'newest'}) async {
+  Map<String, String> _lastFilters = const {};
+
+  Future<void> loadMore({
+    int? categoryId,
+    String? query,
+    String sort = 'newest',
+    Map<String, String> filters = const {},
+  }) async {
     if (!hasMore || _loading) return;
     await loadProducts(
       categoryId: categoryId,
       query: query,
       sort: sort,
       page: _currentPage + 1,
+      filters: filters.isNotEmpty ? filters : _lastFilters,
     );
   }
 

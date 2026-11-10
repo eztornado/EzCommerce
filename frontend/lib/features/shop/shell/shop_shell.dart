@@ -256,7 +256,7 @@ class HeaderIcons extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined, size: 24, color: AppColors.gray900),
-              onPressed: () => context.go('/cart'),
+              onPressed: () => showMiniCart(context),
             ),
             if (cart.itemCount > 0)
               Positioned(
@@ -788,4 +788,169 @@ class ShopFooter extends StatelessWidget {
       ],
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Mini-carrito (drawer derecho 500px desde el header)
+// ---------------------------------------------------------------------------
+
+void showMiniCart(BuildContext context) {
+  final cart = context.read<CartProvider>();
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Mini cart',
+    barrierColor: Colors.black.withOpacity(0.4),
+    transitionDuration: const Duration(milliseconds: 250),
+    pageBuilder: (dialogContext, _, __) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          color: Colors.white,
+          child: SafeArea(
+            child: Container(
+              width: 460,
+              height: double.infinity,
+              padding: const EdgeInsets.all(24),
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  final current = context.watch<CartProvider>().cart;
+                  final items = current?.items ?? const [];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Shopping Cart',
+                                style: TextStyle(fontFamily: 'Poppins',
+                                    fontSize: 24, fontWeight: FontWeight.w500)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      if (items.isEmpty)
+                        const Expanded(
+                          child: Center(child: Text('Your shopping cart is empty.')),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 64,
+                                      height: 64,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.zinc100,
+                                        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                                      ),
+                                      child: const Icon(Icons.image_outlined,
+                                          color: AppColors.zinc300, size: 24),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(item.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontFamily: 'Poppins',
+                                                  fontSize: 14, fontWeight: FontWeight.w500)),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () => cart.updateQuantity(
+                                                    item.id ?? 0, item.quantity.toInt() - 1),
+                                                child: const Icon(Icons.remove_circle_outline, size: 18),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                child: Text('${item.quantity.toInt()}',
+                                                    style: const TextStyle(
+                                                        fontFamily: 'Poppins', fontSize: 14)),
+                                              ),
+                                              GestureDetector(
+                                                onTap: () => cart.updateQuantity(
+                                                    item.id ?? 0, item.quantity.toInt() + 1),
+                                                child: const Icon(Icons.add_circle_outline, size: 18),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              GestureDetector(
+                                                onTap: () => cart.removeItem(item.id ?? 0),
+                                                child: const Icon(Icons.delete_outline,
+                                                    size: 18, color: AppColors.zinc500),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(item.formattedTotal,
+                                        style: const TextStyle(fontFamily: 'Poppins',
+                                            fontSize: 14, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Sub Total',
+                              style: TextStyle(fontFamily: 'Poppins',
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text(current?.formattedSubTotal ?? '',
+                              style: const TextStyle(fontFamily: 'Poppins',
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SecondaryButton(
+                              label: 'View Cart',
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                                context.go('/cart');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: PrimaryButton(
+                              label: 'Checkout',
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                                context.go('/checkout');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('placeholder', () {
-    // Los tests de widgets llegan con las pantallas completas (issue #12).
+    // Los tests de integración con red real (integration_test + driver) y las
+    // verificaciones visuales se gestionan en el issue #12 del board.
     expect(1 + 1, 2);
   });
 }
