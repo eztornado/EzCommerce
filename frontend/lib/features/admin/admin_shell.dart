@@ -104,6 +104,7 @@ class AdminShell extends StatelessWidget {
     final items = [
       ('Dashboard', Icons.dashboard_outlined, '/admin'),
       ('Products', Icons.inventory_2_outlined, '/admin/products'),
+      ('Categories', Icons.category_outlined, '/admin/categories'),
       ('Orders', Icons.receipt_long_outlined, '/admin/orders'),
       ('Customers', Icons.people_outline, '/admin/customers'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
