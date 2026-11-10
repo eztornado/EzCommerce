@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-ezcommerce-root}
+      MARIADB_DATABASE: ${DB_DATABASE:-ezcommerce}
+      MARIADB_USER: ${DB_USERNAME:-ezcommerce}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-ezcommerce}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: EzCommerce
+      APP_URL: ${APP_URL:-http://localhost}
+      APP_PORT: "34187"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-ezcommerce}
+      DB_USERNAME: ${DB_USERNAME:-ezcommerce}
+      DB_PASSWORD: ${DB_PASSWORD:-ezcommerce}
+      JWT_SECRET: ${JWT_SECRET:-cambia-esta-clave-en-produccion}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      FRONTEND_WWW_URL: ${FRONTEND_WWW_URL:-http://localhost:3000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      MAIL_MAILER: log
+    command: ["sh", "-c", "ezcommerce-api migrate && ezcommerce-api db:seed && ezcommerce-api"]
+    ports:
+      - "34187:34187"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        API_BASE_URL: http://localhost:34187
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:
