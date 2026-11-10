@@ -138,6 +138,59 @@ impl AdminSalesController {
         }
     }
 
+    /// `POST /api/admin/sales/shipments/create/{order_id}` -
+    /// `{source_id, items: {order_item_id: qty}}` (o `{"all": qty}`).
+    pub async fn shipment_create(
+        admin: auth::Admin,
+        Path(order_id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let source_id = body["source_id"].as_i64().unwrap_or(1);
+        let requested = body["items"].as_object().cloned().unwrap_or_default();
+        match sales::create_shipment(order_id, source_id, &requested).await {
+            Ok(shipment) => resource(shipment, "The shipment has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `GET /api/admin/sales/shipments/view/{id}`.
+    pub async fn shipment_view(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let shipment = db::find_by_id("shipments", id).await.ok().flatten();
+        match shipment {
+            Some(shipment) => resource(shipment, Value::Null),
+            None => message(StatusCode::NOT_FOUND, "Shipment not found."),
+        }
+    }
+
+    /// `POST /api/admin/sales/refunds/create/{order_id}` -
+    /// `{items: {order_item_id: qty}, adjustment_refund, adjustment_fee}`.
+    pub async fn refund_create(
+        admin: auth::Admin,
+        Path(order_id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let requested = body["items"].as_object().cloned().unwrap_or_default();
+        let adjustment_refund = body["adjustment_refund"].as_f64().unwrap_or(0.0);
+        let adjustment_fee = body["adjustment_fee"].as_f64().unwrap_or(0.0);
+        match sales::create_refund(order_id, &requested, adjustment_refund, adjustment_fee).await {
+            Ok(refund) => resource(refund, "The refund has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `GET /api/admin/sales/refunds/view/{id}`.
+    pub async fn refund_view(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let refund = db::find_by_id("refunds", id).await.ok().flatten();
+        match refund {
+            Some(refund) => resource(refund, Value::Null),
+            None => message(StatusCode::NOT_FOUND, "Refund not found."),
+        }
+    }
+
     /// `GET /api/admin/sales/orders/search?q=` - increment/customer search.
     pub async fn order_search(admin: auth::Admin, Query(query): Query<HashMap<String, String>>) -> Response {
         let _ = admin;

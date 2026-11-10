@@ -122,6 +122,10 @@ pub fn routes() -> Router {
         .get("/admin/sales/orders/search", AdminSalesController::order_search)
         .post("/admin/sales/invoices/create/{order_id}", AdminSalesController::invoice_create)
         .get("/admin/sales/invoices/view/{id}", AdminSalesController::invoice_view)
+        .post("/admin/sales/shipments/create/{order_id}", AdminSalesController::shipment_create)
+        .get("/admin/sales/shipments/view/{id}", AdminSalesController::shipment_view)
+        .post("/admin/sales/refunds/create/{order_id}", AdminSalesController::refund_create)
+        .get("/admin/sales/refunds/view/{id}", AdminSalesController::refund_view)
         // settings
         .get("/admin/settings/users", AdminSettingController::users)
         .post("/admin/settings/users", AdminSettingController::store_user)

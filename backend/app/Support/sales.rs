@@ -559,3 +559,302 @@ pub async fn cancel_order(order_id: i64) -> ApiResult<()> {
     .await?;
     update_order_status(order_id).await
 }
+
+/// Creates a shipment for the order: per-item `qty_to_ship = qty_ordered −
+/// qty_shipped − qty_refunded − qty_canceled` (capped by the request),
+/// discounts the inventory source and refreshes the order status.
+pub async fn create_shipment(
+    order_id: i64,
+    source_id: i64,
+    requested: &Map<String, Value>,
+) -> ApiResult<RowMap> {
+    let order = db::find_by_id("orders", order_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Order not found"))?;
+    let items = db::select(
+        "SELECT * FROM `order_items` WHERE `order_id` = ? AND `parent_id` IS NULL ORDER BY `id`",
+        &[Value::from(order_id)],
+    )
+    .await?;
+
+    let source = db::find_by_id("inventory_sources", source_id)
+        .await?
+        .unwrap_or_else(db::empty_row);
+
+    let shipment_id = db::insert(
+        "shipments",
+        &json!({
+            "order_id": order_id,
+            "customer_id": order["customer_id"].clone(),
+            "carrier_code": "flatrate",
+            "carrier_title": "Flat Rate",
+            "track_number": "",
+            "inventory_source_id": if source_id > 0 { json!(source_id) } else { Value::Null },
+            "inventory_source_name": source["name"].clone(),
+            "created_at": now(),
+            "updated_at": now(),
+        })
+        ,
+    )
+    .await?;
+
+    let mut total_qty = 0i64;
+    for item in &items {
+        let item_key = item["id"].as_i64().unwrap_or(0).to_string();
+        let qty_requested = requested
+            .get(&item_key)
+            .or_else(|| requested.get("all"))
+            .and_then(Value::as_i64);
+        let qty_to_ship = item["qty_ordered"].as_i64().unwrap_or(0)
+            - item["qty_shipped"].as_i64().unwrap_or(0)
+            - item["qty_refunded"].as_i64().unwrap_or(0)
+            - item["qty_canceled"].as_i64().unwrap_or(0);
+        let qty = qty_requested.unwrap_or(qty_to_ship).min(qty_to_ship);
+        if qty <= 0 {
+            continue;
+        }
+
+        // Discount the inventory source (floor at 0).
+        let _ = db::execute(
+            "UPDATE `product_inventories` SET `qty` = MAX(`qty` - ?, 0), `updated_at` = ? \
+             WHERE `product_id` = ? AND `inventory_source_id` = ?",
+            &[
+                Value::from(qty),
+                Value::String(now()),
+                item["product_id"].clone(),
+                Value::from(source_id),
+            ],
+        )
+        .await;
+
+        db::insert(
+            "shipment_items",
+            &json!({
+                "shipment_id": shipment_id,
+                "order_item_id": item["id"].clone(),
+                "product_id": item["product_id"].clone(),
+                "product_type": item["product_type"].clone(),
+                "name": item["name"].clone(),
+                "sku": item["sku"].clone(),
+                "qty": qty,
+                "weight": (item["weight"].as_f64().unwrap_or(0.0) * qty as f64) as i64,
+                "price": item["price"].clone(),
+                "base_price": item["base_price"].clone(),
+                "total": round2(item["base_price"].as_f64().unwrap_or(0.0) * qty as f64),
+                "base_total": round2(item["base_price"].as_f64().unwrap_or(0.0) * qty as f64),
+                "created_at": now(),
+                "updated_at": now(),
+            })
+            ,
+        )
+        .await?;
+
+        db::update(
+            "order_items",
+            item["id"].as_i64().unwrap_or(0),
+            &json!({
+                "qty_shipped": item["qty_shipped"].as_i64().unwrap_or(0) + qty,
+                "updated_at": now(),
+            })
+            ,
+        )
+        .await?;
+
+        total_qty += qty;
+    }
+
+    db::update(
+        "shipments",
+        shipment_id,
+        &json!({"total_qty": total_qty, "status": "shipped", "updated_at": now()})
+        ,
+    )
+    .await?;
+
+    update_order_status(order_id).await?;
+    db::find_by_id("shipments", shipment_id)
+        .await
+        .map(|shipment| shipment.unwrap_or_else(db::empty_row))
+}
+
+/// Creates a refund: per-item `qty_to_refund = qty_invoiced − qty_refunded`,
+/// prorated totals (`campo / qty_ordered * qty`), stock returned to the
+/// inventory source and `product_ordered_inventories` released.
+pub async fn create_refund(
+    order_id: i64,
+    requested: &Map<String, Value>,
+    adjustment_refund: f64,
+    adjustment_fee: f64,
+) -> ApiResult<RowMap> {
+    let order = db::find_by_id("orders", order_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Order not found"))?;
+    let items = db::select(
+        "SELECT * FROM `order_items` WHERE `order_id` = ? AND `parent_id` IS NULL ORDER BY `id`",
+        &[Value::from(order_id)],
+    )
+    .await?;
+
+    let refund_id = db::insert(
+        "refunds",
+        &json!({
+            "order_id": order_id,
+            "state": "refunded",
+            "base_currency_code": order["base_currency_code"].clone(),
+            "channel_currency_code": order["channel_currency_code"].clone(),
+            "order_currency_code": order["order_currency_code"].clone(),
+            "adjustment_refund": round2(adjustment_refund),
+            "base_adjustment_refund": round2(adjustment_refund),
+            "adjustment_fee": round2(adjustment_fee),
+            "base_adjustment_fee": round2(adjustment_fee),
+            "created_at": now(),
+            "updated_at": now(),
+        })
+        ,
+    )
+    .await?;
+
+    let mut sub_total = 0.0;
+    let mut tax_total = 0.0;
+    let mut discount_total = 0.0;
+    let mut total_qty = 0.0;
+
+    for item in &items {
+        let item_key = item["id"].as_i64().unwrap_or(0).to_string();
+        let qty_requested = requested
+            .get(&item_key)
+            .or_else(|| requested.get("all"))
+            .and_then(Value::as_i64);
+        let qty_to_refund = item["qty_invoiced"].as_i64().unwrap_or(0)
+            - item["qty_refunded"].as_i64().unwrap_or(0);
+        let qty = qty_requested.unwrap_or(qty_to_refund).min(qty_to_refund);
+        if qty <= 0 {
+            continue;
+        }
+        let qty_ordered = item["qty_ordered"].as_i64().unwrap_or(1) as f64;
+        let price = item["base_price"].as_f64().unwrap_or(0.0);
+        let tax = item["base_tax_amount"].as_f64().unwrap_or(0.0) / qty_ordered * qty as f64;
+        let discount = item["base_discount_amount"].as_f64().unwrap_or(0.0) / qty_ordered * qty as f64;
+        let total = price * qty as f64;
+
+        db::insert(
+            "refund_items",
+            &json!({
+                "refund_id": refund_id,
+                "order_item_id": item["id"].clone(),
+                "product_id": item["product_id"].clone(),
+                "product_type": item["product_type"].clone(),
+                "name": item["name"].clone(),
+                "sku": item["sku"].clone(),
+                "qty": qty,
+                "price": price,
+                "base_price": price,
+                "total": round2(total),
+                "base_total": round2(total),
+                "tax_amount": round2(tax),
+                "base_tax_amount": round2(tax),
+                "discount_amount": round2(discount),
+                "base_discount_amount": round2(discount),
+                "created_at": now(),
+                "updated_at": now(),
+            })
+            ,
+        )
+        .await?;
+
+        // Return stock to the source and release the reservation.
+        let _ = db::execute(
+            "UPDATE `product_inventories` SET `qty` = `qty` + ?, `updated_at` = ? \
+             WHERE `product_id` = ? AND `inventory_source_id` = 1",
+            &[
+                Value::from(qty),
+                Value::String(now()),
+                item["product_id"].clone(),
+            ],
+        )
+        .await;
+        let _ = db::execute(
+            "UPDATE `product_ordered_inventories` SET `qty` = MAX(`qty` - ?, 0), `updated_at` = ? \
+             WHERE `product_id` = ?",
+            &[
+                Value::from(qty),
+                Value::String(now()),
+                item["product_id"].clone(),
+            ],
+        )
+        .await;
+
+        db::update(
+            "order_items",
+            item["id"].as_i64().unwrap_or(0),
+            &json!({
+                "qty_refunded": item["qty_refunded"].as_i64().unwrap_or(0) + qty,
+                "amount_refunded": round2(item["amount_refunded"].as_f64().unwrap_or(0.0) + total),
+                "base_amount_refunded": round2(item["base_amount_refunded"].as_f64().unwrap_or(0.0) + total),
+                "tax_amount_refunded": round2(item["tax_amount_refunded"].as_f64().unwrap_or(0.0) + tax),
+                "base_tax_amount_refunded": round2(item["base_tax_amount_refunded"].as_f64().unwrap_or(0.0) + tax),
+                "discount_refunded": round2(item["discount_refunded"].as_f64().unwrap_or(0.0) + discount),
+                "base_discount_refunded": round2(item["base_discount_refunded"].as_f64().unwrap_or(0.0) + discount),
+                "updated_at": now(),
+            })
+            ,
+        )
+        .await?;
+
+        sub_total += total;
+        tax_total += tax;
+        discount_total += discount;
+        total_qty += qty as f64;
+    }
+
+    let shipping_amount = order["base_shipping_amount"].as_f64().unwrap_or(0.0)
+        - order["base_shipping_refunded"].as_f64().unwrap_or(0.0);
+    let grand_total = sub_total + tax_total + shipping_amount + adjustment_refund - adjustment_fee
+        - discount_total;
+
+    db::update(
+        "refunds",
+        refund_id,
+        &json!({
+            "total_qty": round2(total_qty),
+            "sub_total": round2(sub_total),
+            "base_sub_total": round2(sub_total),
+            "grand_total": round2(grand_total),
+            "base_grand_total": round2(grand_total),
+            "shipping_amount": round2(shipping_amount),
+            "base_shipping_amount": round2(shipping_amount),
+            "tax_amount": round2(tax_total),
+            "base_tax_amount": round2(tax_total),
+            "discount_amount": round2(discount_total),
+            "base_discount_amount": round2(discount_total),
+            "updated_at": now(),
+        })
+        ,
+    )
+    .await?;
+
+    db::update(
+        "orders",
+        order_id,
+        &json!({
+            "grand_total_refunded": round2(order["grand_total_refunded"].as_f64().unwrap_or(0.0) + grand_total),
+            "base_grand_total_refunded": round2(order["base_grand_total_refunded"].as_f64().unwrap_or(0.0) + grand_total),
+            "sub_total_refunded": round2(order["sub_total_refunded"].as_f64().unwrap_or(0.0) + sub_total),
+            "base_sub_total_refunded": round2(order["base_sub_total_refunded"].as_f64().unwrap_or(0.0) + sub_total),
+            "tax_amount_refunded": round2(order["tax_amount_refunded"].as_f64().unwrap_or(0.0) + tax_total),
+            "base_tax_amount_refunded": round2(order["base_tax_amount_refunded"].as_f64().unwrap_or(0.0) + tax_total),
+            "discount_refunded": round2(order["discount_refunded"].as_f64().unwrap_or(0.0) + discount_total),
+            "base_discount_refunded": round2(order["base_discount_refunded"].as_f64().unwrap_or(0.0) + discount_total),
+            "shipping_refunded": round2(order["shipping_refunded"].as_f64().unwrap_or(0.0) + shipping_amount),
+            "base_shipping_refunded": round2(order["base_shipping_refunded"].as_f64().unwrap_or(0.0) + shipping_amount),
+            "updated_at": now(),
+        })
+        ,
+    )
+    .await?;
+
+    update_order_status(order_id).await?;
+    db::find_by_id("refunds", refund_id)
+        .await
+        .map(|refund| refund.unwrap_or_else(db::empty_row))
+}
