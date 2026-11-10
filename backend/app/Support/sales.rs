@@ -25,6 +25,8 @@ pub async fn create_order_from_cart(cart_id: i64) -> ApiResult<Value> {
         .await?
         .ok_or_else(|| ApiError::not_found("Cart not found"))?;
     cart::collect_totals(cart_id).await?;
+    // Frescura de reglas automáticas/cupón en el momento de crear el pedido.
+    let _ = super::cart_rules::apply_cart_rules(cart_id).await;
     let cart = db::find_by_id("cart", cart_id).await?.unwrap_or_else(db::empty_row);
 
     let items = db::select(

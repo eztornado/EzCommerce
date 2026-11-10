@@ -484,6 +484,7 @@ pub async fn collect_totals(cart_id: i64) -> ApiResult<RowMap> {
 
     let mut sub_total = 0.0;
     let mut tax_total = 0.0;
+    let mut discount_total = 0.0;
     let mut items_qty = 0.0;
     let mut items_count = 0;
 
@@ -524,6 +525,7 @@ pub async fn collect_totals(cart_id: i64) -> ApiResult<RowMap> {
         total += tax_amount;
         sub_total += price * quantity;
         tax_total += tax_amount;
+        discount_total += item["discount_amount"].as_f64().unwrap_or(0.0);
         items_qty += quantity;
         items_count += 1;
     }
@@ -542,9 +544,9 @@ pub async fn collect_totals(cart_id: i64) -> ApiResult<RowMap> {
         shipping_tax = rate["tax_amount"].as_f64().unwrap_or(0.0);
     }
 
-    // Cart rules (coupons/discounts) land in phase 2; the column already
-    // carries the amount so totals stay consistent.
-    let discount_amount = cart["discount_amount"].as_f64().unwrap_or(0.0);
+    // The cart rules engine writes per-item discounts; collect_totals sums
+    // them so `grand_total = sub_total + tax + shipping - discount`.
+        let discount_amount = (discount_total * 100.0).round() / 100.0;
     let tax_total = tax_total + shipping_tax;
     let grand_total = sub_total + tax_total + shipping_amount - discount_amount;
 

@@ -5,7 +5,7 @@
 use larust_http::{Route, Router};
 
 use crate::controllers::{
-    AdminAuthController, AdminCatalogController, AdminCustomerController, AdminDashboardController,
+    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCustomerController, AdminDashboardController,
     AdminSalesController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController,
 };
@@ -110,6 +110,14 @@ pub fn routes() -> Router {
         .put("/admin/catalog/categories/edit/{id}", AdminCatalogController::update_category)
         .delete("/admin/catalog/categories/{id}", AdminCatalogController::delete_category)
         .post("/admin/catalog/attributes", AdminCatalogController::attributes_grid)
+        // marketing: cart rules
+        .post("/admin/marketing/cart-rules", AdminCartRuleController::grid)
+        .post("/admin/marketing/cart-rules/store", AdminCartRuleController::store)
+        .get("/admin/marketing/cart-rules/view/{id}", AdminCartRuleController::view)
+        .put("/admin/marketing/cart-rules/edit/{id}", AdminCartRuleController::update)
+        .delete("/admin/marketing/cart-rules/{id}", AdminCartRuleController::destroy)
+        .post("/admin/marketing/cart-rules/coupons/{id}", AdminCartRuleController::generate_coupons)
+        .get("/admin/marketing/cart-rules/coupons/{id}", AdminCartRuleController::coupons)
         // customers
         .post("/admin/customers", AdminCustomerController::grid)
         .get("/admin/customers/view/{id}", AdminCustomerController::view)

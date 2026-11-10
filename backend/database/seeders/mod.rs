@@ -102,6 +102,7 @@ pub async fn run() -> Result<(), AppError> {
     if config["seed_demo_data"].as_bool().unwrap_or(true) {
         seed_demo_catalog().await?;
         seed_demo_home().await?;
+        seed_demo_cart_rules().await?;
     }
     Ok(())
 }
@@ -1057,6 +1058,70 @@ async fn seed_demo_home() -> Result<(), AppError> {
         json!({"title": "Get ready for the new season", "subtitle": "Up to 30% off selected items", "button": {"title": "Shop now", "link": "/products"}})
             .to_string(),
     )
+    .execute(pool)
+    .await
+    .map_err(internal)?;
+
+    Ok(())
+}
+
+/// Reglas demo: 10% sin cupón para todos + cupón WELCOME10 (10 EUR de
+/// descuento fijo al carrito, límite 100 usos).
+async fn seed_demo_cart_rules() -> Result<(), AppError> {
+    let pool = pool()?;
+    let existing: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM `cart_rules`").fetch_one(pool).await.map_err(internal)?;
+    if existing > 0 {
+        return Ok(());
+    }
+    let stamp = now();
+
+    // 10% sin cupón.
+    sqlx::query(
+        "INSERT INTO `cart_rules` (`name`, `description`, `status`, `coupon_type`, `condition_type`, `action_type`, `discount_amount`, `apply_to_shipping`, `free_shipping`, `sort_order`, `created_at`, `updated_at`) \
+         VALUES ('10% off everything', 'Automatic 10% discount on the whole cart.', 1, 1, 1, 'by_percent', 10, 0, 0, 0, ?, ?)",
+    )
+    .bind(&stamp)
+    .bind(&stamp)
+    .execute(pool)
+    .await
+    .map_err(internal)?;
+    let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `cart_rules`").fetch_one(pool).await.map_err(internal)?;
+    for channel_id in [1] {
+        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)")
+            .bind(rule_id).bind(channel_id).execute(pool).await;
+    }
+    for group_id in [1, 2] {
+        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)")
+            .bind(rule_id).bind(group_id).execute(pool).await;
+    }
+
+    // Cupón WELCOME10: 10 EUR fijos.
+    sqlx::query(
+        "INSERT INTO `cart_rules` (`name`, `description`, `status`, `coupon_type`, `condition_type`, `action_type`, `discount_amount`, `sort_order`, `created_at`, `updated_at`) \
+         VALUES ('Welcome coupon', '10 EUR off your first order with the coupon WELCOME10.', 1, 2, 1, 'by_fixed', 10, 1, ?, ?)",
+    )
+    .bind(&stamp)
+    .bind(&stamp)
+    .execute(pool)
+    .await
+    .map_err(internal)?;
+    let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `cart_rules`").fetch_one(pool).await.map_err(internal)?;
+    for channel_id in [1] {
+        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)")
+            .bind(rule_id).bind(channel_id).execute(pool).await;
+    }
+    for group_id in [1, 2] {
+        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)")
+            .bind(rule_id).bind(group_id).execute(pool).await;
+    }
+    let _ = sqlx::query(
+        "INSERT INTO `cart_rule_coupons` (`code`, `usage_limit`, `usage_per_customer`, `times_used`, `type`, `is_primary`, `cart_rule_id`, `created_at`, `updated_at`) \
+         VALUES ('WELCOME10', 100, 1, 0, 0, 1, ?, ?, ?)",
+    )
+    .bind(rule_id)
+    .bind(&stamp)
+    .bind(&stamp)
     .execute(pool)
     .await
     .map_err(internal)?;

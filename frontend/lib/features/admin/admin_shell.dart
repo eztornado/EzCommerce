@@ -105,6 +105,7 @@ class AdminShell extends StatelessWidget {
       ('Dashboard', Icons.dashboard_outlined, '/admin'),
       ('Products', Icons.inventory_2_outlined, '/admin/products'),
       ('Categories', Icons.category_outlined, '/admin/categories'),
+      ('Cart Rules', Icons.local_offer_outlined, '/admin/cart-rules'),
       ('Orders', Icons.receipt_long_outlined, '/admin/orders'),
       ('Customers', Icons.people_outline, '/admin/customers'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),

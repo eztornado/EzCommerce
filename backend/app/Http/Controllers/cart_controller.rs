@@ -11,6 +11,7 @@ use larust_support::serde_json::{json, Value};
 
 use crate::support::auth;
 use crate::support::cart;
+use crate::support::cart_rules;
 use crate::support::core;
 use crate::support::db;
 use crate::support::products;
@@ -92,8 +93,19 @@ impl CartController {
 
         let options = body.as_object().cloned().unwrap_or_default();
         match cart::add_product(&cart, product_id, quantity, &options).await {
-            Ok(item) => {
-                let mut payload = json!({"message": "The item has been added to your cart successfully.", "item": item});
+            Ok(_) => {
+                // Automatic rules (coupon-less) reapply after cart changes.
+                let _ = cart_rules::apply_cart_rules(cart["id"].as_i64().unwrap_or(0)).await;
+                let refreshed = cart::find_cart(&cart::cart_context(&headers)).await.ok().flatten();
+                let item = refreshed
+                    .as_ref()
+                    .and_then(|cart| cart["id"].as_i64())
+                    .map(|cart_id| json!({"cart_id": cart_id}))
+                    .unwrap_or_else(|| json!({}));
+                let mut payload = json!({
+                    "message": "The item has been added to your cart successfully.",
+                    "item": item,
+                });
                 if let Some(token) = token {
                     payload["cart_token"] = json!(token);
                 }
@@ -179,9 +191,9 @@ impl CartController {
             return validation_error(vec![("code".into(), "The coupon code field is required.".into())]);
         };
         let exists = db::select_one(
-            "SELECT `crr`.`id` FROM `cart_rule_coupons` `crc` \
-             INNER JOIN `cart_rules` `crr` ON `crr`.`id` = `crc`.`cart_rule_id` \
-             WHERE `crc`.`code` = ? AND `crr`.`status` = 1 LIMIT 1",
+            "SELECT `crc`.`id` FROM `cart_rule_coupons` `crc` \
+             INNER JOIN `cart_rules` `r` ON `r`.`id` = `crc`.`cart_rule_id` \
+             WHERE `crc`.`code` = ? AND `r`.`status` = 1 LIMIT 1",
             &[Value::String(code.to_string())],
         )
         .await
@@ -199,7 +211,10 @@ impl CartController {
             ],
         )
         .await;
-        let _ = cart::collect_totals(cart["id"].as_i64().unwrap_or(0)).await;
+        let updated = crate::support::cart_rules::apply_cart_rules(cart["id"].as_i64().unwrap_or(0)).await;
+        if let Ok(updated) = updated {
+            let _ = updated;
+        }
         resource(Value::Array(Vec::new()), "The coupon code has been applied successfully.")
     }
 
@@ -214,7 +229,7 @@ impl CartController {
             &[Value::String(db::now_db()), cart["id"].clone()],
         )
         .await;
-        let _ = cart::collect_totals(cart["id"].as_i64().unwrap_or(0)).await;
+        let _ = crate::support::cart_rules::apply_cart_rules(cart["id"].as_i64().unwrap_or(0)).await;
         resource(Value::Array(Vec::new()), "The coupon code has been removed successfully.")
     }
 

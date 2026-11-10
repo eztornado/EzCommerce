@@ -6,6 +6,7 @@ import 'core/api/api_client.dart';
 import 'core/state/app_state.dart';
 import 'core/theme/ez_theme.dart';
 import 'features/admin/admin_product_editor.dart';
+import 'features/admin/admin_cart_rules.dart';
 import 'features/admin/admin_categories.dart';
 import 'features/admin/admin_shell.dart';
 import 'features/shop/account/account_pages.dart';
@@ -71,6 +72,7 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardPage()),
         GoRoute(path: '/admin/products', builder: (_, _) => const AdminProductsPage()),
         GoRoute(path: '/admin/categories', builder: (_, _) => const AdminCategoriesPage()),
+        GoRoute(path: '/admin/cart-rules', builder: (_, _) => const AdminCartRulesPage()),
         GoRoute(
           path: '/admin/products/edit/:id',
           builder: (_, state) =>
