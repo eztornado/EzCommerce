@@ -1,7 +1,9 @@
 //! Admin customers: grid, 360º view, groups, reviews. Mirrors
 //! `Webkul\Admin\Http\Controllers\Customer\*`.
 
-use larust_support::axum::extract::Path;
+use std::collections::HashMap;
+
+use larust_support::axum::extract::{Path, Query};
 use larust_support::axum::http::{HeaderMap, StatusCode};
 use larust_support::axum::response::Response;
 use larust_support::axum::Json;
@@ -10,15 +12,12 @@ use larust_support::serde_json::{json, Value};
 use crate::support::auth;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{message, resource};
+use crate::support::response::{csv_response, message, resource};
 
 pub struct AdminCustomerController;
 
-impl AdminCustomerController {
-    /// `POST /api/admin/customers` - datagrid.
-    pub async fn grid(admin: auth::Admin, Json(body): Json<Value>) -> Response {
-        let _ = admin;
-        let grid = datagrid::DataGrid {
+pub fn customers_grid() -> datagrid::DataGrid {
+    datagrid::DataGrid {
             table: "customers",
             alias: "c",
             primary: "c.id",
@@ -40,13 +39,32 @@ impl AdminCustomerController {
             ]),
             mass_actions: Value::Null,
             formatters: Vec::new(),
-        };
+        }
+}
+
+impl AdminCustomerController {
+    /// `POST /api/admin/customers` - datagrid. `?format=csv` exporta.
+    pub async fn grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let grid = customers_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            let request = datagrid::parse_request(&body);
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "customers.csv"),
+                Err(error) => error.into(),
+            };
+        }
         let request = datagrid::parse_request(&body);
         match grid.process(&request).await {
             Ok(payload) => resource(payload, Value::Null),
             Err(error) => error.into(),
         }
     }
+
 
     /// `GET /api/admin/customers/view/{id}` - 360º view.
     pub async fn view(admin: auth::Admin, Path(id): Path<i64>) -> Response {

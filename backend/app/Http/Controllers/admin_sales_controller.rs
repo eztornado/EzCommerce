@@ -13,7 +13,7 @@ use larust_support::serde_json::{json, Map, Value};
 use crate::support::auth;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{message, resource, validation_error};
+use crate::support::response::{csv_response, message, resource, validation_error};
 use crate::support::sales;
 
 pub struct AdminSalesController;
@@ -22,34 +22,49 @@ fn now() -> String {
     db::now_db()
 }
 
+pub fn orders_grid() -> datagrid::DataGrid {
+    datagrid::DataGrid {
+        table: "orders",
+        alias: "o",
+        primary: "o.id",
+        columns: vec![
+            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("o.id"), options: None },
+            datagrid::Column { index: "increment_id", label: "Order ID", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.increment_id"), options: None },
+            datagrid::Column { index: "status", label: "Status", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.status"), options: Some(json!([
+                {"label": "Pending", "value": "pending"}, {"label": "Processing", "value": "processing"},
+                {"label": "Completed", "value": "completed"}, {"label": "Canceled", "value": "canceled"},
+                {"label": "Closed", "value": "closed"},
+            ])) },
+            datagrid::Column { index: "base_grand_total", label: "Grand Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("o.base_grand_total"), options: None },
+            datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
+            datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("o.created_at"), options: None },
+        ],
+        joins: Vec::new(),
+        where_clauses: Vec::new(),
+        actions: json!([
+            {"title": "View", "method": "GET", "url": "/admin/sales/orders/view/{id}"},
+        ]),
+        mass_actions: Value::Null,
+        formatters: Vec::new(),
+    }
+}
+
 impl AdminSalesController {
-    /// `POST /api/admin/sales/orders` - datagrid.
-    pub async fn orders_grid(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+    /// `POST /api/admin/sales/orders` - datagrid. `?format=csv` exporta.
+    pub async fn orders_grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
         let _ = admin;
-        let grid = datagrid::DataGrid {
-            table: "orders",
-            alias: "o",
-            primary: "o.id",
-            columns: vec![
-                datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("o.id"), options: None },
-                datagrid::Column { index: "increment_id", label: "Order ID", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.increment_id"), options: None },
-                datagrid::Column { index: "status", label: "Status", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.status"), options: Some(json!([
-                    {"label": "Pending", "value": "pending"}, {"label": "Processing", "value": "processing"},
-                    {"label": "Completed", "value": "completed"}, {"label": "Canceled", "value": "canceled"},
-                    {"label": "Closed", "value": "closed"},
-                ])) },
-                datagrid::Column { index: "base_grand_total", label: "Grand Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("o.base_grand_total"), options: None },
-                datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
-                datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("o.created_at"), options: None },
-            ],
-            joins: Vec::new(),
-            where_clauses: Vec::new(),
-            actions: json!([
-                {"title": "View", "method": "GET", "url": "/admin/sales/orders/view/{id}"},
-            ]),
-            mass_actions: Value::Null,
-            formatters: Vec::new(),
-        };
+        let grid = orders_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            let request = datagrid::parse_request(&body);
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "orders.csv"),
+                Err(error) => error.into(),
+            };
+        }
         let request = datagrid::parse_request(&body);
         match grid.process(&request).await {
             Ok(payload) => resource(payload, Value::Null),

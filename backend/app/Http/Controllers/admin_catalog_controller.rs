@@ -13,7 +13,7 @@ use crate::support::auth;
 use crate::support::cart;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{message, resource, validation_error};
+use crate::support::response::{csv_response, message, resource, validation_error};
 
 pub struct AdminCatalogController;
 
@@ -37,7 +37,7 @@ async fn attr_id(code: &str) -> i64 {
 
 
 
-fn products_grid() -> datagrid::DataGrid {
+pub fn products_grid() -> datagrid::DataGrid {
     datagrid::DataGrid {
         table: "products",
         alias: "p",
@@ -75,11 +75,22 @@ fn products_grid() -> datagrid::DataGrid {
 
 impl AdminCatalogController {
     /// `POST /api/admin/catalog/products` - datagrid (Bagisto uses POST with
-    /// filters for grids).
-    pub async fn products_grid(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+    /// filters for grids). `?format=csv` exporta el grid completo.
+    pub async fn products_grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
         let _ = admin;
         let request = datagrid::parse_request(&body);
-        match products_grid().process(&request).await {
+        let grid = products_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "products.csv"),
+                Err(error) => error.into(),
+            };
+        }
+        match grid.process(&request).await {
             Ok(payload) => resource(payload, Value::Null),
             Err(error) => error.into(),
         }

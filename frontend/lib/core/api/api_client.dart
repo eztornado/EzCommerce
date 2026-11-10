@@ -21,6 +21,7 @@ class ApiClient {
 
   bool get isCustomerLoggedIn => _customerToken != null;
   bool get isAdminLoggedIn => _adminToken != null;
+  String? get adminToken => _adminToken;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();

@@ -191,3 +191,20 @@ pub fn validation_error(errors: Vec<(String, String)>) -> Response {
     )
         .into_response()
 }
+
+/// Respuesta de descarga CSV con `Content-Disposition: attachment`.
+pub fn csv_response(csv: &str, filename: &str) -> Response {
+    use larust_support::axum::http::header;
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (
+                header::CONTENT_DISPOSITION,
+                Box::leak(format!("attachment; filename=\"{filename}\"").into_boxed_str()),
+            ),
+        ],
+        csv.to_string(),
+    )
+        .into_response()
+}

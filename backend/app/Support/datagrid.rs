@@ -189,6 +189,63 @@ impl DataGrid {
         Ok((where_sql, binds))
     }
 
+    /// Export CSV del grid (columnas exportables = todas las visibles),
+    /// respetando filtros y orden, sin paginación.
+    pub async fn process_csv(&self, request: &GridRequest) -> ApiResult<String> {
+        let _ = valid_ident(self.table)?;
+        let (where_sql, binds) = self.build_where(request)?;
+
+        let mut sort_sql = format!("ORDER BY {} DESC", self.primary);
+        if let Some(column_index) = &request.sort_column {
+            if let Some(column) = self.column(column_index) {
+                if column.sortable {
+                    let direction = match request.sort_order.as_deref() {
+                        Some("asc") => "ASC",
+                        _ => "DESC",
+                    };
+                    sort_sql = format!("ORDER BY {} {}", column.sql(), direction);
+                }
+            }
+        }
+
+        let columns_sql = self
+            .columns
+            .iter()
+            .map(|column| format!("{} AS `{}`", column.sql(), column.index))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let rows = db::select(
+            &format!(
+                "SELECT {} FROM {} {} {} LIMIT 10000",
+                columns_sql,
+                self.from_sql(),
+                where_sql,
+                sort_sql
+            ),
+            &binds,
+        )
+        .await?;
+
+        let mut out = String::new();
+        let headers: Vec<String> = self
+            .columns
+            .iter()
+            .map(|column| csv_escape(column.label))
+            .collect();
+        out.push_str(&headers.join(","));
+        out.push('\n');
+        for row in rows {
+            let cells: Vec<String> = self
+                .columns
+                .iter()
+                .map(|column| csv_escape(&cell_to_string(&row[column.index])))
+                .collect();
+            out.push_str(&cells.join(","));
+            out.push('\n');
+        }
+        Ok(out)
+    }
+
     /// Runs the grid and returns the Bagisto datagrid contract.
     pub async fn process(&self, request: &GridRequest) -> ApiResult<Value> {
         let _ = valid_ident(self.table)?;
@@ -300,4 +357,22 @@ pub fn columns(spec: &[(&'static str, &'static str, &'static str, bool, bool, bo
             options: None,
         })
         .collect()
+}
+
+/// Escapa una celda CSV (comillas, comas, saltos de línea).
+fn csv_escape(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// Convierte un valor JSON a texto plano para el CSV (null -> vacío).
+fn cell_to_string(value: &Value) -> String {
+    match value {
+        Value::Null => String::new(),
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
+    }
 }

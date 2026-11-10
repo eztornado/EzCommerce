@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
+import '../../../core/utils/download.dart';
 
 // ---------------------------------------------------------------------------
 // Login admin
@@ -415,6 +417,25 @@ class _EzDataGridState extends State<EzDataGrid> {
     }
   }
 
+  /// Exporta el grid con los filtros activos (descarga en web).
+  Future<void> _exportCsv() async {
+    final token = ApiClient.instance.adminToken;
+    if (token == null) return;
+    final uri = Uri.parse('${ApiClient.baseUrl}/api/${widget.gridPath}?format=csv');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: '{"filters": ${_search.isNotEmpty ? '{"all": "${_search}"}' : '{}'}}',
+    );
+    if (response.statusCode != 200 || !mounted) return;
+    downloadFile('${widget.gridPath.split('/').last}.csv', response.bodyBytes);
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export CSV downloaded.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final records = ((_grid?['records'] ?? const []) as List)
@@ -453,6 +474,13 @@ class _EzDataGridState extends State<EzDataGrid> {
                     _load();
                   },
                 ),
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: _exportCsv,
+                icon: const Icon(Icons.download_outlined, size: 18),
+                label: const Text('Export CSV',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
               ),
             ],
           ),
