@@ -1,0 +1,15 @@
+# Rust
+/target/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Base de datos local
+/database/database.sqlite
+/database/database.sqlite-shm
+/database/database.sqlite-wal
+
+# Subidas públicas (se sirven desde /storage)
+/public/storage/

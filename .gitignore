@@ -1,0 +1,29 @@
+# Raíz del monorepo EzCommerce
+
+# Entorno y secretos (nunca commitear el token del board)
+.env
+.env.*
+.githubboard/github-sync.json
+.GitHubBoard/github-sync.json
+
+# Rust / backend
+backend/target/
+backend/database/database.sqlite
+backend/database/database.sqlite-shm
+backend/database/database.sqlite-wal
+backend/public/storage/
+
+# Flutter / frontend
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins*
+frontend/.packages
+frontend/pubspec.lock
+frontend/ios/Pods/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/.idea/
+*.iml
+
+# Sistema
+.DS_Store
