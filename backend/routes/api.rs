@@ -14,7 +14,9 @@ pub fn routes() -> Router {
     // ------------------------------------------------------------------
     // Shop core
     // ------------------------------------------------------------------
-    Route::get("/core/context", CoreController::context)
+    Route::get("/storage/{folder}/{file}", CoreController::storage)
+        .post("/admin/upload", CoreController::upload)
+        .get("/core/context", CoreController::context)
         .get("/core/home", CoreController::home)
         .get("/core/countries", CoreController::countries)
         .get("/core/states", CoreController::states)

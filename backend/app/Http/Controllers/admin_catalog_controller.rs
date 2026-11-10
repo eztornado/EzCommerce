@@ -231,6 +231,35 @@ impl AdminCatalogController {
             }
         }
 
+        // Images: {images: [{path: "product/uuid.png"}]} -> replace all.
+        if let Some(images) = body["images"].as_array() {
+            let _ = db::execute(
+                "DELETE FROM `product_images` WHERE `product_id` = ?",
+                &[Value::from(id)],
+            )
+            .await;
+            for (position, image) in images.iter().enumerate() {
+                let path = image
+                    .as_str()
+                    .map(str::to_string)
+                    .or_else(|| image["path"].as_str().map(str::to_string));
+                let Some(path) = path else { continue };
+                let _ = db::insert(
+                    "product_images",
+                    &json!({
+                        "product_id": id,
+                        "type": "image",
+                        "path": path,
+                        "position": position as i64,
+                        "created_at": now(),
+                        "updated_at": now(),
+                    })
+                    ,
+                )
+                .await;
+            }
+        }
+
         // Inventories: {inventories: {source_id: qty}}.
         if let Some(inventories) = body["inventories"].as_object() {
             for (source, qty) in inventories {

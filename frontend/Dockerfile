@@ -1,7 +1,7 @@
 # Build Flutter web + nginx con proxy /api hacia el backend.
 FROM ghcr.io/cirruslabs/flutter:latest AS build
 WORKDIR /app
-COPY pubspec.yaml pubspec.lock ./
+COPY pubspec.yaml ./
 RUN flutter pub get
 COPY . .
 # La URL del API se resuelve en el mismo origen (/api) vía el proxy de nginx;

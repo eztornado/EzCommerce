@@ -4,14 +4,16 @@
 
 use std::collections::HashMap;
 
-use larust_support::axum::extract::Query;
-use larust_support::axum::http::HeaderMap;
+use larust_support::axum::extract::{Path, Query};
+use larust_support::axum::http::{HeaderMap, StatusCode};
 use larust_support::axum::response::Response;
+use larust_support::axum::Json;
 use larust_support::serde_json::{json, Value};
 
+use crate::support::auth;
 use crate::support::core;
 use crate::support::db;
-use crate::support::response::{json_ok, ApiResult};
+use crate::support::response::{json_ok, message, ApiResult};
 
 pub struct CoreController;
 
@@ -90,6 +92,103 @@ impl CoreController {
             })
             .collect();
         json_ok(json!({"data": sections, "message": Value::Null}))
+    }
+
+    /// `GET /storage/{folder}/{file}` - static files uploaded to
+    /// `public/storage` (product images, avatars...). Both segments are
+    /// sanitised against traversal.
+    pub async fn storage(Path((folder, file)): Path<(String, String)>) -> Response {
+        use larust_support::axum::response::IntoResponse;
+
+        for segment in [&folder, &file] {
+            if segment.contains("..") || segment.starts_with('/') {
+                return message(StatusCode::BAD_REQUEST, "Invalid path.");
+            }
+        }
+        let full = crate::paths()
+            .join("public/storage")
+            .join(&folder)
+            .join(&file);
+        let Ok(bytes) = std::fs::read(&full) else {
+            return message(StatusCode::NOT_FOUND, "File not found.");
+        };
+        let mime = mime_guess::from_path(&full).first_or_octet_stream().to_string();
+        (
+            StatusCode::OK,
+            [
+                (larust_support::axum::http::header::CONTENT_TYPE, mime),
+                (
+                    larust_support::axum::http::header::CACHE_CONTROL,
+                    "public, max-age=86400".to_string(),
+                ),
+            ],
+            bytes,
+        )
+            .into_response()
+    }
+
+    /// `POST /api/admin/upload` - stores a base64 file under
+    /// `public/storage/{folder}` and returns the public path.
+    pub async fn upload(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        use base64::Engine as _;
+
+        let _ = admin;
+        let Some(filename) = body["filename"].as_str().map(str::to_string) else {
+            return crate::support::response::validation_error(vec![(
+                "filename".into(),
+                "The filename field is required.".into(),
+            )]);
+        };
+        let Some(data_b64) = body["data"].as_str() else {
+            return crate::support::response::validation_error(vec![(
+                "data".into(),
+                "The data field is required.".into(),
+            )]);
+        };
+        let folder = body["folder"].as_str().unwrap_or("product").to_string();
+        if folder.contains("..") || folder.contains('/') {
+            return crate::support::response::validation_error(vec![(
+                "folder".into(),
+                "Invalid folder.".into(),
+            )]);
+        }
+
+        let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(data_b64) else {
+            return crate::support::response::validation_error(vec![(
+                "data".into(),
+                "Invalid base64 payload.".into(),
+            )]);
+        };
+        if bytes.len() > 8 * 1024 * 1024 {
+            return message(StatusCode::PAYLOAD_TOO_LARGE, "The file is too large (max 8 MB).");
+        }
+
+        let extension = std::path::Path::new(&filename)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .unwrap_or_else(|| "bin".to_string());
+        let allowed = ["png", "jpg", "jpeg", "webp", "gif", "svg", "pdf", "mp4"];
+        if !allowed.contains(&extension.as_str()) {
+            return crate::support::response::validation_error(vec![(
+                "filename".into(),
+                "Unsupported file type.".into(),
+            )]);
+        }
+
+        let name = format!("{}.{}", uuid::Uuid::new_v4().simple(), extension);
+        let dir = crate::paths().join("public/storage").join(&folder);
+        let _ = std::fs::create_dir_all(&dir);
+        let relative = format!("{folder}/{name}");
+        let full = dir.join(&name);
+        if std::fs::write(&full, &bytes).is_err() {
+            return message(StatusCode::INTERNAL_SERVER_ERROR, "Unable to store the file.");
+        }
+
+        json_ok(json!({
+            "path": relative,
+            "url": format!("/storage/{relative}"),
+        }))
     }
 
     /// `GET /api/core/currencies` - exchange-rate aware list of the channel.
