@@ -309,7 +309,7 @@ class _ProductGalleryState extends State<ProductGallery> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(EzTheme.radiusXl),
                 child: CachedNetworkImage(imageUrl: url ?? '', fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(color: AppColors.zinc100)),
+                    errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
               ),
             );
           },
@@ -341,7 +341,7 @@ class _ProductGalleryState extends State<ProductGallery> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: CachedNetworkImage(imageUrl: url ?? '', fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(color: AppColors.zinc100)),
+                        errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
                   ),
                 ),
               );
@@ -355,7 +355,7 @@ class _ProductGalleryState extends State<ProductGallery> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(EzTheme.radiusXl),
               child: CachedNetworkImage(imageUrl: main ?? '', fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(color: AppColors.zinc100)),
+                  errorWidget: (_, _, _) => Container(color: AppColors.zinc100)),
             ),
           ),
         ),
@@ -589,7 +589,7 @@ class _AdditionalTable extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text('${_value(row['value'])}',
+                child: Text(_value(row['value']),
                     style: TextStyle(fontFamily: 'Poppins', color: AppColors.zinc500)),
               ),
             ],
@@ -832,7 +832,7 @@ class _ProductAssociationsState extends State<ProductAssociations> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _products.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 24),
+            separatorBuilder: (_, _) => const SizedBox(width: 24),
             itemBuilder: (context, index) => SizedBox(
               width: 260,
               child: ProductCard(product: _products[index]),

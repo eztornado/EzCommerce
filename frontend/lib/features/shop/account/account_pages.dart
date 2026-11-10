@@ -251,7 +251,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: _statusColor(order.status).withOpacity(0.12),
+                                        color: _statusColor(order.status).withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
@@ -567,6 +567,7 @@ class _AddressEditorDialogState extends State<AddressEditorDialog> {
       'phone': _phone.text,
       'country': _country,
     };
+    final messenger = ScaffoldMessenger.of(context);
     try {
       if (widget.address == null) {
         await apiPost('customer/addresses', body: payload);
@@ -575,8 +576,8 @@ class _AddressEditorDialogState extends State<AddressEditorDialog> {
       }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      messenger.showSnackBar(
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
     }
   }
 
@@ -612,7 +613,7 @@ class _AddressEditorDialogState extends State<AddressEditorDialog> {
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _country,
+                  initialValue: _country,
                   decoration: const InputDecoration(labelText: 'Country'),
                   items: const [
                     DropdownMenuItem(value: 'ES', child: Text('Spain')),
@@ -672,9 +673,10 @@ class _WishlistPageState extends State<WishlistPage> {
   }
 
   Future<void> _moveToCart(int itemId) async {
+    final cartProvider = context.read<CartProvider>();
     try {
       await apiPost('customer/wishlist/$itemId/move-to-cart', body: {});
-      await context.read<CartProvider>().refresh();
+      await cartProvider.refresh();
       await _load();
     } catch (_) {}
   }
@@ -768,6 +770,8 @@ class _ProfilePageState extends State<ProfilePage> {
           PrimaryButton(
             label: 'Save',
             onPressed: () async {
+              final authProvider = context.read<AuthProvider>();
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 await apiPut('customer/profile', body: {
                   'first_name': _firstName.text,
@@ -775,15 +779,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (_newPassword.text.isNotEmpty) 'new_password': _newPassword.text,
                 });
                 if (mounted) {
-                  await context.read<AuthProvider>().restore();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Your profile has been updated successfully.')));
+                  await authProvider.restore();
+                  messenger.showSnackBar(const SnackBar(
+                      content: Text('Your profile has been updated successfully.')));
                 }
               } catch (error) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
-                }
+                messenger.showSnackBar(
+                    SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
               }
             },
           ),

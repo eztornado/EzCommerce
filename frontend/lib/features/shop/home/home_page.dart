@@ -192,7 +192,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
                   shape: BoxShape.circle,
                   color: index == _index
                       ? AppColors.navyBlue
-                      : AppColors.gray500.withOpacity(0.3),
+                      : AppColors.gray500.withValues(alpha: 0.3),
                 ),
               );
             }),
@@ -241,7 +241,7 @@ class _CarouselArrow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 16, color: Colors.white),
@@ -312,21 +312,6 @@ class CategoryCarousel extends StatefulWidget {
 }
 
 class _CategoryCarouselState extends State<CategoryCarousel> {
-  List<ShopCategory> _categories = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final catalog = context.read<CatalogProvider>();
-    if (catalog.categories.isNotEmpty && mounted) {
-      setState(() => _categories = catalog.categories);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final catalog = context.watch<CatalogProvider>();
@@ -352,7 +337,7 @@ class _CategoryCarouselState extends State<CategoryCarousel> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 32),
+              separatorBuilder: (_, _) => const SizedBox(width: 32),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 return GestureDetector(
@@ -415,10 +400,12 @@ class _ProductsCarouselState extends State<ProductsCarousel> {
 
   Future<void> _load() async {
     final products = await context.read<CatalogProvider>().loadHomeProducts();
-    if (mounted) setState(() {
-      _products = products;
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _products = products;
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -458,7 +445,7 @@ class _ProductsCarouselState extends State<ProductsCarousel> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _products.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 24),
+                separatorBuilder: (_, _) => const SizedBox(width: 24),
                 itemBuilder: (context, index) => SizedBox(
                   width: 280,
                   child: ProductCard(product: _products[index]),

@@ -276,7 +276,7 @@ class MobileFilterBar extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.zinc200)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, -2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, -2)),
         ],
       ),
       child: Row(

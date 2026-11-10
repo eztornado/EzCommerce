@@ -800,9 +800,9 @@ void showMiniCart(BuildContext context) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Mini cart',
-    barrierColor: Colors.black.withOpacity(0.4),
+    barrierColor: Colors.black.withValues(alpha: 0.4),
     transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (dialogContext, _, __) {
+    pageBuilder: (dialogContext, _, _) {
       return Align(
         alignment: Alignment.centerRight,
         child: Material(

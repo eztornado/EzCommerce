@@ -124,11 +124,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _placeOrder() async {
+    final cartProvider = context.read<CartProvider>();
     setState(() => _saving = true);
     try {
       final data = await apiPost('checkout/onepage/orders', body: {});
       final order = data is Map ? data['order'] : null;
-      await context.read<CartProvider>().refresh();
+      await cartProvider.refresh();
       if (!mounted) return;
       final incrementId = order is Map
           ? (order['increment_id'] ?? order['id'] ?? '').toString()
@@ -188,13 +189,31 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     index: 1,
                     title: '2. Shipping Method',
                     currentStep: _step,
-                    child: _shippingOptions(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _shippingOptions(),
+                        const SizedBox(height: 16),
+                        _saving
+                            ? const CircularProgressIndicator(color: AppColors.navyBlue)
+                            : PrimaryButton(label: 'Save & Continue', onPressed: _saveShipping),
+                      ],
+                    ),
                   ),
                   _CheckoutStep(
                     index: 2,
                     title: '3. Payment Method',
                     currentStep: _step,
-                    child: _paymentOptions(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _paymentOptions(),
+                        const SizedBox(height: 16),
+                        _saving
+                            ? const CircularProgressIndicator(color: AppColors.navyBlue)
+                            : PrimaryButton(label: 'Save & Continue', onPressed: _savePayment),
+                      ],
+                    ),
                   ),
                   _CheckoutStep(
                     index: 3,
@@ -239,7 +258,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Row(children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _country,
+                initialValue: _country,
                 decoration: const InputDecoration(hintText: 'Country'),
                 items: const [
                   DropdownMenuItem(value: 'ES', child: Text('Spain')),
@@ -329,18 +348,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _paymentOptions() {
-    return Column(
-      children: _paymentMethods
-          .map((method) => RadioListTile<String>(
-                value: method.method,
-                groupValue: _selectedPayment,
-                onChanged: (value) => setState(() => _selectedPayment = value),
-                title: Text(method.methodTitle,
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 15)),
-                subtitle: Text(method.description,
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-              ))
-          .toList(),
+    return RadioGroup<String>(
+      groupValue: _selectedPayment,
+      onChanged: (value) => setState(() => _selectedPayment = value),
+      child: Column(
+        children: _paymentMethods
+            .map((method) => RadioListTile<String>(
+                  value: method.method,
+                  title: Text(method.methodTitle,
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 15)),
+                  subtitle: Text(method.description,
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                ))
+            .toList(),
+      ),
     );
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/models.dart';
 import '../../../core/state/app_state.dart';
@@ -56,7 +55,7 @@ class _ProductCardState extends State<ProductCard> {
                             ? CachedNetworkImage(
                                 imageUrl: image,
                                 fit: BoxFit.contain,
-                                errorWidget: (_, __, ___) => const Icon(Icons.image_outlined,
+                                errorWidget: (_, _, _) => const Icon(Icons.image_outlined,
                                     size: 48, color: AppColors.zinc300),
                               )
                             : const Icon(Icons.image_outlined, size: 48, color: AppColors.zinc300),
@@ -88,7 +87,7 @@ class _ProductCardState extends State<ProductCard> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(EzTheme.radiusLg),
                         ),
                         child: Row(

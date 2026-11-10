@@ -428,7 +428,7 @@ class _EzDataGridState extends State<EzDataGrid> {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: '{"filters": ${_search.isNotEmpty ? '{"all": "${_search}"}' : '{}'}}',
+      body: _search.isNotEmpty ? '{"filters":{"all":"$_search"}}' : '{"filters":{}}',
     );
     if (response.statusCode != 200 || !mounted) return;
     downloadFile('${widget.gridPath.split('/').last}.csv', response.bodyBytes);
@@ -506,7 +506,7 @@ class _EzDataGridState extends State<EzDataGrid> {
                           .where((column) => column['index'] != '__primary')
                           .map((column) => DataColumn(
                                 label: Text('${column['label']}'),
-                                onSort: (_, __) {},
+                                onSort: (_, _) {},
                               ))
                           .toList()
                         ..add(const DataColumn(label: Text(''))),
