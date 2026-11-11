@@ -5,8 +5,8 @@
 use larust_http::{Route, Router};
 
 use crate::controllers::{
-    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController,
-    AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
+    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
+    AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController,
 };
 
@@ -124,6 +124,13 @@ pub fn routes() -> Router {
         .put("/admin/marketing/catalog-rules/edit/{id}", AdminCatalogRuleController::update)
         .delete("/admin/marketing/catalog-rules/{id}", AdminCatalogRuleController::destroy)
         .post("/admin/marketing/catalog-rules/reindex", AdminCatalogRuleController::reindex)
+        // reporting
+        .get("/admin/reporting/sales", AdminReportingController::sales)
+        .get("/admin/reporting/products", AdminReportingController::products)
+        .get("/admin/reporting/customers", AdminReportingController::customers)
+        // data transfer
+        .post("/admin/data-transfer/products/export", AdminDataTransferController::export_products)
+        .post("/admin/data-transfer/products/import", AdminDataTransferController::import_products)
         // cms
         .get("/cms/page/{url_key}", AdminCmsController::show_page)
         .post("/admin/cms/pages", AdminCmsController::pages_grid)
