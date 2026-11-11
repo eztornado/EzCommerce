@@ -1,5 +1,5 @@
 # API EzCommerce (Larust) — build multi-stage.
-FROM rust:1-bookworm-slim AS build
+FROM rust:1-slim-bookworm AS build
 WORKDIR /app
 
 # Dependencias del sistema para sqlx (TLS) y para compilar en modo release.
