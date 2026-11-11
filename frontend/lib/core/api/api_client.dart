@@ -11,7 +11,9 @@ class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
 
-  /// URL del API. En web se sirve normalmente en otro origen; móvil usa 10.0.2.2 para emulador.
+  /// URL base del API. En producción dockerizada (Coolify/nginx) se sirve en
+  /// el mismo origen y vale cadena vacía (rutas relativas `/api/...`).
+  /// En desarrollo local: `http://127.0.0.1:34187`.
   static const String productionUrl = 'http://127.0.0.1:34187';
   static String baseUrl = productionUrl;
 
@@ -73,7 +75,8 @@ class ApiClient {
 
   Uri _uri(String path, Map<String, String>? query) {
     final normalized = path.startsWith('/') ? path.substring(1) : path;
-    final uri = Uri.parse('$baseUrl/api/$normalized');
+    final base = baseUrl.isEmpty ? '' : '$baseUrl/';
+    final uri = Uri.parse('${base}api/$normalized');
     return query == null || query.isEmpty ? uri : uri.replace(queryParameters: query);
   }
 

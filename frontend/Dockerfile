@@ -6,9 +6,16 @@ RUN flutter pub get
 COPY . .
 # La URL del API se resuelve en el mismo origen (/api) vía el proxy de nginx;
 # el cliente usa ApiClient.baseUrl configurado en tiempo de build.
-ARG API_BASE_URL=http://localhost:34187
-RUN sed -i "s|static const String productionUrl = '.*';|static const String productionUrl = '$API_BASE_URL';|" \
-    lib/core/api/api_client.dart \
+# SAME_ORIGIN deja baseUrl vacío: el SPA llama a /api en el mismo origen
+# (el nginx del contenedor hace proxy hacia el servicio api).
+ARG API_BASE_URL=SAME_ORIGIN
+RUN if [ "$API_BASE_URL" = "SAME_ORIGIN" ]; then \
+      sed -i "s|static const String productionUrl = '.*';|static const String productionUrl = '';|" \
+        lib/core/api/api_client.dart; \
+    else \
+      sed -i "s|static const String productionUrl = '.*';|static const String productionUrl = '$API_BASE_URL';|" \
+        lib/core/api/api_client.dart; \
+    fi \
     && flutter build web --release
 
 FROM nginx:1.27-alpine AS runtime

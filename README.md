@@ -80,3 +80,29 @@ de carrito), sustituyendo las sesiones de cookie de Bagisto.
 GitHub Actions (`.github/workflows/ci.yml`): backend (`cargo check` + migraciones/seed en
 SQLite), frontend (`flutter analyze` + `build web`) y validación de las imágenes Docker.
 `docker compose up -d` despliega API (migra+siembra al arrancar), MariaDB y nginx con el SPA.
+
+## Despliegue en Coolify
+
+El repo está preparado para desplegarse dockerizado con **Docker Compose**:
+
+1. Crear el proyecto en Coolify desde el repositorio Git eligiendo **Docker Compose**
+   (`docker-compose.yml` en la raíz).
+2. Definir en *Environment Variables* (a nivel de compose o del servicio):
+   - Obligatorias: `JWT_SECRET`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+   - Recomendadas: `APP_URL` y `FRONTEND_URL`/`FRONTEND_WWW_URL` (dominio real para CORS),
+     `SEED_DEMO_DATA=false` en producción
+3. Asignar dominios en Coolify:
+   - Servicio `web` (nginx + SPA Flutter) → dominio público de la tienda; hace proxy de
+     `/api` y `/storage` hacia `api:34187` (mismo origen, sin CORS)
+   - Servicio `api` → dominio del API (si se expone aparte); healthcheck en `/up`
+4. Volúmenes persistentes: `db_data` (MariaDB) y `api_storage` (`/app/public/storage`,
+   imágenes de productos — montarlo como volumen en Coolify para no perderlas al recrear)
+5. Desplegar: el contenedor `api` ejecuta `migrate` + `db:seed` antes de servir
+   (`SEED_DEMO_DATA=false` por defecto en producción)
+
+Notas:
+- El SPA se construye con `API_BASE_URL=SAME_ORIGIN` (rutas `/api` relativas al propio
+  dominio a través del proxy de nginx); si el API se sirve en otro dominio, cambiar el
+  build-arg `API_BASE_URL` por su URL.
+- Cambiar siempre `JWT_SECRET` (por defecto: clave de ejemplo) y las credenciales
+  `ADMIN_*` en el primer arranque.

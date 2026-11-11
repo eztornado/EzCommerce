@@ -34,9 +34,18 @@ services:
       FRONTEND_WWW_URL: ${FRONTEND_WWW_URL:-http://localhost:3000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       MAIL_MAILER: log
     command: ["sh", "-c", "ezcommerce-api migrate && ezcommerce-api db:seed && ezcommerce-api"]
+    volumes:
+      # Las imágenes subidas deben sobrevivir a recreaciones del contenedor.
+      - api_storage:/app/public/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:34187/up || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "34187:34187"
 
@@ -44,7 +53,8 @@ services:
     build:
       context: ./frontend
       args:
-        API_BASE_URL: http://localhost:34187
+        # SAME_ORIGIN: el SPA llama a /api en su propio dominio (proxy nginx).
+        API_BASE_URL: SAME_ORIGIN
     depends_on:
       - api
     ports:
@@ -52,3 +62,4 @@ services:
 
 volumes:
   db_data:
+  api_storage:
