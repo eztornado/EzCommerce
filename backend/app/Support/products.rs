@@ -10,6 +10,7 @@ fn now() -> String {
 }
 
 use super::cart;
+use super::catalog_rules;
 use super::core;
 use super::db::{self, RowMap};
 
@@ -19,10 +20,22 @@ pub async fn card(product_id: i64) -> Option<Value> {
     let attributes = cart::attribute_map(product_id).await.ok()?;
     let product_type = product["type"].as_str().unwrap_or("simple").to_string();
 
-    let price = core::format_amount(cart::effective_price(&attributes), 2);
+    // Effective price = special_price (ventana activa) o price, rebajado
+    // además por la regla de catálogo activa si la hay.
+    let mut effective = cart::effective_price(&attributes);
+    let catalog_discounted =
+        catalog_rules::discounted_price(product_id, effective, 1, 1).await; // grupo guest
+    let mut on_sale = false;
+    if catalog_discounted > 0.0 && catalog_discounted < effective {
+        effective = catalog_discounted;
+        on_sale = true;
+    }
+    let price = core::format_amount(effective, 2);
     let regular = core::format_amount(attributes["price"].as_f64().unwrap_or(0.0), 2);
     let special = attributes["special_price"].as_f64().unwrap_or(0.0);
-    let on_sale = special > 0.0 && special < attributes["price"].as_f64().unwrap_or(0.0);
+    if special > 0.0 && special < attributes["price"].as_f64().unwrap_or(0.0) {
+        on_sale = true;
+    }
 
     let images = db::select(
         "SELECT `path` FROM `product_images` WHERE `product_id` = ? ORDER BY `position`, `id`",
@@ -68,10 +81,10 @@ pub async fn card(product_id: i64) -> Option<Value> {
         "type": product_type,
         "name": attributes["name"],
         "url_key": attributes["url_key"],
-        "price": cart::effective_price(&attributes),
+        "price": effective,
         "formatted_price": price,
         "formatted_regular_price": regular,
-        "special_price": if on_sale { Value::from(special) } else { Value::Null },
+        "special_price": if on_sale { Value::from(effective) } else { Value::Null },
         "on_sale": on_sale,
         "is_new": attributes["new"].as_i64().unwrap_or(0) == 1,
         "is_featured": attributes["featured"].as_i64().unwrap_or(0) == 1,
@@ -505,6 +518,9 @@ pub async fn refresh_flat(product_id: i64) {
             }
         }
     }
+
+    // Catalog rules rebajan los índices de precio por grupo.
+    super::catalog_rules::apply_to_indices(product_id, price).await;
 
     // Inventory index.
     let existing = db::select_one(

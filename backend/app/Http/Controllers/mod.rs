@@ -1,6 +1,7 @@
 pub mod admin_auth_controller;
 pub mod admin_cart_rule_controller;
 pub mod admin_catalog_controller;
+pub mod admin_catalog_rule_controller;
 pub mod admin_customer_controller;
 pub mod admin_dashboard_controller;
 pub mod admin_sales_controller;
@@ -16,6 +17,7 @@ pub mod product_controller;
 pub use admin_auth_controller::AdminAuthController;
 pub use admin_cart_rule_controller::AdminCartRuleController;
 pub use admin_catalog_controller::AdminCatalogController;
+pub use admin_catalog_rule_controller::AdminCatalogRuleController;
 pub use admin_customer_controller::AdminCustomerController;
 pub use admin_dashboard_controller::AdminDashboardController;
 pub use admin_sales_controller::AdminSalesController;

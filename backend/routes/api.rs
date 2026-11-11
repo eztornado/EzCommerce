@@ -5,7 +5,7 @@
 use larust_http::{Route, Router};
 
 use crate::controllers::{
-    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCustomerController, AdminDashboardController,
+    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCustomerController, AdminDashboardController,
     AdminSalesController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController,
 };
@@ -118,6 +118,12 @@ pub fn routes() -> Router {
         .delete("/admin/marketing/cart-rules/{id}", AdminCartRuleController::destroy)
         .post("/admin/marketing/cart-rules/coupons/{id}", AdminCartRuleController::generate_coupons)
         .get("/admin/marketing/cart-rules/coupons/{id}", AdminCartRuleController::coupons)
+        // marketing: catalog rules
+        .post("/admin/marketing/catalog-rules", AdminCatalogRuleController::grid)
+        .post("/admin/marketing/catalog-rules/store", AdminCatalogRuleController::store)
+        .put("/admin/marketing/catalog-rules/edit/{id}", AdminCatalogRuleController::update)
+        .delete("/admin/marketing/catalog-rules/{id}", AdminCatalogRuleController::destroy)
+        .post("/admin/marketing/catalog-rules/reindex", AdminCatalogRuleController::reindex)
         // customers
         .post("/admin/customers", AdminCustomerController::grid)
         .get("/admin/customers/view/{id}", AdminCustomerController::view)

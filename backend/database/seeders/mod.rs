@@ -103,6 +103,7 @@ pub async fn run() -> Result<(), AppError> {
         seed_demo_catalog().await?;
         seed_demo_home().await?;
         seed_demo_cart_rules().await?;
+        seed_demo_catalog_rule().await?;
     }
     Ok(())
 }
@@ -1126,5 +1127,37 @@ async fn seed_demo_cart_rules() -> Result<(), AppError> {
     .await
     .map_err(internal)?;
 
+    Ok(())
+}
+
+/// Regla de catálogo demo: -15% a todos los productos (para el grupo guest).
+async fn seed_demo_catalog_rule() -> Result<(), AppError> {
+    let pool = pool()?;
+    let existing: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM `catalog_rules`").fetch_one(pool).await.map_err(internal)?;
+    if existing > 0 {
+        return Ok(());
+    }
+    let stamp = now();
+    sqlx::query(
+        "INSERT INTO `catalog_rules` (`name`, `description`, `status`, `condition_type`, `action_type`, `discount_amount`, `sort_order`, `created_at`, `updated_at`) \
+         VALUES ('15% catalog sale', 'Automatic 15% discount on every product price.', 1, 1, 'by_percent', 15, 0, ?, ?)",
+    )
+    .bind(&stamp)
+    .bind(&stamp)
+    .execute(pool)
+    .await
+    .map_err(internal)?;
+    let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `catalog_rules`").fetch_one(pool).await.map_err(internal)?;
+    let _ = sqlx::query("INSERT OR IGNORE INTO `catalog_rule_channels` (`catalog_rule_id`, `channel_id`) VALUES (?, 1)")
+        .bind(rule_id).execute(pool).await;
+    for group_id in [1, 2] {
+        let _ = sqlx::query("INSERT OR IGNORE INTO `catalog_rule_customer_groups` (`catalog_rule_id`, `customer_group_id`) VALUES (?, ?)")
+            .bind(rule_id).bind(group_id).execute(pool).await;
+    }
+    // Reindexa los precios de todo el catálogo con la regla aplicada.
+    if let Err(error) = crate::support::catalog_rules::reindex_all().await {
+        larust_support::tracing::error!(%error, "catalog rules reindex failed");
+    }
     Ok(())
 }

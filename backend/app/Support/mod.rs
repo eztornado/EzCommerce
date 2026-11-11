@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod cart;
 pub mod cart_rules;
+pub mod catalog_rules;
 pub mod core;
 pub mod datagrid;
 pub mod db;
