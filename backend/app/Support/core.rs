@@ -184,7 +184,7 @@ pub async fn get_config_data(
 pub fn attribute_value(attribute_type: &str, row: &RowMap) -> Value {
     match attribute_type {
         "boolean" => row["boolean_value"].clone(),
-        "integer" => row["integer_value"].clone(),
+        "integer" | "select" => row["integer_value"].clone(),
         "price" | "float" | "decimal" => row["float_value"].clone(),
         "date" => row["date_value"].clone(),
         "datetime" => row["datetime_value"].clone(),

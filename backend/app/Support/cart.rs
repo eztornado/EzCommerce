@@ -152,6 +152,11 @@ pub async fn attribute_map(product_id: i64) -> ApiResult<Value> {
     if let Some(parent_id) = parent_id {
         for row in load_attributes(parent_id).await? {
             let code = row["code"].as_str().unwrap_or_default().to_string();
+            // La variante nunca hereda el url_key del padre: saturaría el
+            // resolver de la tienda con el slug del configurable.
+            if code == "url_key" {
+                continue;
+            }
             map.entry(code).or_insert_with(|| {
                 core::attribute_value(row["type"].as_str().unwrap_or("text"), &row)
             });

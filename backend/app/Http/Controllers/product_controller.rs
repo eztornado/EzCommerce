@@ -162,23 +162,27 @@ impl ProductController {
         resource(json!({"data": cards, "meta": meta}), Value::Null)
     }
 
-    /// `GET /api/products/{id}` - detail by id or url_key.
+    /// `GET /api/products/{id}` - detail by id or url_key. Si el slug
+    /// resuelve a una variante, se sirve el configurable padre.
     pub async fn show(Path(id_or_key): Path<String>) -> Response {
         let product_id = match id_or_key.parse::<i64>() {
             Ok(id) => id,
             Err(_) => {
                 let by_key = db::select_one(
-                    "SELECT `product_id` FROM `product_flat` WHERE `url_key` = ? ORDER BY `id` DESC LIMIT 1",
+                    "SELECT `pf`.`product_id`, `p`.`parent_id` FROM `product_flat` `pf` \
+                     INNER JOIN `products` `p` ON `p`.`id` = `pf`.`product_id` \
+                     WHERE `pf`.`url_key` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
                     &[Value::String(id_or_key.clone())],
                 )
                 .await
                 .ok()
-                .flatten()
-                .and_then(|row| row["product_id"].as_i64());
-                match by_key {
-                    Some(id) => id,
-                    None => return message(StatusCode::NOT_FOUND, "Product not found."),
-                }
+                .flatten();
+                let Some(row) = by_key else {
+                    return message(StatusCode::NOT_FOUND, "Product not found.");
+                };
+                row["parent_id"]
+                    .as_i64()
+                    .unwrap_or_else(|| row["product_id"].as_i64().unwrap_or(0))
             }
         };
         match products::detail(product_id).await {

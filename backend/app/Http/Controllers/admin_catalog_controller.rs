@@ -132,8 +132,33 @@ impl AdminCatalogController {
             Ok(id) => id,
             Err(error) => return error.into(),
         };
+
+        // Super attributes de los configurables ({super_attributes: [id...]}).
+        for attribute_id in body["super_attributes"].as_array().cloned().unwrap_or_default() {
+            if let Some(attribute_id) = attribute_id.as_i64() {
+                let _ = db::execute(
+                    "INSERT OR IGNORE INTO `product_super_attributes` (`product_id`, `attribute_id`) VALUES (?, ?)",
+                    &[Value::from(product_id), Value::from(attribute_id)],
+                )
+                .await;
+            }
+        }
+
         crate::support::products::refresh_flat(product_id).await;
         resource(json!({"id": product_id}), "The product has been created successfully.")
+    }
+
+    /// `GET /api/admin/catalog/attributes/configurable` - atributos que pueden
+    /// actuar como super attributes de un configurable.
+    pub async fn configurable_attributes(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `id`, `code`, `admin_name` FROM `attributes` WHERE `is_configurable` = 1 ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
     }
 
     /// `GET /api/admin/catalog/products/edit/{id}` - product with all data for
@@ -165,12 +190,58 @@ impl AdminCatalogController {
         )
         .await
         .unwrap_or_default();
-        let variants = db::select(
+        // Super attributes (configurables) con sus opciones para el editor.
+        let mut super_attributes = db::select(
+            "SELECT `a`.`id`, `a`.`code`, `a`.`admin_name`, `a`.`type` FROM `product_super_attributes` `psa` \
+             INNER JOIN `attributes` `a` ON `a`.`id` = `psa`.`attribute_id` \
+             WHERE `psa`.`product_id` = ? ORDER BY `a`.`id`",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or_default();
+        for attribute in super_attributes.iter_mut() {
+            let options = db::select(
+                "SELECT `id`, `admin_name` FROM `attribute_options` WHERE `attribute_id` = ? ORDER BY `sort_order`, `id`",
+                &[attribute["id"].clone()],
+            )
+            .await
+            .unwrap_or_default();
+            attribute.insert(
+                "options".into(),
+                Value::Array(options.into_iter().map(Value::Object).collect()),
+            );
+        }
+
+        // Variantes con sus valores de super attributes y stock total.
+        let variant_rows = db::select(
             "SELECT `id`, `sku` FROM `products` WHERE `parent_id` = ? ORDER BY `id`",
             &[Value::from(id)],
         )
         .await
         .unwrap_or_default();
+        let mut variants = Vec::new();
+        for row in variant_rows {
+            let variant_id = row["id"].as_i64().unwrap_or(0);
+            let mut variant = Map::new();
+            variant.insert("id".into(), row["id"].clone());
+            variant.insert("sku".into(), row["sku"].clone());
+            variant.insert(
+                "attributes".into(),
+                cart::attribute_map(variant_id).await.unwrap_or_default(),
+            );
+            variant.insert(
+                "qty".into(),
+                Value::from(
+                    db::scalar_i64(
+                        "SELECT COALESCE(SUM(`qty`), 0) FROM `product_inventories` WHERE `product_id` = ?",
+                        &[Value::from(variant_id)],
+                    )
+                    .await
+                    .unwrap_or(0),
+                ),
+            );
+            variants.push(Value::Object(variant));
+        }
 
         resource(
             json!({
@@ -179,6 +250,7 @@ impl AdminCatalogController {
                 "categories": categories,
                 "inventories": inventories,
                 "images": images,
+                "super_attributes": super_attributes,
                 "variants": variants,
             }),
             Value::Null,
@@ -321,6 +393,102 @@ impl AdminCatalogController {
             }
         }
         resource(Value::Array(Vec::new()), "The selected products have been deleted.")
+    }
+
+    /// `POST /api/admin/catalog/products/edit/{id}/variants` - crea una
+    /// variante del configurable: `{sku, attributes: {<super code>: value,
+    /// name?, price?, weight?}, qty?}`. Los códigos nuevos se registran como
+    /// super attributes del padre.
+    pub async fn store_variant(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let parent = db::find_by_id("products", id).await.ok().flatten();
+        let Some(parent) = parent else {
+            return message(StatusCode::NOT_FOUND, "Product not found.");
+        };
+
+        let Some(sku) = body["sku"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("sku".into(), "The sku field is required.".into())]);
+        };
+        let exists = db::select_one(
+            "SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1",
+            &[Value::String(sku.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if exists.is_some() {
+            return validation_error(vec![("sku".into(), "The sku has already been taken.".into())]);
+        }
+
+        let variant_id = match db::insert(
+            "products",
+            &json!({
+                "sku": sku,
+                "type": "simple",
+                "parent_id": id,
+                "attribute_family_id": parent["attribute_family_id"].clone(),
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(variant_id) => variant_id,
+            Err(error) => return error.into(),
+        };
+
+        let mut attributes = body["attributes"].as_object().cloned().unwrap_or_default();
+        attributes.insert("sku".into(), Value::String(sku.to_string()));
+        attributes.insert("status".into(), Value::from(1));
+        attributes.insert("manage_stock".into(), Value::from(1));
+        for (code, value) in &attributes {
+            crate::support::products::set_attribute(variant_id, code, value).await;
+        }
+        // Los super attributes del configurable se gestionan aparte: aquí solo
+        // se rellenan los valores de los ya registrados (la UI ofrece sus
+        // opciones).
+
+        if let Some(qty) = body["qty"].as_i64() {
+            let _ = db::insert(
+                "product_inventories",
+                &json!({
+                    "product_id": variant_id,
+                    "inventory_source_id": 1,
+                    "qty": qty,
+                    "created_at": now(),
+                    "updated_at": now(),
+                }),
+            )
+            .await;
+        }
+
+        crate::support::products::refresh_flat(variant_id).await;
+        crate::support::products::refresh_flat(id).await;
+        resource(json!({"id": variant_id}), "The variant has been created successfully.")
+    }
+
+    /// `DELETE /api/admin/catalog/products/variants/{id}` - borra la variante
+    /// y refresca el flat del padre.
+    pub async fn delete_variant(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let variant = db::find_by_id("products", id).await.ok().flatten();
+        let Some(variant) = variant else {
+            return message(StatusCode::NOT_FOUND, "Variant not found.");
+        };
+        let parent_id = variant["parent_id"].as_i64().unwrap_or(0);
+        match db::delete("products", id).await {
+            Ok(_) => {
+                if parent_id > 0 {
+                    crate::support::products::refresh_flat(parent_id).await;
+                }
+                resource(Value::Array(Vec::new()), "The variant has been deleted successfully.")
+            }
+            Err(error) => error.into(),
+        }
     }
 
     // ------------------------------------------------------------------

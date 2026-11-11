@@ -616,33 +616,48 @@ class AdminProductsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EzDataGrid(
-      gridPath: 'admin/catalog/products',
-      title: 'Products',
-      extraActions: (row) => [
-        IconButton(
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          tooltip: 'Edit',
-          onPressed: () => context.go('/admin/products/edit/${row['id']}'),
+    return Stack(
+      children: [
+        EzDataGrid(
+          gridPath: 'admin/catalog/products',
+          title: 'Products',
+          extraActions: (row) => [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              tooltip: 'Edit',
+              onPressed: () => context.go('/admin/products/edit/${row['id']}'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete product?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  await admin.delete('admin/catalog/products/${row['id']}');
+                }
+              },
+            ),
+          ],
         ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
-          onPressed: () async {
-            final admin = context.read<AdminProvider>();
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Delete product?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
-                ],
-              ),
-            );
-            if (confirmed == true) {
-              await admin.delete('admin/catalog/products/${row['id']}');
-            }
-          },
+        Positioned(
+          right: 24,
+          bottom: 24,
+          child: FloatingActionButton.extended(
+            backgroundColor: AppColors.navyBlue,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add),
+            label: const Text('New Product'),
+            onPressed: () => context.go('/admin/products/create'),
+          ),
         ),
       ],
     );

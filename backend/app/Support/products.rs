@@ -368,15 +368,16 @@ pub async fn set_attribute(product_id: i64, code: &str, value: &Value) {
         .to_string();
 
     let mut row = db::to_map(json!({"product_id": product_id, "attribute_id": attribute_id, "updated_at": now()}));
+    // Índice directo de Map panica si la clave no existe: usar insert.
     match attribute_type.as_str() {
-        "boolean" => row["boolean_value"] = json!(value.as_bool().unwrap_or(false) as i64),
-        "integer" => row["integer_value"] = value.clone(),
-        "price" => row["float_value"] = value.clone(),
-        "date" => row["date_value"] = value.clone(),
-        "datetime" => row["datetime_value"] = value.clone(),
-        "multiselect" | "checkbox" => row["json_value"] = value.clone(),
-        _ => row["text_value"] = value.clone(),
-    }
+        "boolean" => row.insert("boolean_value".into(), json!(value.as_bool().unwrap_or(false) as i64)),
+        "integer" | "select" => row.insert("integer_value".into(), value.clone()),
+        "price" => row.insert("float_value".into(), value.clone()),
+        "date" => row.insert("date_value".into(), value.clone()),
+        "datetime" => row.insert("datetime_value".into(), value.clone()),
+        "multiselect" | "checkbox" => row.insert("json_value".into(), value.clone()),
+        _ => row.insert("text_value".into(), value.clone()),
+    };
 
     let existing = db::select_one(
         "SELECT `id` FROM `product_attribute_values` WHERE `product_id` = ? AND `attribute_id` = ? AND `channel` IS NULL AND `locale` IS NULL LIMIT 1",
