@@ -772,6 +772,282 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     }
   }
 
+  void _showError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+  }
+
+  /// Ids de locale/moneda usados por algún canal: no se pueden borrar.
+  Set<int> get _localesInUse => {
+        for (final channel in _channels)
+          ...decodeList(channel['locales']).map((id) => id as int),
+        for (final channel in _channels) ...[
+          if (channel['default_locale_id'] is int) channel['default_locale_id'] as int,
+        ],
+      };
+
+  Set<int> get _currenciesInUse => {
+        for (final channel in _channels)
+          ...decodeList(channel['currencies']).map((id) => id as int),
+        for (final channel in _channels) ...[
+          if (channel['base_currency_id'] is int) channel['base_currency_id'] as int,
+        ],
+      };
+
+  Future<void> _delete(String label, String path) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete $label?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    try {
+      await admin.delete(path);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _currencyDialog([Map<String, dynamic>? currency]) async {
+    final code = TextEditingController(text: '${currency?['code'] ?? ''}');
+    final name = TextEditingController(text: '${currency?['name'] ?? ''}');
+    final symbol = TextEditingController(text: '${currency?['symbol'] ?? ''}');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(currency == null ? 'New currency' : 'Edit currency'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: code, decoration: const InputDecoration(labelText: 'Code (ISO 4217)')),
+            const SizedBox(height: 12),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+            const SizedBox(height: 12),
+            TextField(controller: symbol, decoration: const InputDecoration(labelText: 'Symbol')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          PrimaryButton(
+            label: 'Save',
+            onPressed: () => code.text.trim().isEmpty ? null : Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    final body = {
+      'code': code.text.trim(),
+      'name': name.text.trim(),
+      'symbol': symbol.text.trim(),
+      'decimal': 2,
+    };
+    try {
+      currency == null
+          ? await admin.post('admin/settings/currencies', body: body)
+          : await admin.put('admin/settings/currencies/edit/${currency['id']}', body: body);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _localeDialog([Map<String, dynamic>? locale]) async {
+    final code = TextEditingController(text: '${locale?['code'] ?? ''}');
+    final name = TextEditingController(text: '${locale?['name'] ?? ''}');
+    String direction = '${locale?['direction'] ?? 'ltr'}';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(locale == null ? 'New locale' : 'Edit locale'),
+          content: SizedBox(
+            width: 420,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: code, decoration: const InputDecoration(labelText: 'Code (e.g. es)')),
+              const SizedBox(height: 12),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: direction,
+                decoration: const InputDecoration(labelText: 'Direction'),
+                items: const [
+                  DropdownMenuItem(value: 'ltr', child: Text('LTR')),
+                  DropdownMenuItem(value: 'rtl', child: Text('RTL')),
+                ],
+                onChanged: (value) => setDialogState(() => direction = value ?? 'ltr'),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            PrimaryButton(
+              label: 'Save',
+              onPressed: () => code.text.trim().isEmpty ? null : Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    final body = {
+      'code': code.text.trim(),
+      'name': name.text.trim(),
+      'direction': direction,
+    };
+    try {
+      locale == null
+          ? await admin.post('admin/settings/locales', body: body)
+          : await admin.put('admin/settings/locales/edit/${locale['id']}', body: body);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _channelDialog([Map<String, dynamic>? channel]) async {
+    final code = TextEditingController(text: '${channel?['code'] ?? ''}');
+    final name = TextEditingController(text: '${channel?['name'] ?? ''}');
+    final hostname = TextEditingController(text: '${channel?['hostname'] ?? ''}');
+    final timezone = TextEditingController(text: '${channel?['timezone'] ?? ''}');
+    int? defaultLocaleId = channel?['default_locale_id'] as int?;
+    int? baseCurrencyId = channel?['base_currency_id'] as int?;
+    final selectedLocales = {
+      ...decodeList(channel?['locales']).map((id) => id as int),
+    };
+    final selectedCurrencies = {
+      ...decodeList(channel?['currencies']).map((id) => id as int),
+    };
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(channel == null ? 'New channel' : 'Edit channel'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 480,
+              child: Column(mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                TextField(controller: code, decoration: const InputDecoration(labelText: 'Code')),
+                const SizedBox(height: 12),
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+                const SizedBox(height: 12),
+                TextField(controller: hostname, decoration: const InputDecoration(labelText: 'Hostname (optional)')),
+                const SizedBox(height: 12),
+                TextField(controller: timezone, decoration: const InputDecoration(labelText: 'Timezone (optional)')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: defaultLocaleId,
+                  decoration: const InputDecoration(labelText: 'Default locale'),
+                  items: _locales
+                      .map((locale) => DropdownMenuItem(
+                            value: locale['id'] as int,
+                            child: Text('${locale['name'] ?? locale['code']}'),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() {
+                    defaultLocaleId = value;
+                    if (value != null) selectedLocales.add(value);
+                  }),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: baseCurrencyId,
+                  decoration: const InputDecoration(labelText: 'Base currency'),
+                  items: _currencies
+                      .map((currency) => DropdownMenuItem(
+                            value: currency['id'] as int,
+                            child: Text('${currency['name'] ?? currency['code']}'),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() {
+                    baseCurrencyId = value;
+                    if (value != null) selectedCurrencies.add(value);
+                  }),
+                ),
+                const SizedBox(height: 16),
+                const Text('Locales', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final locale in _locales)
+                      FilterChip(
+                        label: Text('${locale['code']}',
+                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                        selected: selectedLocales.contains(locale['id']),
+                        onSelected: (selected) => setDialogState(() => selected
+                            ? selectedLocales.add(locale['id'] as int)
+                            : selectedLocales.remove(locale['id'])),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('Currencies', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final currency in _currencies)
+                      FilterChip(
+                        label: Text('${currency['code']}',
+                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                        selected: selectedCurrencies.contains(currency['id']),
+                        onSelected: (selected) => setDialogState(() => selected
+                            ? selectedCurrencies.add(currency['id'] as int)
+                            : selectedCurrencies.remove(currency['id'])),
+                      ),
+                  ],
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            PrimaryButton(
+              label: 'Save',
+              onPressed: () => (code.text.trim().isEmpty ||
+                      defaultLocaleId == null ||
+                      baseCurrencyId == null)
+                  ? null
+                  : Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    final body = {
+      'code': code.text.trim(),
+      'name': name.text.trim(),
+      'hostname': hostname.text.trim(),
+      'timezone': timezone.text.trim(),
+      'default_locale_id': defaultLocaleId,
+      'base_currency_id': baseCurrencyId,
+      'locales': selectedLocales.toList(),
+      'currencies': selectedCurrencies.toList(),
+    };
+    try {
+      channel == null
+          ? await admin.post('admin/settings/channels', body: body)
+          : await admin.put('admin/settings/channels/edit/${channel['id']}', body: body);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -787,36 +1063,105 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           const SizedBox(height: 24),
           _Section(
             title: 'Channels',
-            children: _channels
-                .map((channel) => ListTile(
-                      title: Text('${channel['name'] ?? channel['code']}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-                      subtitle: Text('code: ${channel['code']} · theme: ${channel['theme']}',
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                    ))
-                .toList(),
+            actions: [
+              TextButton.icon(
+                onPressed: () => _channelDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Channel', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final channel in _channels)
+                ListTile(
+                  title: Text('${channel['name'] ?? channel['code']}',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  subtitle: Text(
+                      'code: ${channel['code']} · theme: ${channel['theme']} · '
+                      'locales: ${decodeList(channel['locales']).length} · '
+                      'currencies: ${decodeList(channel['currencies']).length}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      onPressed: () => _channelDialog(channel),
+                    ),
+                    if (channel['id'] != 1)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                        tooltip: 'Delete',
+                        onPressed: () =>
+                            _delete('channel', 'admin/settings/channels/${channel['id']}'),
+                      ),
+                  ]),
+                ),
+            ],
           ),
           _Section(
             title: 'Currencies',
-            children: _currencies
-                .map((currency) => ListTile(
-                      title: Text('${currency['name']} (${currency['symbol']})',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-                      subtitle: Text('${currency['code']}',
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                    ))
-                .toList(),
+            actions: [
+              TextButton.icon(
+                onPressed: () => _currencyDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Currency', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final currency in _currencies)
+                ListTile(
+                  title: Text('${currency['name']} (${currency['symbol']})',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  subtitle: Text('${currency['code']}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      onPressed: () => _currencyDialog(currency),
+                    ),
+                    if (!_currenciesInUse.contains(currency['id']))
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                        tooltip: 'Delete',
+                        onPressed: () =>
+                            _delete('currency', 'admin/settings/currencies/${currency['id']}'),
+                      ),
+                  ]),
+                ),
+            ],
           ),
           _Section(
             title: 'Locales',
-            children: _locales
-                .map((locale) => ListTile(
-                      title: Text('${locale['name']}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-                      subtitle: Text('${locale['code']} · ${locale['direction']}',
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                    ))
-                .toList(),
+            actions: [
+              TextButton.icon(
+                onPressed: () => _localeDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Locale', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final locale in _locales)
+                ListTile(
+                  title: Text('${locale['name']}',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  subtitle: Text('${locale['code']} · ${locale['direction']}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      onPressed: () => _localeDialog(locale),
+                    ),
+                    if (!_localesInUse.contains(locale['id']))
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                        tooltip: 'Delete',
+                        onPressed: () =>
+                            _delete('locale', 'admin/settings/locales/${locale['id']}'),
+                      ),
+                  ]),
+                ),
+            ],
           ),
         ],
       ),
@@ -825,9 +1170,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
+  const _Section({required this.title, required this.children, this.actions});
   final String title;
   final List<Widget> children;
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -842,9 +1188,16 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
+              ),
+              ...?actions,
+            ],
+          ),
           ...children,
         ],
       ),
