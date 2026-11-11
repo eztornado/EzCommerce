@@ -104,6 +104,7 @@ pub async fn run() -> Result<(), AppError> {
         seed_demo_home().await?;
         seed_demo_cart_rules().await?;
         seed_demo_catalog_rule().await?;
+        seed_rma_statuses().await?;
     }
     Ok(())
 }
@@ -1158,6 +1159,59 @@ async fn seed_demo_catalog_rule() -> Result<(), AppError> {
     // Reindexa los precios de todo el catálogo con la regla aplicada.
     if let Err(error) = crate::support::catalog_rules::reindex_all().await {
         larust_support::tracing::error!(%error, "catalog rules reindex failed");
+    }
+    Ok(())
+}
+
+/// Estados y motivos RMA base (los del instalador de Bagisto).
+async fn seed_rma_statuses() -> Result<(), AppError> {
+    let pool = pool()?;
+    let existing: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM `rma_statuses`").fetch_one(pool).await.map_err(internal)?;
+    if existing > 0 {
+        return Ok(());
+    }
+    let stamp = now();
+    let statuses: &[(&str, &str, i64)] = &[
+        ("Pending Review", "#EAB308", 1),
+        ("Approved", "#4F46E5", 0),
+        ("Awaiting Return", "#0891B2", 0),
+        ("Return In Transit", "#94A3B8", 0),
+        ("Refunded", "#16A34A", 0),
+        ("Solved", "#16A34A", 0),
+        ("Request Declined", "#DC2626", 0),
+        ("Item Canceled", "#E11D48", 0),
+        ("Request Canceled", "#DC2626", 0),
+    ];
+    for (title, color, default) in statuses {
+        let _ = sqlx::query(
+            "INSERT INTO `rma_statuses` (`title`, `status`, `color`, `default`, `created_at`, `updated_at`) VALUES (?, 1, ?, ?, ?, ?)",
+        )
+        .bind(title)
+        .bind(color)
+        .bind(default)
+        .bind(&stamp)
+        .bind(&stamp)
+        .execute(pool)
+        .await;
+    }
+    let reasons: &[&str] = &[
+        "Manufacturer Defect",
+        "Damaged During Shipping",
+        "Wrong Description Online",
+        "Dead On Arrival",
+        "Product Not Received Yet",
+    ];
+    for (position, title) in reasons.iter().enumerate() {
+        let _ = sqlx::query(
+            "INSERT INTO `rma_reasons` (`title`, `status`, `position`, `is_admin`, `created_at`, `updated_at`) VALUES (?, 1, ?, 0, ?, ?)",
+        )
+        .bind(title)
+        .bind(position as i64)
+        .bind(&stamp)
+        .bind(&stamp)
+        .execute(pool)
+        .await;
     }
     Ok(())
 }

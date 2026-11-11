@@ -1,3 +1,4 @@
+pub mod admin_appearance_controller;
 pub mod admin_auth_controller;
 pub mod admin_cart_rule_controller;
 pub mod admin_catalog_controller;
@@ -17,7 +18,9 @@ pub mod checkout_controller;
 pub mod core_controller;
 pub mod customer_controller;
 pub mod product_controller;
+pub mod rma_gdpr_controller;
 
+pub use admin_appearance_controller::AdminAppearanceController;
 pub use admin_auth_controller::AdminAuthController;
 pub use admin_cart_rule_controller::AdminCartRuleController;
 pub use admin_catalog_controller::AdminCatalogController;
@@ -37,3 +40,4 @@ pub use checkout_controller::CheckoutController;
 pub use core_controller::CoreController;
 pub use customer_controller::CustomerController;
 pub use product_controller::ProductController;
+pub use rma_gdpr_controller::RmaGdprController;

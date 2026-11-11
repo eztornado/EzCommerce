@@ -191,6 +191,36 @@ impl AdminSalesController {
         }
     }
 
+    /// `GET /api/admin/datagrid/look-up?table=&label=&value=&q=` -
+    /// autocompletado genérico para filtros relacionales del datagrid
+    /// (devuelve pares {label, value} de cualquier tabla).
+    pub async fn datagrid_look_up(Query(query): Query<HashMap<String, String>>) -> Response {
+        let table = query.get("table").cloned().unwrap_or_default();
+        let label_column = query.get("label").cloned().unwrap_or_else(|| "name".into());
+        let value_column = query.get("value").cloned().unwrap_or_else(|| "id".into());
+        let term = query.get("q").cloned().unwrap_or_default();
+
+        // Sólo identificadores seguros.
+        let valid = |name: &str| {
+            !name.is_empty()
+                && name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
+        };
+        if !valid(&table) || !valid(&label_column) || !valid(&value_column) {
+            return message(StatusCode::BAD_REQUEST, "Invalid look-up parameters.");
+        }
+
+        let sql = format!(
+            "SELECT `{}` AS `label`, `{}` AS `value` FROM `{}`              WHERE CAST(`{}` AS CHAR) LIKE ? ORDER BY `{}` LIMIT 20",
+            label_column, value_column, table, label_column, label_column
+        );
+        let rows = db::select(&sql, &[Value::String(format!("%{term}%"))])
+            .await
+            .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
     /// `GET /api/admin/sales/orders/search?q=` - increment/customer search.
     pub async fn order_search(admin: auth::Admin, Query(query): Query<HashMap<String, String>>) -> Response {
         let _ = admin;

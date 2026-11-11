@@ -5,9 +5,9 @@
 use larust_http::{Route, Router};
 
 use crate::controllers::{
-    AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
+    AdminAppearanceController, AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
     AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
-    CategoryController, CheckoutController, CoreController, CustomerController, ProductController,
+    CategoryController, CheckoutController, CoreController, CustomerController, ProductController, RmaGdprController,
 };
 
 pub fn routes() -> Router {
@@ -68,6 +68,12 @@ pub fn routes() -> Router {
         .get("/customer/orders/{id}", CustomerController::order_detail)
         .post("/customer/orders/{id}/cancel", CustomerController::cancel_order)
         .post("/customer/orders/{id}/reorder", CustomerController::reorder)
+        .post("/customer/rma/store", RmaGdprController::store_rma)
+        .get("/customer/rma", RmaGdprController::my_rmas)
+        .get("/customer/rma/view/{id}", RmaGdprController::view_rma)
+        .post("/customer/gdpr/request", RmaGdprController::store_gdpr_request)
+        .get("/customer/gdpr", RmaGdprController::my_gdpr_requests)
+        .get("/customer/gdpr/view/{id}", RmaGdprController::view_gdpr_export)
         // ------------------------------------------------------------------
         // Cart + checkout
         // ------------------------------------------------------------------
@@ -124,6 +130,8 @@ pub fn routes() -> Router {
         .put("/admin/marketing/catalog-rules/edit/{id}", AdminCatalogRuleController::update)
         .delete("/admin/marketing/catalog-rules/{id}", AdminCatalogRuleController::destroy)
         .post("/admin/marketing/catalog-rules/reindex", AdminCatalogRuleController::reindex)
+        // datagrid look-up (filtros relacionales genéricos)
+        .get("/admin/datagrid/look-up", AdminSalesController::datagrid_look_up)
         // reporting
         .get("/admin/reporting/sales", AdminReportingController::sales)
         .get("/admin/reporting/products", AdminReportingController::products)
@@ -131,6 +139,11 @@ pub fn routes() -> Router {
         // data transfer
         .post("/admin/data-transfer/products/export", AdminDataTransferController::export_products)
         .post("/admin/data-transfer/products/import", AdminDataTransferController::import_products)
+        // rma + gdpr (admin)
+        .get("/admin/rma", RmaGdprController::admin_rmas)
+        .post("/admin/rma/status/{id}", RmaGdprController::admin_update_status)
+        .get("/admin/gdpr", RmaGdprController::admin_gdpr_requests)
+        .post("/admin/gdpr/status/{id}", RmaGdprController::admin_update_gdpr_status)
         // cms
         .get("/cms/page/{url_key}", AdminCmsController::show_page)
         .post("/admin/cms/pages", AdminCmsController::pages_grid)
@@ -182,5 +195,11 @@ pub fn routes() -> Router {
         .put("/admin/settings/channels/edit/{id}", AdminSettingController::update_channel)
         .get("/admin/configuration/{code}", AdminSettingController::configuration)
         .post("/admin/configuration", AdminSettingController::save_configuration)
-        .get("/admin/appearance/sections/{locale}", AdminSettingController::theme_sections)
+        .get("/admin/appearance/theme-sections/{locale}", AdminSettingController::theme_sections)
+        .get("/admin/appearance/sections/list/{locale}", AdminAppearanceController::sections)
+        .post("/admin/appearance/sections/store", AdminAppearanceController::store)
+        .put("/admin/appearance/sections/edit/{id}", AdminAppearanceController::update)
+        .delete("/admin/appearance/sections/{id}", AdminAppearanceController::destroy)
+        .post("/admin/appearance/sections/reorder", AdminAppearanceController::reorder)
+        .post("/admin/appearance/sections/status/{id}", AdminAppearanceController::toggle_status)
 }
