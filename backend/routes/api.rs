@@ -6,7 +6,7 @@ use larust_http::{Route, Router};
 
 use crate::controllers::{
     AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController,
-    AdminSalesController, AdminSettingController, AuthController, CartController,
+    AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController,
 };
 
@@ -131,6 +131,19 @@ pub fn routes() -> Router {
         .get("/admin/cms/pages/view/{id}", AdminCmsController::view)
         .put("/admin/cms/pages/edit/{id}", AdminCmsController::update)
         .delete("/admin/cms/pages/{id}", AdminCmsController::destroy)
+        // seo
+        .get("/seo/sitemap.xml", AdminSeoController::sitemap)
+        .post("/admin/seo/url-rewrites", AdminSeoController::url_rewrites_grid)
+        .post("/admin/seo/url-rewrites/store", AdminSeoController::store_url_rewrite)
+        .put("/admin/seo/url-rewrites/edit/{id}", AdminSeoController::update_url_rewrite)
+        .delete("/admin/seo/url-rewrites/{id}", AdminSeoController::destroy_url_rewrite)
+        .post("/admin/seo/search-terms", AdminSeoController::search_terms_grid)
+        .put("/admin/seo/search-terms/edit/{id}", AdminSeoController::update_search_term)
+        .delete("/admin/seo/search-terms/{id}", AdminSeoController::destroy_search_term)
+        .post("/admin/seo/search-synonyms", AdminSeoController::search_synonyms_grid)
+        .post("/admin/seo/search-synonyms/store", AdminSeoController::store_search_synonym)
+        .put("/admin/seo/search-synonyms/edit/{id}", AdminSeoController::update_search_synonym)
+        .delete("/admin/seo/search-synonyms/{id}", AdminSeoController::destroy_search_synonym)
         // customers
         .post("/admin/customers", AdminCustomerController::grid)
         .get("/admin/customers/view/{id}", AdminCustomerController::view)
