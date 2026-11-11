@@ -119,6 +119,10 @@ pub fn routes() -> Router {
         .delete("/admin/catalog/categories/{id}", AdminCatalogController::delete_category)
         .post("/admin/catalog/attributes", AdminCatalogController::attributes_grid)
         .get("/admin/catalog/attributes/configurable", AdminCatalogController::configurable_attributes)
+        .post("/admin/catalog/attributes/store", AdminCatalogController::store_attribute)
+        .get("/admin/catalog/attributes/edit/{id}", AdminCatalogController::show_attribute)
+        .put("/admin/catalog/attributes/edit/{id}", AdminCatalogController::update_attribute)
+        .delete("/admin/catalog/attributes/{id}", AdminCatalogController::destroy_attribute)
         // marketing: cart rules
         .post("/admin/marketing/cart-rules", AdminCartRuleController::grid)
         .post("/admin/marketing/cart-rules/store", AdminCartRuleController::store)

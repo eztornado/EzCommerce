@@ -11,6 +11,7 @@ import 'features/admin/admin_cart_rules.dart';
 import 'features/admin/admin_cms.dart';
 import 'features/admin/admin_catalog_rules.dart';
 import 'features/admin/admin_categories.dart';
+import 'features/admin/admin_attributes.dart';
 import 'features/admin/admin_shell.dart';
 import 'features/shop/account/account_pages.dart';
 import 'features/shop/auth/auth_pages.dart';
@@ -76,6 +77,7 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/admin/products', builder: (_, _) => const AdminProductsPage()),
         GoRoute(path: '/admin/products/create', builder: (_, _) => const AdminProductCreatePage()),
         GoRoute(path: '/admin/categories', builder: (_, _) => const AdminCategoriesPage()),
+        GoRoute(path: '/admin/attributes', builder: (_, _) => const AdminAttributesPage()),
         GoRoute(path: '/admin/cart-rules', builder: (_, _) => const AdminCartRulesPage()),
         GoRoute(path: '/admin/catalog-rules', builder: (_, _) => const AdminCatalogRulesPage()),
         GoRoute(path: '/admin/cms', builder: (_, _) => const AdminCmsPage()),

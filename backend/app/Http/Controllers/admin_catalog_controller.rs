@@ -697,6 +697,144 @@ impl AdminCatalogController {
             Err(error) => error.into(),
         }
     }
+
+    /// `GET /api/admin/catalog/attributes/edit/{id}` - atributo + opciones.
+    pub async fn show_attribute(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let attribute = match db::find_by_id("attributes", id).await {
+            Ok(Some(attribute)) => attribute,
+            _ => return message(StatusCode::NOT_FOUND, "Attribute not found."),
+        };
+        let options = db::select(
+            "SELECT `id`, `admin_name`, `swatch_value`, `sort_order` FROM `attribute_options` \
+             WHERE `attribute_id` = ? ORDER BY `sort_order`, `id`",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or_default();
+        resource(
+            json!({
+                "attribute": attribute,
+                "options": options,
+            }),
+            Value::Null,
+        )
+    }
+
+    fn attribute_row(body: &Value) -> Value {
+        json!({
+            "admin_name": body["admin_name"].clone(),
+            "type": body["type"].as_str().unwrap_or("text"),
+            "position": body["position"].as_i64().unwrap_or(0),
+            "is_required": body["is_required"].as_i64().unwrap_or(0),
+            "is_unique": body["is_unique"].as_i64().unwrap_or(0),
+            "is_filterable": body["is_filterable"].as_i64().unwrap_or(0),
+            "is_comparable": body["is_comparable"].as_i64().unwrap_or(0),
+            "is_configurable": body["is_configurable"].as_i64().unwrap_or(0),
+            "is_visible_on_front": body["is_visible_on_front"].as_i64().unwrap_or(0),
+            "value_per_locale": body["value_per_locale"].as_i64().unwrap_or(0),
+            "value_per_channel": body["value_per_channel"].as_i64().unwrap_or(0),
+            "updated_at": now(),
+        })
+    }
+
+    /// Reemplaza las opciones de un atributo select (`options: [{admin_name}]`).
+    async fn replace_attribute_options(attribute_id: i64, body: &Value) {
+        let Some(options) = body["options"].as_array() else { return };
+        let _ = db::execute(
+            "DELETE FROM `attribute_options` WHERE `attribute_id` = ?",
+            &[Value::from(attribute_id)],
+        )
+        .await;
+        for (position, option) in options.iter().enumerate() {
+            let Some(name) = option["admin_name"].as_str().map(str::trim).filter(|s| !s.is_empty()) else { continue };
+            let _ = db::insert(
+                "attribute_options",
+                &json!({
+                    "attribute_id": attribute_id,
+                    "admin_name": name,
+                    "swatch_value": option["swatch_value"].clone(),
+                    "sort_order": position as i64,
+                    "created_at": now(),
+                    "updated_at": now(),
+                }),
+            )
+            .await;
+        }
+    }
+
+    /// `POST /api/admin/catalog/attributes/store` - `{code, admin_name, type,
+    /// flags..., options?}`.
+    pub async fn store_attribute(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let Some(code) = body["code"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("code".into(), "The code field is required.".into())]);
+        };
+        let taken = db::select_one(
+            "SELECT `id` FROM `attributes` WHERE `code` = ? LIMIT 1",
+            &[Value::String(code.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![("code".into(), "The code has already been taken.".into())]);
+        }
+        let mut row = db::to_map(Self::attribute_row(&body));
+        row.insert("code".into(), json!(code));
+        row.insert("is_user_defined".into(), json!(1));
+        row.insert("created_at".into(), json!(now()));
+        let attribute_id = match db::insert("attributes", &Value::Object(row)).await {
+            Ok(attribute_id) => attribute_id,
+            Err(error) => return error.into(),
+        };
+        Self::replace_attribute_options(attribute_id, &body).await;
+        resource(json!({"id": attribute_id}), "The attribute has been created successfully.")
+    }
+
+    /// `PUT /api/admin/catalog/attributes/edit/{id}` - solo user-defined.
+    pub async fn update_attribute(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let attribute = db::find_by_id("attributes", id).await.ok().flatten();
+        let Some(attribute) = attribute else {
+            return message(StatusCode::NOT_FOUND, "Attribute not found.");
+        };
+        if attribute["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "System attributes cannot be modified.",
+            );
+        }
+        match db::update("attributes", id, &Self::attribute_row(&body)).await {
+            Ok(_) => {}
+            Err(error) => return error.into(),
+        }
+        Self::replace_attribute_options(id, &body).await;
+        resource(Value::Array(Vec::new()), "The attribute has been updated successfully.")
+    }
+
+    /// `DELETE /api/admin/catalog/attributes/{id}` - solo user-defined.
+    pub async fn destroy_attribute(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let attribute = db::find_by_id("attributes", id).await.ok().flatten();
+        let Some(attribute) = attribute else {
+            return message(StatusCode::NOT_FOUND, "Attribute not found.");
+        };
+        if attribute["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "System attributes cannot be deleted.",
+            );
+        }
+        match db::delete("attributes", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The attribute has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
 }
 
 fn categories_tree_from(
