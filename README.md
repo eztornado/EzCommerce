@@ -73,6 +73,25 @@ frontend/   App Flutter: tienda (features/shop) y panel de administración
 - Flutter estable (frontend)
 - MariaDB/MySQL 10.4+ en producción; SQLite para desarrollo local
 
+## Datos de ejemplo
+
+Con `SEED_DEMO_DATA=true` el seeder genera un paquete completo para probar
+la plataforma: 11 productos de catálogo (incluido un configurable con tres
+variantes de color), secciones de home, cupones (10% automático y
+`WELCOME10`), regla de catálogo, clientes, pedidos con facturas y envíos
+(estados derivados reales: pendiente, en proceso, completado), reseñas
+aprobadas y wishlist. El seeder es idempotente: re-ejecutarlo no duplica
+datos.
+
+Credenciales de los datos demo:
+
+| Rol | Identificador | Contraseña |
+|---|---|---|
+| Administrador | valor de `ADMIN_EMAIL` (por defecto `admin@example.com`) | valor de `ADMIN_PASSWORD` (por defecto `admin123`) |
+| Cliente | `customer@example.com` | `customer123` |
+| Cliente 2 | `marc@example.com` | `customer123` |
+| Cliente 3 | `laura@example.com` | `customer123` |
+
 ## Puesta en marcha (desarrollo)
 
 Backend:

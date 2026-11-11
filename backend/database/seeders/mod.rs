@@ -104,6 +104,7 @@ pub async fn run() -> Result<(), AppError> {
         seed_demo_home().await?;
         seed_demo_cart_rules().await?;
         seed_demo_catalog_rule().await?;
+        seed_demo_customers_orders().await?;
         seed_rma_statuses().await?;
     }
     Ok(())
@@ -1214,4 +1215,241 @@ async fn seed_rma_statuses() -> Result<(), AppError> {
         .await;
     }
     Ok(())
+}
+
+/// Clientes, pedidos, reseñas y wishlist de demostración
+/// (`SEED_DEMO_DATA=true`). Reutiliza el motor de carrito y ventas reales
+/// para que los pedidos tengan totales, facturas y envíos coherentes.
+/// Idempotente: si existe el cliente principal, no hace nada.
+async fn seed_demo_customers_orders() -> Result<(), AppError> {
+    let existing: Option<i64> = sqlx::query_scalar(
+        "SELECT `id` FROM `customers` WHERE `email` = 'customer@example.com' LIMIT 1",
+    )
+    .fetch_optional(pool()?)
+    .await
+    .map_err(internal)?;
+    if existing.is_some() {
+        return Ok(());
+    }
+
+    let stamp = now();
+    let Ok(password_hash) = crate::support::auth::hash_password("customer123") else {
+        return Ok(());
+    };
+    let pool = pool()?;
+
+    // ------------------------------------------------------------------
+    // Clientes demo (contraseña: customer123)
+    // ------------------------------------------------------------------
+    let customers: &[(i64, &str, &str, &str, &str)] = &[
+        (1, "customer@example.com", "Ana", "García", "Featured Customer"),
+        (2, "marc@example.com", "Marc", "Puig", "General"),
+        (3, "laura@example.com", "Laura", "Ortega", "General"),
+    ];
+    let mut customer_ids = Vec::new();
+    for (group_id, email, first_name, last_name, _note) in customers {
+        sqlx::query(
+            "INSERT INTO `customers` (`first_name`, `last_name`, `gender`, `email`, `password`, `status`, `customer_group_id`, `created_at`, `updated_at`) \
+             VALUES (?, ?, 'Other', ?, ?, 1, ?, ?, ?)",
+        )
+        .bind(first_name)
+        .bind(last_name)
+        .bind(email)
+        .bind(&password_hash)
+        .bind(group_id)
+        .bind(&stamp)
+        .bind(&stamp)
+        .execute(pool)
+        .await
+        .map_err(internal)?;
+        let customer_id: i64 =
+            sqlx::query_scalar("SELECT MAX(`id`) FROM `customers`").fetch_one(pool).await.map_err(internal)?;
+        customer_ids.push(customer_id);
+    }
+    let ana = customer_ids[0];
+    let marc = customer_ids[1];
+    let laura = customer_ids[2];
+
+    // ------------------------------------------------------------------
+    // Direcciones del cliente principal
+    // ------------------------------------------------------------------
+    let addresses: &[(&str, &str, &str, &str, &str, &str)] = &[
+        ("Calle Mayor 12", "Madrid", "28013", "ES", "Madrid", "600123456"),
+        ("Rambla 45", "Barcelona", "08002", "ES", "Barcelona", "600987654"),
+    ];
+    for (address, city, postcode, country, state, phone) in addresses {
+        sqlx::query(
+            "INSERT INTO `addresses` (`customer_id`, `address_type`, `first_name`, `last_name`, `address1`, `city`, `postcode`, `country`, `state`, `phone`, `created_at`, `updated_at`) \
+             VALUES (?, 'customer', 'Ana', 'García', ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(ana)
+        .bind(address)
+        .bind(city)
+        .bind(postcode)
+        .bind(country)
+        .bind(state)
+        .bind(phone)
+        .bind(&stamp)
+        .bind(&stamp)
+        .execute(pool)
+        .await
+        .map_err(internal)?;
+    }
+
+    // ------------------------------------------------------------------
+    // Productos del catálogo demo (creados por seed_demo_catalog)
+    // ------------------------------------------------------------------
+    let p1 = demo_product_id("EZ-BAG-01").await?.unwrap_or(0);
+    let p2 = demo_product_id("EZ-WATCH-01").await?.unwrap_or(0);
+    let p3 = demo_product_id("EZ-MUG-01").await?.unwrap_or(0);
+    let variant_green = demo_product_id("EZ-SNEAKER-01-GREEN").await?.unwrap_or(0);
+
+    // ------------------------------------------------------------------
+    // Pedidos demo: carrito real (motor de carrito) -> pedido
+    // ------------------------------------------------------------------
+
+    // 1) Ana: bolsa + reloj -> factura + envío (completed).
+    if p1 > 0 && p2 > 0 {
+        let order_id = demo_order(ana, "Ana", "García", &[(p1, 1.0), (p2, 1.0)]).await?;
+        if order_id > 0 {
+            let _ = crate::support::sales::create_invoice(order_id).await;
+            let selected = larust_support::serde_json::Map::new();
+            let _ = crate::support::sales::create_shipment(order_id, 1, &selected).await;
+            let _ = crate::support::sales::update_order_status(order_id).await;
+        }
+    }
+    // 2) Ana: gorra -> factura (processing).
+    if p3 > 0 {
+        let order_id = demo_order(ana, "Ana", "García", &[(p3, 2.0)]).await?;
+        if order_id > 0 {
+            let _ = crate::support::sales::create_invoice(order_id).await;
+            let _ = crate::support::sales::update_order_status(order_id).await;
+        }
+    }
+    // 3) Marc: bolsa -> se queda 'pending' (estado de creación, sin recalcular).
+    if p1 > 0 {
+        let _ = demo_order(marc, "Marc", "Puig", &[(p1, 1.0)]).await?;
+    }
+    // 4) Laura: zapatilla verde (variante configurable) -> factura + envío.
+    if variant_green > 0 {
+        let order_id = demo_order(laura, "Laura", "Ortega", &[(variant_green, 1.0)]).await?;
+        if order_id > 0 {
+            let _ = crate::support::sales::create_invoice(order_id).await;
+            let selected = larust_support::serde_json::Map::new();
+            let _ = crate::support::sales::create_shipment(order_id, 1, &selected).await;
+            let _ = crate::support::sales::update_order_status(order_id).await;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Wishlist del cliente principal
+    // ------------------------------------------------------------------
+    for sku in ["EZ-BAG-01", "EZ-WATCH-01"] {
+        if let Ok(Some(product_id)) = demo_product_id(sku).await {
+            sqlx::query(
+                "INSERT INTO `wishlist_items` (`channel_id`, `product_id`, `customer_id`, `created_at`, `updated_at`) VALUES (1, ?, ?, ?, ?)",
+            )
+            .bind(product_id)
+            .bind(ana)
+            .bind(&stamp)
+            .bind(&stamp)
+            .execute(pool)
+            .await
+            .map_err(internal)?;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Reseñas aprobadas
+    // ------------------------------------------------------------------
+    let reviews: &[(i64, &str, &str, i64, &str, &str)] = &[
+        (ana, "Ana García", "Muy práctica", 5, "Perfecta para el día a día, caben el portátil y más cosas.", "EZ-BAG-01"),
+        (marc, "Marc Puig", "Elegante y ligera", 4, "El acabado es mejor de lo que esperaba por el precio.", "EZ-WATCH-01"),
+        (laura, "Laura Ortega", "Cómodas", 3, "La talla viene algo justa, pedir una más.", "EZ-SNEAKER-01"),
+    ];
+    for (customer_id, name, title, rating, comment, sku) in reviews {
+        if let Ok(Some(product_id)) = demo_product_id(sku).await {
+            sqlx::query(
+                "INSERT INTO `product_reviews` (`name`, `title`, `rating`, `comment`, `status`, `product_id`, `customer_id`, `created_at`, `updated_at`) \
+                 VALUES (?, ?, ?, ?, 'approved', ?, ?, ?, ?)",
+            )
+            .bind(name)
+            .bind(title)
+            .bind(rating)
+            .bind(comment)
+            .bind(product_id)
+            .bind(customer_id)
+            .bind(&stamp)
+            .bind(&stamp)
+            .execute(pool)
+            .await
+            .map_err(internal)?;
+        }
+    }
+
+    larust_support::tracing::info!("clientes, pedidos, reseñas y wishlist de demostración creados (customer@example.com / customer123)");
+    Ok(())
+}
+
+/// Id de un producto demo por SKU (sin crear nada).
+async fn demo_product_id(sku: &str) -> Result<Option<i64>, AppError> {
+    sqlx::query_scalar::<_, i64>("SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1")
+        .bind(sku)
+        .fetch_optional(pool()?)
+        .await
+        .map_err(internal)
+}
+
+/// Crea un pedido demo pasando por el carrito real (motor de carrito +
+/// ventas), con pago y direcciones de Madrid.
+async fn demo_order(
+    customer_id: i64,
+    first: &str,
+    last: &str,
+    items: &[(i64, f64)],
+) -> Result<i64, AppError> {
+    let stamp = now();
+    let context = crate::support::cart::CartContext {
+        customer_id: Some(customer_id),
+        cart_token: None,
+    };
+    let cart = crate::support::cart::get_or_create_cart(&context, 1, "EUR", "EUR")
+        .await
+        .map_err(internal)?;
+    for (product_id, qty) in items {
+        let selected = larust_support::serde_json::Map::new();
+        crate::support::cart::add_product(&cart, *product_id, *qty, &selected)
+            .await
+            .map_err(internal)?;
+    }
+    let cart_id = cart["id"].as_i64().unwrap_or(0);
+    sqlx::query(
+        "INSERT INTO `cart_payment` (`cart_id`, `method`, `method_title`, `created_at`, `updated_at`) VALUES (?, 'cashondelivery', 'Cash On Delivery', ?, ?)",
+    )
+    .bind(cart_id)
+    .bind(&stamp)
+    .bind(&stamp)
+    .execute(pool()?)
+    .await
+    .map_err(internal)?;
+    for kind in ["cart_billing", "cart_shipping"] {
+        sqlx::query(
+            "INSERT INTO `addresses` (`cart_id`, `customer_id`, `address_type`, `first_name`, `last_name`, `email`, `address1`, `city`, `postcode`, `country`, `state`, `phone`, `created_at`, `updated_at`) \
+             VALUES (?, ?, ?, ?, ?, 'customer@example.com', 'Calle Mayor 12', 'Madrid', '28013', 'ES', 'Madrid', '600123456', ?, ?)",
+        )
+        .bind(cart_id)
+        .bind(customer_id)
+        .bind(kind)
+        .bind(first)
+        .bind(last)
+        .bind(&stamp)
+        .bind(&stamp)
+        .execute(pool()?)
+        .await
+        .map_err(internal)?;
+    }
+    let order = crate::support::sales::create_order_from_cart(cart_id)
+        .await
+        .map_err(internal)?;
+    Ok(order["id"].as_i64().unwrap_or(0))
 }
