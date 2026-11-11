@@ -58,6 +58,25 @@ de carrito), sustituyendo las sesiones de cookie de Bagisto.
 - Admin: `/api/admin/...` con el contrato DataGrid (`{columns, actions, mass_actions, records, meta}`).
 - Errores: `{message}` y validación 422 `{message, errors}`.
 
+### Módulos implementados
+
+| Módulo | Endpoints clave |
+|---|---|
+| Core (canal/locale/moneda) | `/api/core/context`, `/countries`, `/states`, `/currencies`, `/home` |
+| Catálogo | `/api/products`, `/api/products/{id}`, `/api/categories/tree`, `/api/categories/attributes`, reseñas |
+| Clientes | `/api/customer/{login,register,get,profile}`, direcciones, wishlist, compare, pedidos |
+| Carrito + checkout | `/api/checkout/cart`, `/api/checkout/onepage/{addresses,shipping-methods,payment-methods,orders}` |
+| Ventas (admin) | pedidos/facturas/envíos/reembolsos con prorrateo, estados derivados y stock |
+| Marketing | `/api/admin/marketing/{cart-rules,catalog-rules}` + cupones + generación masiva + reindex |
+| CMS | `/api/cms/page/{url_key}` público, CRUD admin con traducciones |
+| SEO | url rewrites, search terms/synonyms, `/api/seo/sitemap.xml` |
+| Reporting | `/api/admin/reporting/{sales,products,customers}` con granularidad |
+| Data transfer | `/api/admin/data-transfer/products/{export,import}` CSV |
+| RMA / GDPR | cliente (crear/listar/solicitar/export datos) + admin (estados, anonimización) |
+| Apariencia | CRUD de `theme_sections` con traducciones, reorder y estado |
+
 ## CI/CD
 
-Pendiente (issue #15): Docker multi-stage (API Rust + MySQL + build Flutter web) y GitHub Actions.
+GitHub Actions (`.github/workflows/ci.yml`): backend (`cargo check` + migraciones/seed en
+SQLite), frontend (`flutter analyze` + `build web`) y validación de las imágenes Docker.
+`docker compose up -d` despliega API (migra+siembra al arrancar), MariaDB y nginx con el SPA.
