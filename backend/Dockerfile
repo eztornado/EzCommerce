@@ -1,5 +1,5 @@
 # API EzCommerce (Larust) — build multi-stage.
-FROM rust:1-slim AS build
+FROM rust:1-bookworm-slim AS build
 WORKDIR /app
 
 # Dependencias del sistema para sqlx (TLS) y para compilar en modo release.
@@ -18,7 +18,7 @@ RUN touch src/lib.rs src/main.rs && cargo build --release
 
 # ---------------------------------------------------------------------------
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget socat \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/target/release/ezcommerce-api /usr/local/bin/ezcommerce-api

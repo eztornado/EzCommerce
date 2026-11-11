@@ -36,12 +36,14 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       MAIL_MAILER: log
-    command: ["sh", "-c", "ezcommerce-api migrate && ezcommerce-api db:seed && ezcommerce-api"]
+    # Larust enlaza el API a 127.0.0.1 dentro del contenedor; socat lo
+    # publica en 0.0.0.0:34188 para que el proxy de `web` lo alcance.
+    command: ["sh", "-c", "socat TCP-LISTEN:34188,bind=0.0.0.0,reuseaddr,fork TCP:127.0.0.1:34187 & ezcommerce-api migrate && ezcommerce-api db:seed && exec ezcommerce-api"]
     volumes:
       # Las imágenes subidas deben sobrevivir a recreaciones del contenedor.
       - api_storage:/app/public/storage
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:34187/up || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:34188/up || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -50,7 +52,7 @@ services:
     # Para acceso directo fuera de Coolify, sustituir por:
     #   ports: ["34187:34187"]
     expose:
-      - "34187"
+      - "34188"
 
   web:
     build:
