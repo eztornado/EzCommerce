@@ -749,6 +749,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   List<Map<String, dynamic>> _channels = [];
   List<Map<String, dynamic>> _currencies = [];
   List<Map<String, dynamic>> _locales = [];
+  List<Map<String, dynamic>> _taxCategories = [];
+  List<Map<String, dynamic>> _taxRates = [];
+  List<Map<String, dynamic>> _exchangeRates = [];
   bool _loading = true;
 
   @override
@@ -762,11 +765,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     final channels = await admin.get('admin/settings/channels');
     final currencies = await admin.get('admin/settings/currencies');
     final locales = await admin.get('admin/settings/locales');
+    final taxCategories = await admin.get('admin/settings/taxes/categories');
+    final taxRates = await admin.get('admin/settings/taxes/rates');
+    final exchangeRates = await admin.get('admin/settings/exchange-rates');
     if (mounted) {
       setState(() {
         _channels = decodeList(channels);
         _currencies = decodeList(currencies);
         _locales = decodeList(locales);
+        _taxCategories = decodeList(taxCategories);
+        _taxRates = decodeList(taxRates);
+        _exchangeRates = decodeList(exchangeRates);
         _loading = false;
       });
     }
@@ -1048,6 +1057,248 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     }
   }
 
+  Future<void> _taxRateDialog([Map<String, dynamic>? rate]) async {
+    final identifier = TextEditingController(text: '${rate?['identifier'] ?? ''}');
+    final country = TextEditingController(text: '${rate?['country'] ?? 'ES'}');
+    final state = TextEditingController(text: '${rate?['state'] ?? '*'}');
+    final zipCode = TextEditingController(text: '${rate?['zip_code'] ?? '*'}');
+    final zipFrom = TextEditingController(text: '${rate?['zip_from'] ?? ''}');
+    final zipTo = TextEditingController(text: '${rate?['zip_to'] ?? ''}');
+    final percent = TextEditingController(text: '${rate?['tax_rate'] ?? 21}');
+    bool isZip = (rate?['is_zip'] ?? 0) == 1;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(rate == null ? 'New tax rate' : 'Edit tax rate'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 440,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(
+                    controller: identifier,
+                    decoration: const InputDecoration(labelText: 'Identifier (e.g. IVA-21)')),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                      child: TextField(
+                          controller: country,
+                          decoration: const InputDecoration(labelText: 'Country (ISO)'))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: TextField(
+                          controller: state,
+                          decoration: const InputDecoration(labelText: 'State (* = all)'))),
+                ]),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Zip code range', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                  value: isZip,
+                  onChanged: (value) => setDialogState(() => isZip = value),
+                ),
+                if (isZip)
+                  Row(children: [
+                    Expanded(
+                        child: TextField(
+                            controller: zipFrom,
+                            decoration: const InputDecoration(labelText: 'Zip from'))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: TextField(
+                            controller: zipTo,
+                            decoration: const InputDecoration(labelText: 'Zip to'))),
+                  ])
+                else
+                  TextField(
+                      controller: zipCode,
+                      decoration: const InputDecoration(labelText: 'Zip code (* = all)')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: percent,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Rate (%)')),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            PrimaryButton(
+              label: 'Save',
+              onPressed: () =>
+                  identifier.text.trim().isEmpty ? null : Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    final body = {
+      'identifier': identifier.text.trim(),
+      'country': country.text.trim().toUpperCase(),
+      'state': state.text.trim(),
+      'is_zip': isZip ? 1 : 0,
+      if (isZip) ...{
+        'zip_from': zipFrom.text.trim(),
+        'zip_to': zipTo.text.trim(),
+        'zip_code': '',
+      } else ...{
+        'zip_from': '',
+        'zip_to': '',
+        'zip_code': zipCode.text.trim(),
+      },
+      'tax_rate': num.tryParse(percent.text) ?? 0,
+    };
+    try {
+      rate == null
+          ? await admin.post('admin/settings/taxes/rates', body: body)
+          : await admin.put('admin/settings/taxes/rates/edit/${rate['id']}', body: body);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _taxCategoryDialog([Map<String, dynamic>? category]) async {
+    final code = TextEditingController(text: '${category?['code'] ?? ''}');
+    final name = TextEditingController(text: '${category?['name'] ?? ''}');
+    final description = TextEditingController(text: '${category?['description'] ?? ''}');
+    final selected = {
+      ...decodeList(category?['taxrates']).map((rate) => rate['id'] as int),
+    };
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(category == null ? 'New tax category' : 'Edit tax category'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 440,
+              child: Column(mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                TextField(controller: code, decoration: const InputDecoration(labelText: 'Code')),
+                const SizedBox(height: 12),
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+                const SizedBox(height: 12),
+                TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+                const SizedBox(height: 16),
+                const Text('Tax rates', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final rate in _taxRates)
+                      FilterChip(
+                        label: Text('${rate['identifier']}',
+                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                        selected: selected.contains(rate['id']),
+                        onSelected: (value) => setDialogState(() => value
+                            ? selected.add(rate['id'] as int)
+                            : selected.remove(rate['id'])),
+                      ),
+                  ],
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            PrimaryButton(
+              label: 'Save',
+              onPressed: () => code.text.trim().isEmpty ? null : Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    final body = {
+      'code': code.text.trim(),
+      'name': name.text.trim(),
+      'description': description.text.trim(),
+      'tax_rates': selected.toList(),
+    };
+    try {
+      category == null
+          ? await admin.post('admin/settings/taxes/categories', body: body)
+          : await admin.put('admin/settings/taxes/categories/edit/${category['id']}', body: body);
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _exchangeRateDialog([Map<String, dynamic>? exchangeRate]) async {
+    int? target = exchangeRate?['target_currency'] as int?;
+    final rate = TextEditingController(text: '${exchangeRate?['rate'] ?? 1}');
+    final availableCurrencies = exchangeRate == null
+        ? _currencies
+            .where((currency) =>
+                !_exchangeRates.any((row) => row['target_currency'] == currency['id']))
+            .toList()
+        : _currencies;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(exchangeRate == null ? 'New exchange rate' : 'Edit exchange rate'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (exchangeRate == null)
+              DropdownButtonFormField<int>(
+                initialValue: target,
+                decoration: const InputDecoration(labelText: 'Target currency'),
+                items: availableCurrencies
+                    .map((currency) => DropdownMenuItem(
+                          value: currency['id'] as int,
+                          child: Text('${currency['code']} (${currency['name']})'),
+                        ))
+                    .toList(),
+                onChanged: (value) => target = value,
+              )
+            else
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text('${exchangeRate['code']} (${exchangeRate['name']})',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+              ),
+            const SizedBox(height: 12),
+            TextField(
+                controller: rate,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Rate (per 1 base currency)')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          PrimaryButton(
+            label: 'Save',
+            onPressed: () =>
+                (exchangeRate == null && target == null) ? null : Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    try {
+      exchangeRate == null
+          ? await admin.post('admin/settings/exchange-rates', body: {
+              'target_currency': target,
+              'rate': num.tryParse(rate.text) ?? 1,
+            })
+          : await admin.put('admin/settings/exchange-rates/edit/${exchangeRate['id']}',
+              body: {'rate': num.tryParse(rate.text) ?? 1});
+      await _load();
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -1161,6 +1412,109 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                   ]),
                 ),
+            ],
+          ),
+          _Section(
+            title: 'Tax categories',
+            actions: [
+              TextButton.icon(
+                onPressed: () => _taxCategoryDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Category', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final category in _taxCategories)
+                ListTile(
+                  title: Text('${category['name'] ?? category['code']}',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  subtitle: Text(
+                      'code: ${category['code']} · rates: ${decodeList(category['taxrates']).map((rate) => rate['identifier']).join(', ')}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      onPressed: () => _taxCategoryDialog(category),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                      tooltip: 'Delete',
+                      onPressed: () =>
+                          _delete('tax category', 'admin/settings/taxes/categories/${category['id']}'),
+                    ),
+                  ]),
+                ),
+            ],
+          ),
+          _Section(
+            title: 'Tax rates',
+            actions: [
+              TextButton.icon(
+                onPressed: () => _taxRateDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Rate', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final rate in _taxRates)
+                ListTile(
+                  title: Text('${rate['identifier']} — ${rate['tax_rate']}%',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  subtitle: Text(
+                      'country: ${rate['country']} · state: ${rate['state'] ?? '*'} · '
+                      'zip: ${rate['is_zip'] == 1 ? '${rate['zip_from']}-${rate['zip_to']}' : rate['zip_code']}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      onPressed: () => _taxRateDialog(rate),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                      tooltip: 'Delete',
+                      onPressed: () =>
+                          _delete('tax rate', 'admin/settings/taxes/rates/${rate['id']}'),
+                    ),
+                  ]),
+                ),
+            ],
+          ),
+          _Section(
+            title: 'Exchange rates',
+            actions: [
+              TextButton.icon(
+                onPressed: () => _exchangeRateDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Rate', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              if (_exchangeRates.isEmpty)
+                const Text('No exchange rates yet.',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500))
+              else
+                for (final exchangeRate in _exchangeRates)
+                  ListTile(
+                    title: Text('1 EUR = ${exchangeRate['rate']} ${exchangeRate['code']}',
+                        style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                    subtitle: Text('${exchangeRate['name']}',
+                        style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit',
+                        onPressed: () => _exchangeRateDialog(exchangeRate),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                        tooltip: 'Delete',
+                        onPressed: () => _delete(
+                            'exchange rate', 'admin/settings/exchange-rates/${exchangeRate['id']}'),
+                      ),
+                    ]),
+                  ),
             ],
           ),
         ],

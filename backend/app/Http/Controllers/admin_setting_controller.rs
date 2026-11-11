@@ -463,6 +463,242 @@ impl AdminSettingController {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Taxes: categorías y tarifas (el motor del carrito ya las aplica)
+    // ------------------------------------------------------------------
+
+    /// `GET /api/admin/settings/taxes/categories` - con sus tarifas anidadas.
+    pub async fn tax_categories(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let mut rows = db::select(
+            "SELECT * FROM `tax_categories` ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        for row in rows.iter_mut() {
+            let category_id = row["id"].as_i64().unwrap_or(0);
+            let rates = db::select(
+                "SELECT `tr`.* FROM `tax_categories_tax_rates` `ttr` \
+                 INNER JOIN `tax_rates` `tr` ON `tr`.`id` = `ttr`.`tax_rate_id` \
+                 WHERE `ttr`.`tax_category_id` = ? ORDER BY `tr`.`id`",
+                &[Value::from(category_id)],
+            )
+            .await
+            .unwrap_or_default();
+            row.insert(
+                "taxrates".into(),
+                Value::Array(rates.into_iter().map(Value::Object).collect()),
+            );
+        }
+        resource(json!(rows), Value::Null)
+    }
+
+    /// `POST /api/admin/settings/taxes/categories` - `{code, name, description?, tax_rates?: [id]}`.
+    pub async fn store_tax_category(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let Some(code) = body["code"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("code".into(), "The code field is required.".into())]);
+        };
+        let taken = db::select_one(
+            "SELECT `id` FROM `tax_categories` WHERE `code` = ? LIMIT 1",
+            &[Value::String(code.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![("code".into(), "The code has already been taken.".into())]);
+        }
+        let category_id = match db::insert(
+            "tax_categories",
+            &json!({
+                "code": code,
+                "name": body["name"].clone(),
+                "description": body["description"].clone(),
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(category_id) => category_id,
+            Err(error) => return error.into(),
+        };
+        replace_tax_rate_pivots(category_id, &body).await;
+        resource(json!({"id": category_id}), "The tax category has been created successfully.")
+    }
+
+    /// `PUT /api/admin/settings/taxes/categories/edit/{id}`.
+    pub async fn update_tax_category(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let mut row = Map::new();
+        if let Some(code) = body["code"].as_str().map(str::trim).filter(|s| !s.is_empty()) {
+            row.insert("code".into(), json!(code));
+        }
+        for key in ["name", "description"] {
+            if !body[key].is_null() {
+                row.insert(key.into(), body[key].clone());
+            }
+        }
+        row.insert("updated_at".into(), json!(now()));
+        match db::update("tax_categories", id, &row).await {
+            Ok(_) => {}
+            Err(error) => return error.into(),
+        }
+        replace_tax_rate_pivots(id, &body).await;
+        resource(Value::Array(Vec::new()), "The tax category has been updated successfully.")
+    }
+
+    /// `DELETE /api/admin/settings/taxes/categories/{id}`.
+    pub async fn destroy_tax_category(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        match db::delete("tax_categories", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The tax category has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `GET /api/admin/settings/taxes/rates`.
+    pub async fn tax_rates(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select("SELECT * FROM `tax_rates` ORDER BY `id`", &[]).await.unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
+    fn tax_rate_row(body: &Value) -> Value {
+        json!({
+            "identifier": body["identifier"].as_str().unwrap_or_default().trim(),
+            "is_zip": body["is_zip"].as_i64().unwrap_or(0),
+            "zip_code": body["zip_code"].clone(),
+            "zip_from": body["zip_from"].clone(),
+            "zip_to": body["zip_to"].clone(),
+            "state": body["state"].clone(),
+            "country": body["country"].as_str().unwrap_or_default().to_uppercase(),
+            "tax_rate": body["tax_rate"].as_f64().unwrap_or(0.0),
+            "updated_at": now(),
+        })
+    }
+
+    /// `POST /api/admin/settings/taxes/rates`.
+    pub async fn store_tax_rate(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        if body["identifier"].as_str().map(str::trim).unwrap_or_default().is_empty() {
+            return validation_error(vec![("identifier".into(), "The identifier field is required.".into())]);
+        }
+        match db::insert("tax_rates", &Self::tax_rate_row(&body)).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The tax rate has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/settings/taxes/rates/edit/{id}`.
+    pub async fn update_tax_rate(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        match db::update("tax_rates", id, &Self::tax_rate_row(&body)).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The tax rate has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/settings/taxes/rates/{id}`.
+    pub async fn destroy_tax_rate(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        match db::delete("tax_rates", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The tax rate has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Tasas de cambio entre monedas
+    // ------------------------------------------------------------------
+
+    /// `GET /api/admin/settings/exchange-rates` - con moneda objetivo.
+    pub async fn exchange_rates(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `cer`.`id`, `cer`.`rate`, `cer`.`target_currency`, \
+                    `c`.`code`, `c`.`name`, `c`.`symbol` FROM `currency_exchange_rates` `cer` \
+             LEFT JOIN `currencies` `c` ON `c`.`id` = `cer`.`target_currency` ORDER BY `cer`.`id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
+    /// `POST /api/admin/settings/exchange-rates` - `{target_currency, rate}`.
+    pub async fn store_exchange_rate(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let Some(target) = body["target_currency"].as_i64() else {
+            return validation_error(vec![("target_currency".into(), "The target currency field is required.".into())]);
+        };
+        let taken = db::select_one(
+            "SELECT `id` FROM `currency_exchange_rates` WHERE `target_currency` = ? LIMIT 1",
+            &[Value::from(target)],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![(
+                "target_currency".into(),
+                "This currency already has an exchange rate.".into(),
+            )]);
+        }
+        match db::insert(
+            "currency_exchange_rates",
+            &json!({
+                "rate": body["rate"].as_f64().unwrap_or(1.0),
+                "target_currency": target,
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The exchange rate has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/settings/exchange-rates/edit/{id}` - `{rate}`.
+    pub async fn update_exchange_rate(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        match db::update(
+            "currency_exchange_rates",
+            id,
+            &json!({"rate": body["rate"].as_f64().unwrap_or(1.0), "updated_at": now()}),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The exchange rate has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/settings/exchange-rates/{id}`.
+    pub async fn destroy_exchange_rate(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        match db::delete("currency_exchange_rates", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The exchange rate has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `GET /api/admin/configuration` - `core_config` rows (optionally by code prefix).
     pub async fn configuration(admin: auth::Admin, Path(code): Path<String>) -> Response {
         let _ = admin;
@@ -612,6 +848,26 @@ async fn replace_pivots(
                     "INSERT OR IGNORE INTO `{table}` (`{channel_col}`, `{pivot_col}`) VALUES (?, ?)"
                 ),
                 &[Value::from(channel_id), Value::from(id)],
+            )
+            .await;
+        }
+    }
+}
+
+/// Reemplaza los pivotes tarifa-categoría de una tax category
+/// (`{tax_rates: [id]}` del body).
+async fn replace_tax_rate_pivots(category_id: i64, body: &Value) {
+    let Some(rates) = body["tax_rates"].as_array() else { return };
+    let _ = db::execute(
+        "DELETE FROM `tax_categories_tax_rates` WHERE `tax_category_id` = ?",
+        &[Value::from(category_id)],
+    )
+    .await;
+    for rate in rates {
+        if let Some(rate_id) = rate.as_i64().or_else(|| rate["id"].as_i64()) {
+            let _ = db::execute(
+                "INSERT OR IGNORE INTO `tax_categories_tax_rates` (`tax_category_id`, `tax_rate_id`) VALUES (?, ?)",
+                &[Value::from(category_id), Value::from(rate_id)],
             )
             .await;
         }
