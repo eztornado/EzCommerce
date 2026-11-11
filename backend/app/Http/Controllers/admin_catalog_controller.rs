@@ -161,6 +161,21 @@ impl AdminCatalogController {
         resource(json!(rows), Value::Null)
     }
 
+    /// `GET /api/admin/catalog/attributes/all` - todos los atributos con su
+    /// tipo (para el editor de condiciones de reglas).
+    pub async fn all_attributes(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `id`, `code`, `admin_name`, `type` FROM `attributes` \
+             WHERE `type` IN ('select', 'multiselect', 'text', 'price', 'number') \
+             ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
     /// `GET /api/admin/catalog/products/edit/{id}` - product with all data for
     /// the editor (attributes, categories, inventories, images, variants).
     pub async fn show_product(admin: auth::Admin, Path(id): Path<i64>) -> Response {

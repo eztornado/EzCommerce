@@ -43,6 +43,16 @@ fn catalog_rules_grid() -> datagrid::DataGrid {
 }
 
 impl AdminCatalogRuleController {
+    /// `GET /api/admin/marketing/catalog-rules/view/{id}` - fila completa
+    /// (conditions incluidas) para el editor.
+    pub async fn show(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        match db::find_by_id("catalog_rules", id).await {
+            Ok(Some(rule)) => resource(rule, Value::Null),
+            _ => message(StatusCode::NOT_FOUND, "Rule not found."),
+        }
+    }
+
     /// `POST /api/admin/marketing/catalog-rules` - datagrid.
     pub async fn grid(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;

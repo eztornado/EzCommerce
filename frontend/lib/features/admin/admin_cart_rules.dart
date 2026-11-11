@@ -5,9 +5,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
 import 'admin_shell.dart' show EzDataGrid;
+import 'conditions_editor.dart';
 
 /// Reglas de carrito (marketing/promotions): datagrid + editor con acción,
-/// cupón y condiciones básicas por subtotal.
+/// cupón y condiciones visuales (subtotal, cantidades, atributos...).
 class AdminCartRulesPage extends StatelessWidget {
   const AdminCartRulesPage({super.key});
 
@@ -15,7 +16,55 @@ class AdminCartRulesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        EzDataGrid(gridPath: 'admin/marketing/cart-rules', title: 'Cart Rules'),
+        EzDataGrid(
+          gridPath: 'admin/marketing/cart-rules',
+          title: 'Cart Rules',
+          extraActions: (row) => [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              tooltip: 'Edit',
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                final data = await admin.get('admin/marketing/cart-rules/view/${row['id']}');
+                if (data is! Map || !context.mounted) return;
+                final payload = Map<String, dynamic>.from((data['data'] ?? const {}) as Map);
+                final rule = Map<String, dynamic>.from((payload['rule'] ?? const {}) as Map);
+                if ((rule['coupon_type'] ?? 1) == 2) {
+                  final primary = decodeList(payload['coupons'])
+                      .where((coupon) => (coupon['is_primary'] ?? 0) == 1)
+                      .firstOrNull;
+                  if (primary != null) rule['coupon_code'] = primary['code'];
+                }
+                if (context.mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => CartRuleEditorDialog(rule: rule),
+                  );
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+              tooltip: 'Delete',
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete rule?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  await admin.delete('admin/marketing/cart-rules/${row['id']}');
+                }
+              },
+            ),
+          ],
+        ),
         Positioned(
           right: 24,
           bottom: 24,
@@ -58,6 +107,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
   int _couponType = 1;
   bool _applyToShipping = false;
   bool _freeShipping = false;
+  int _conditionType = 1;
+  List<Map<String, dynamic>> _conditions = [];
   bool _saving = false;
 
   @override
@@ -66,7 +117,7 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
     final rule = widget.rule ?? const {};
     _name = TextEditingController(text: '${rule['name'] ?? ''}');
     _description = TextEditingController(text: '${rule['description'] ?? ''}');
-    _couponCode = TextEditingController();
+    _couponCode = TextEditingController(text: '${rule['coupon_code'] ?? ''}');
     _discountAmount = TextEditingController(text: '${rule['discount_amount'] ?? 10}');
     _usagePerCustomer = TextEditingController(text: '${rule['usage_per_customer'] ?? 0}');
     _usesPerCoupon = TextEditingController(text: '${rule['uses_per_coupon'] ?? 0}');
@@ -74,6 +125,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
     _couponType = (rule['coupon_type'] ?? 1) as int;
     _applyToShipping = (rule['apply_to_shipping'] ?? 0) == 1;
     _freeShipping = (rule['free_shipping'] ?? 0) == 1;
+    _conditionType = (rule['condition_type'] ?? 1) as int;
+    _conditions = decodeList(rule['conditions']);
   }
 
   Future<void> _save() async {
@@ -88,8 +141,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
       'coupon_code': _couponType == 2 ? _couponCode.text : null,
       'usage_per_customer': int.tryParse(_usagePerCustomer.text) ?? 0,
       'uses_per_coupon': int.tryParse(_usesPerCoupon.text) ?? 0,
-      'condition_type': 1,
-      'conditions': [],
+      'condition_type': _conditionType,
+      'conditions': _conditions,
       'action_type': _actionType,
       'discount_amount': num.tryParse(_discountAmount.text) ?? 0,
       'apply_to_shipping': _applyToShipping ? 1 : 0,
@@ -212,6 +265,21 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
                   ),
                 ]),
               ],
+              const Divider(height: 24),
+              Text('Conditions',
+                  style: const TextStyle(
+                      fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 12),
+              CartConditionsEditor(
+                conditionType: _conditionType,
+                conditions: _conditions,
+                onChanged: (conditionType, conditions) {
+                  setState(() {
+                    _conditionType = conditionType;
+                    _conditions = conditions;
+                  });
+                },
+              ),
             ],
           ),
         ),
