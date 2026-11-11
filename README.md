@@ -120,12 +120,18 @@ Variables principales (ver `docker-compose.yml`): `JWT_SECRET`, `DB_*`,
 2. Definir las variables obligatorias (`JWT_SECRET`, `DB_PASSWORD`,
    `DB_ROOT_PASSWORD`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) y las recomendadas
    (`APP_URL`, `FRONTEND_URL` para CORS, `SEED_DEMO_DATA=false`)
-3. Asignar dominios: servicio `web` → dominio público de la tienda (proxy de
-   `/api` y `/storage` al API, sin CORS); servicio `api` → dominio del API con
-   healthcheck `/up`
+3. Asignar dominios en Coolify: servicio `web` → dominio público de la tienda
+   (el nginx del servicio hace proxy de `/api` y `/storage` hacia el API, sin
+   CORS); el servicio `api` no necesita dominio público (healthcheck `/up`)
 4. Montar volúmenes persistentes: `db_data` (base de datos) y `api_storage`
    (imágenes de producto)
 5. Desplegar: el API migra y siembra automáticamente en el primer arranque
+
+Los servicios usan `expose` en lugar de `ports` publicados: Coolify gestiona
+el acceso mediante sus dominios y proxy. Si se quiere acceso directo por
+puerto (por ejemplo para pruebas sin dominio), añadir en la UI del servicio el
+mapeo deseado o sustituir `expose` por `ports` en el compose
+(`"8080:80"` para la tienda, `"34187:34187"` para el API).
 
 El SPA se construye con `API_BASE_URL=SAME_ORIGIN` (llamadas `/api` relativas
 al propio dominio). Si el API se publica en otro dominio, cambiar ese build-arg.

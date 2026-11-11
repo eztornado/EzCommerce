@@ -46,8 +46,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    ports:
-      - "34187:34187"
+    # Sin `ports`: Coolify asigna el dominio y hace proxy al puerto expuesto.
+    # Para acceso directo fuera de Coolify, sustituir por:
+    #   ports: ["34187:34187"]
+    expose:
+      - "34187"
 
   web:
     build:
@@ -57,8 +60,11 @@ services:
         API_BASE_URL: SAME_ORIGIN
     depends_on:
       - api
-    ports:
-      - "8080:80"
+    # Sin `ports`: asignar el dominio público en Coolify (proxy automático).
+    # Para acceso directo fuera de Coolify, sustituir por:
+    #   ports: ["8080:80"]
+    expose:
+      - "80"
 
 volumes:
   db_data:
