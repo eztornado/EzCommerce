@@ -111,6 +111,9 @@ class AdminShell extends StatelessWidget {
       ('CMS', Icons.description_outlined, '/admin/cms'),
       ('Appearance', Icons.palette_outlined, '/admin/appearance'),
       ('Orders', Icons.receipt_long_outlined, '/admin/orders'),
+      ('Invoices', Icons.request_quote_outlined, '/admin/invoices'),
+      ('Shipments', Icons.local_shipping_outlined, '/admin/shipments'),
+      ('Refunds', Icons.assignment_return_outlined, '/admin/refunds'),
       ('Customers', Icons.people_outline, '/admin/customers'),
       ('Communications', Icons.mark_email_unread_outlined, '/admin/communications'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
@@ -749,59 +752,187 @@ class AdminOrdersPage extends StatelessWidget {
     return EzDataGrid(
       gridPath: 'admin/sales/orders',
       title: 'Orders',
-      detailBuilder: (data) {
-        final items = (data['items'] ?? const []) as List;
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      detailBuilder: (data) => OrderDetailView(order: data),
+    );
+  }
+}
+
+/// Detalle de pedido: cabecera, acciones, comentarios e impresión de facturas.
+class OrderDetailView extends StatefulWidget {
+  const OrderDetailView({super.key, required this.order});
+  final Map<String, dynamic> order;
+
+  @override
+  State<OrderDetailView> createState() => _OrderDetailViewState();
+}
+
+class _OrderDetailViewState extends State<OrderDetailView> {
+  final TextEditingController _comment = TextEditingController();
+  bool _notify = true;
+  bool _sending = false;
+  List<Map<String, dynamic>> _comments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _comments = decodeList(widget.order['comments']);
+  }
+
+  Future<void> _addComment() async {
+    if (_comment.text.trim().isEmpty || _sending) return;
+    setState(() => _sending = true);
+    final admin = context.read<AdminProvider>();
+    try {
+      await admin.post('admin/sales/orders/comment/${widget.order['id']}', body: {
+        'comment': _comment.text.trim(),
+        'customer_notified': _notify,
+      });
+      _comment.clear();
+      final data = await admin.get('admin/sales/orders/view/${widget.order['id']}');
+      if (data is Map && mounted) {
+        setState(() => _comments = decodeList(data['comments']));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('The comment has been added successfully.')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  /// Descarga el HTML imprimible de la factura y lo abre en una pestaña.
+  Future<void> _printInvoice(int invoiceId) async {
+    final token = ApiClient.instance.adminToken;
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiClient.baseUrl}/api/admin/sales/invoices/print/$invoiceId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode != 200 || !mounted) return;
+      openHtmlInNewTab(response.bodyBytes);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.order;
+    final items = (data['items'] ?? const []) as List;
+    final invoices = decodeList(data['invoices']);
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 16,
             children: [
-              Wrap(
-                spacing: 16,
-                children: [
-                  if ((data['can_invoice'] ?? false) == true)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.navyBlue),
-                      onPressed: () async {
-                        final admin = context.read<AdminProvider>();
-                        await admin.post('admin/sales/invoices/create/${data['id']}', body: {});
-                      },
-                      child: const Text('Create Invoice'),
-                    ),
-                  if ((data['can_cancel'] ?? false) == true)
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.red600)),
-                      onPressed: () async {
-                        final admin = context.read<AdminProvider>();
-                        await admin.post('admin/sales/orders/${data['id']}/cancel', body: {});
-                      },
-                      child: const Text('Cancel Order',
-                          style: TextStyle(color: AppColors.red600)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('Status: ${data['status']} · Total: ${data['grand_total']}',
-                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-              Text('Customer: ${data['customer_email']}',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: AppColors.zinc500)),
-              const Divider(height: 24),
-              ...items.map((item) {
-                final row = Map<String, dynamic>.from(item as Map);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text('${row['name']} ×${row['qty_ordered']}')),
-                      Text('${row['base_total']}'),
-                    ],
-                  ),
-                );
-              }),
+              if ((data['can_invoice'] ?? false) == true)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.navyBlue),
+                  onPressed: () async {
+                    final admin = context.read<AdminProvider>();
+                    await admin.post('admin/sales/invoices/create/${data['id']}', body: {});
+                  },
+                  child: const Text('Create Invoice'),
+                ),
+              if ((data['can_cancel'] ?? false) == true)
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.red600)),
+                  onPressed: () async {
+                    final admin = context.read<AdminProvider>();
+                    await admin.post('admin/sales/orders/${data['id']}/cancel', body: {});
+                  },
+                  child: const Text('Cancel Order',
+                      style: TextStyle(color: AppColors.red600)),
+                ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 12),
+          Text('Status: ${data['status']} · Total: ${data['grand_total']}',
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+          Text('Customer: ${data['customer_email']}',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: AppColors.zinc500)),
+          const Divider(height: 24),
+          ...items.map((item) {
+            final row = Map<String, dynamic>.from(item as Map);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text('${row['name']} ×${row['qty_ordered']}')),
+                  Text('${row['base_total']}'),
+                ],
+              ),
+            );
+          }),
+          const Divider(height: 24),
+          const Text('Invoices',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          if (invoices.isEmpty)
+            const Text('No invoices yet.',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500))
+          else
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final invoice in invoices)
+                  ActionChip(
+                    label: Text('${invoice['increment_id'] ?? invoice['id']}',
+                        style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                    onPressed: () => _printInvoice(invoice['id'] as int),
+                  ),
+              ],
+            ),
+          const Divider(height: 24),
+          const Text('Comments',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          for (final comment in _comments)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('• ${comment['comment']}'
+                  '  (${(comment['customer_notified'] ?? 0) == 1 ? 'notified' : 'internal'}, ${comment['created_at']})',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+            ),
+          if (_comments.isEmpty)
+            const Text('No comments yet.',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _comment,
+            maxLines: 2,
+            decoration: const InputDecoration(
+                labelText: 'Add a comment',
+                border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Switch(
+              value: _notify,
+              activeColor: AppColors.navyBlue, // ignore: deprecated_member_use
+              onChanged: (value) => setState(() => _notify = value),
+            ),
+            const Text('Notify customer',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+            const Spacer(),
+            PrimaryButton(
+              label: 'Add comment',
+              isLoading: _sending,
+              onPressed: _sending ? null : _addComment,
+            ),
+          ]),
+        ],
+      ),
     );
   }
 }

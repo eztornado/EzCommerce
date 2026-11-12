@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use larust_support::axum::extract::{Path, Query};
 use larust_support::axum::http::{HeaderMap, StatusCode};
-use larust_support::axum::response::Response;
+use larust_support::axum::response::{Html, IntoResponse, Response};
 use larust_support::axum::Json;
 use larust_support::serde_json::{json, Map, Value};
 
@@ -49,6 +49,82 @@ pub fn orders_grid() -> datagrid::DataGrid {
     }
 }
 
+fn invoices_grid() -> datagrid::DataGrid {
+    datagrid::DataGrid {
+        table: "invoices",
+        alias: "inv",
+        primary: "inv.id",
+        columns: vec![
+            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("inv.id"), options: None },
+            datagrid::Column { index: "increment_id", label: "Invoice", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("inv.increment_id"), options: None },
+            datagrid::Column { index: "state", label: "State", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("inv.state"), options: Some(json!([
+                {"label": "Paid", "value": "paid"}, {"label": "Pending", "value": "pending"},
+                {"label": "Refunded", "value": "refunded"},
+            ])) },
+            datagrid::Column { index: "base_grand_total", label: "Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("inv.base_grand_total"), options: None },
+            datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("inv.order_id"), options: None },
+            datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("inv.created_at"), options: None },
+        ],
+        joins: vec![
+            "LEFT JOIN `orders` `o` ON `o`.`id` = `inv`.`order_id`".into(),
+        ],
+        where_clauses: Vec::new(),
+        actions: json!([
+            {"title": "Print", "method": "GET", "url": "/api/admin/sales/invoices/print/{id}"},
+        ]),
+        mass_actions: Value::Null,
+        formatters: Vec::new(),
+    }
+}
+
+fn shipments_grid() -> datagrid::DataGrid {
+    datagrid::DataGrid {
+        table: "shipments",
+        alias: "sh",
+        primary: "sh.id",
+        columns: vec![
+            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("sh.id"), options: None },
+            datagrid::Column { index: "carrier_title", label: "Carrier", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("sh.carrier_title"), options: None },
+            datagrid::Column { index: "track_number", label: "Track number", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("sh.track_number"), options: None },
+            datagrid::Column { index: "inventory_source_name", label: "Source", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("sh.inventory_source_name"), options: None },
+            datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("sh.order_id"), options: None },
+            datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("sh.created_at"), options: None },
+        ],
+        joins: vec![
+            "LEFT JOIN `orders` `o` ON `o`.`id` = `sh`.`order_id`".into(),
+        ],
+        where_clauses: Vec::new(),
+        actions: Value::Null,
+        mass_actions: Value::Null,
+        formatters: Vec::new(),
+    }
+}
+
+fn refunds_grid() -> datagrid::DataGrid {
+    datagrid::DataGrid {
+        table: "refunds",
+        alias: "rf",
+        primary: "rf.id",
+        columns: vec![
+            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("rf.id"), options: None },
+            datagrid::Column { index: "increment_id", label: "Refund", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("rf.increment_id"), options: None },
+            datagrid::Column { index: "base_grand_total", label: "Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("rf.base_grand_total"), options: None },
+            datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("rf.order_id"), options: None },
+            datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("rf.created_at"), options: None },
+        ],
+        joins: vec![
+            "LEFT JOIN `orders` `o` ON `o`.`id` = `rf`.`order_id`".into(),
+        ],
+        where_clauses: Vec::new(),
+        actions: Value::Null,
+        mass_actions: Value::Null,
+        formatters: Vec::new(),
+    }
+}
+
 impl AdminSalesController {
     /// `POST /api/admin/sales/orders` - datagrid. `?format=csv` exporta.
     pub async fn orders_grid(
@@ -70,6 +146,149 @@ impl AdminSalesController {
             Ok(payload) => resource(payload, Value::Null),
             Err(error) => error.into(),
         }
+    }
+
+    /// `POST /api/admin/sales/invoices` - datagrid. `?format=csv` exporta.
+    pub async fn invoices_grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let request = datagrid::parse_request(&body);
+        let grid = invoices_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "invoices.csv"),
+                Err(error) => error.into(),
+            };
+        }
+        match grid.process(&request).await {
+            Ok(payload) => resource(payload, Value::Null),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `POST /api/admin/sales/shipments` - datagrid. `?format=csv` exporta.
+    pub async fn shipments_grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let request = datagrid::parse_request(&body);
+        let grid = shipments_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "shipments.csv"),
+                Err(error) => error.into(),
+            };
+        }
+        match grid.process(&request).await {
+            Ok(payload) => resource(payload, Value::Null),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `POST /api/admin/sales/refunds` - datagrid. `?format=csv` exporta.
+    pub async fn refunds_grid(
+        admin: auth::Admin,
+        Query(query): Query<HashMap<String, String>>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let request = datagrid::parse_request(&body);
+        let grid = refunds_grid();
+        if query.get("format").map(String::as_str) == Some("csv") {
+            return match grid.process_csv(&request).await {
+                Ok(csv) => csv_response(&csv, "refunds.csv"),
+                Err(error) => error.into(),
+            };
+        }
+        match grid.process(&request).await {
+            Ok(payload) => resource(payload, Value::Null),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `GET /api/admin/sales/invoices/print/{id}` - HTML imprimible de la
+    /// factura (items + totales + cabecera del pedido).
+    pub async fn invoice_print(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let invoice = db::find_by_id("invoices", id).await.ok().flatten();
+        let Some(invoice) = invoice else {
+            return message(StatusCode::NOT_FOUND, "Invoice not found.");
+        };
+        let order_id = invoice["order_id"].as_i64().unwrap_or(0);
+        let order = db::find_by_id("orders", order_id).await.ok().flatten().unwrap_or_else(db::empty_row);
+        let items = db::select(
+            "SELECT `name`, `sku`, `qty`, `price`, `total` FROM `invoice_items` WHERE `invoice_id` = ? ORDER BY `id`",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or_default();
+
+        let mut rows = String::new();
+        for item in &items {
+            rows.push_str(&format!(
+                "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{:.2}</td><td class=\"num\">{:.2}</td></tr>",
+                item["name"].as_str().unwrap_or_default(),
+                item["sku"].as_str().unwrap_or_default(),
+                item["qty"].as_f64().unwrap_or(0.0),
+                item["price"].as_f64().unwrap_or(0.0),
+                item["total"].as_f64().unwrap_or(0.0),
+            ));
+        }
+
+        let html = format!(
+            r#"<!doctype html>
+<html><head><meta charset="utf-8"><title>Invoice {increment}</title>
+<style>
+  body {{ font-family: 'Helvetica', Arial, sans-serif; margin: 40px; color: #111; }}
+  h1 {{ margin-bottom: 0; }}
+  .meta {{ color: #555; margin-bottom: 24px; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 16px; }}
+  th, td {{ border-bottom: 1px solid #ddd; padding: 8px 6px; text-align: left; }}
+  th {{ background: #f3f4f6; }}
+  .num {{ text-align: right; }}
+  tfoot td {{ font-weight: bold; }}
+  @media print {{ .noprint {{ display: none; }} }}
+</style></head>
+<body>
+<button class="noprint" onclick="window.print()">Print</button>
+<h1>Invoice {increment}</h1>
+<div class="meta">
+  Order: {order_inc}<br/>
+  Customer: {first} {last} ({email})<br/>
+  Date: {date}<br/>
+  State: {state}
+</div>
+<table>
+  <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead>
+  <tbody>{rows}</tbody>
+  <tfoot>
+    <tr><td colspan="4" class="num">Subtotal</td><td class="num">{sub:.2}</td></tr>
+    <tr><td colspan="4" class="num">Shipping</td><td class="num">{ship:.2}</td></tr>
+    <tr><td colspan="4" class="num">Discount</td><td class="num">{disc:.2}</td></tr>
+    <tr><td colspan="4" class="num">Grand total</td><td class="num">{grand:.2}</td></tr>
+  </tfoot>
+</table>
+</body></html>"#,
+            increment = invoice["increment_id"].as_str().unwrap_or(""),
+            order_inc = order["increment_id"].as_str().unwrap_or(""),
+            first = order["customer_first_name"].as_str().unwrap_or(""),
+            last = order["customer_last_name"].as_str().unwrap_or(""),
+            email = order["customer_email"].as_str().unwrap_or(""),
+            date = invoice["created_at"].as_str().unwrap_or(""),
+            state = invoice["state"].as_str().unwrap_or(""),
+            rows = rows,
+            sub = invoice["base_sub_total"].as_f64().unwrap_or(0.0),
+            ship = invoice["base_shipping_amount"].as_f64().unwrap_or(0.0),
+            disc = invoice["base_discount_amount"].as_f64().unwrap_or(0.0),
+            grand = invoice["base_grand_total"].as_f64().unwrap_or(0.0),
+        );
+
+        larust_support::axum::response::Html(html).into_response()
     }
 
     /// `GET /api/admin/sales/orders/view/{id}`.

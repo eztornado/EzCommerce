@@ -358,11 +358,13 @@ pub async fn create_invoice(order_id: i64) -> ApiResult<RowMap> {
     )
     .await?;
 
+    let invoice_increment = format!("INV-{:06}", document_seq("invoices").await);
     let invoice_id = db::insert(
         "invoices",
         &json!({
             "order_id": order_id,
             "state": "paid",
+            "increment_id": invoice_increment,
             "base_currency_code": order["base_currency_code"].clone(),
             "channel_currency_code": order["channel_currency_code"].clone(),
             "order_currency_code": order["order_currency_code"].clone(),
@@ -697,11 +699,13 @@ pub async fn create_refund(
     )
     .await?;
 
+    let refund_increment = format!("REF-{:06}", document_seq("refunds").await);
     let refund_id = db::insert(
         "refunds",
         &json!({
             "order_id": order_id,
             "state": "refunded",
+            "increment_id": refund_increment,
             "base_currency_code": order["base_currency_code"].clone(),
             "channel_currency_code": order["channel_currency_code"].clone(),
             "order_currency_code": order["order_currency_code"].clone(),
@@ -859,4 +863,10 @@ pub async fn create_refund(
     db::find_by_id("refunds", refund_id)
         .await
         .map(|refund| refund.unwrap_or_else(db::empty_row))
+}
+
+/// Siguiente número correlativo de un documento de ventas (facturas y
+/// reembolsos usan increment_id con prefijo propio).
+async fn document_seq(table: &str) -> i64 {
+    db::scalar_i64(&format!("SELECT COUNT(*) FROM `{table}`"), &[]).await.unwrap_or(0) + 1
 }
