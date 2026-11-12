@@ -62,9 +62,86 @@ async fn listing(
     };
 
     if let Some(search) = query.get("query").map(String::as_str).map(str::trim).filter(|q| !q.is_empty()) {
-        where_clauses.push("(`pf`.`name` LIKE ? OR `pf`.`sku` LIKE ?)".into());
-        binds.push(Value::String(format!("%{search}%")));
-        binds.push(Value::String(format!("%{search}%")));
+        // Sinónimos del término (Search SEO): `zapatos` incluye `zapatillas,
+        // shoes` — se busca por cada término con OR.
+        let mut terms = vec![search.to_string()];
+        let synonyms = db::select(
+            "SELECT `terms` FROM `search_synonyms` WHERE `name` = ? OR `terms` LIKE ? LIMIT 5",
+            &[
+                Value::String(search.to_string()),
+                Value::String(format!("%{search}%")),
+            ],
+        )
+        .await
+        .unwrap_or_default();
+        for row in &synonyms {
+            let raw = row["terms"].as_str().unwrap_or_default();
+            for term in raw.split(',') {
+                let term = term.trim();
+                if !term.is_empty() && term.to_lowercase() != search.to_lowercase() {
+                    terms.push(term.to_string());
+                }
+            }
+        }
+
+        let mut search_clauses: Vec<String> = Vec::new();
+        for term in &terms {
+            search_clauses.push("(`pf`.`name` LIKE ? OR `pf`.`sku` LIKE ?)".to_string());
+            binds.push(Value::String(format!("%{term}%")));
+            binds.push(Value::String(format!("%{term}%")));
+        }
+        where_clauses.push(format!("({})", search_clauses.join(" OR ")));
+
+        // Registro del término buscado (Search terms, SEO).
+        let results = db::scalar_i64(
+            &format!(
+                "SELECT COUNT(DISTINCT `pf`.`product_id`) FROM `product_flat` `pf` \
+                 WHERE `pf`.`status` = 1 AND `pf`.`visible_individually` = 1 AND `pf`.`parent_id` IS NULL \
+                   AND (`pf`.`name` LIKE ? OR `pf`.`sku` LIKE ?) AND `pf`.`locale` = ?",
+                ),
+            &[
+                Value::String(format!("%{search}%")),
+                Value::String(format!("%{search}%")),
+                Value::String(locale_filter.clone()),
+            ],
+        )
+        .await
+        .unwrap_or(0);
+        let existing = db::select_one(
+            "SELECT `id` FROM `search_terms` WHERE `term` = ? LIMIT 1",
+            &[Value::String(search.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        match existing {
+            Some(row) => {
+                let _ = db::execute(
+                    "UPDATE `search_terms` SET `uses` = `uses` + 1, `results` = ?, `updated_at` = ? WHERE `id` = ?",
+                    &[
+                        Value::from(results),
+                        Value::String(crate::support::db::now_db()),
+                        row["id"].clone(),
+                    ],
+                )
+                .await;
+            }
+            None => {
+                let _ = db::insert(
+                    "search_terms",
+                    &json!({
+                        "term": search,
+                        "results": results,
+                        "uses": 1,
+                        "locale": locale_filter,
+                        "channel_id": 1,
+                        "created_at": crate::support::db::now_db(),
+                        "updated_at": crate::support::db::now_db(),
+                    }),
+                )
+                .await;
+            }
+        }
     }
 
     let category_id = query
@@ -225,6 +302,37 @@ impl ProductController {
                              INNER JOIN `products` `p` ON `p`.`id` = `pf`.`product_id` \
                              WHERE `pf`.`url_key` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
                             &[Value::String(id_or_key.clone())],
+                        )
+                        .await
+                        .ok()
+                        .flatten()
+                    }
+                };
+                // URL rewrites: request_path -> target_path (Search SEO).
+                let by_key = match by_key {
+                    Some(row) => Some(row),
+                    None => {
+                        let rewrite = db::select_one(
+                            "SELECT `target_path` FROM `url_rewrites` WHERE `request_path` = ? LIMIT 1",
+                            &[Value::String(format!("/{}", id_or_key.trim_start_matches('/')))],
+                        )
+                        .await
+                        .ok()
+                        .flatten();
+                        let Some(target) = rewrite.and_then(|row| row["target_path"].as_str().map(str::to_string)) else {
+                            return message(StatusCode::NOT_FOUND, "Product not found.");
+                        };
+                        let target_slug = target
+                            .trim_start_matches('/')
+                            .rsplit('/')
+                            .next()
+                            .unwrap_or("")
+                            .to_string();
+                        db::select_one(
+                            "SELECT `pf`.`product_id`, `p`.`parent_id` FROM `product_flat` `pf` \
+                             INNER JOIN `products` `p` ON `p`.`id` = `pf`.`product_id` \
+                             WHERE `pf`.`url_key` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
+                            &[Value::String(target_slug)],
                         )
                         .await
                         .ok()

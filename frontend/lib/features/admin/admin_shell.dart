@@ -119,6 +119,7 @@ class AdminShell extends StatelessWidget {
       ('Customers', Icons.people_outline, '/admin/customers'),
       ('Customer Groups', Icons.group_outlined, '/admin/customers/groups'),
       ('Reviews', Icons.star_border_outlined, '/admin/customers/reviews'),
+      ('Search SEO', Icons.travel_explore_outlined, '/admin/search-seo'),
       ('Communications', Icons.mark_email_unread_outlined, '/admin/communications'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
     ];

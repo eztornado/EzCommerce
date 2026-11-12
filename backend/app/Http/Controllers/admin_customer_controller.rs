@@ -222,6 +222,41 @@ impl AdminCustomerController {
         }
     }
 
+    /// `GET /api/admin/seo/subscribers` - clientes suscritos al newsletter.
+    pub async fn subscribers(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `id`, `email`, `first_name`, `last_name`, `subscribed_to_news_letter`, `created_at` \
+             FROM `customers` WHERE `subscribed_to_news_letter` = 1 ORDER BY `id` DESC",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
+    /// `PUT /api/admin/seo/subscribers/{id}` - `{subscribed: false}` da de baja.
+    pub async fn update_subscriber(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        match db::update(
+            "customers",
+            id,
+            &json!({
+                "subscribed_to_news_letter": body["subscribed"].as_i64().unwrap_or(0),
+                "updated_at": db::now_db(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The subscription has been updated."),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `POST /api/admin/customers/reviews` - grid de moderación de reseñas.
     pub async fn reviews(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;

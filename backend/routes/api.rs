@@ -187,6 +187,8 @@ pub fn routes() -> Router {
         .delete("/admin/customers/groups/{id}", AdminCustomerController::destroy_group)
         .post("/admin/customers/reviews", AdminCustomerController::reviews)
         .put("/admin/customers/reviews/{id}/status", AdminCustomerController::review_status)
+        .get("/admin/seo/subscribers", AdminCustomerController::subscribers)
+        .put("/admin/seo/subscribers/{id}", AdminCustomerController::update_subscriber)
         // sales
         .post("/admin/sales/orders", AdminSalesController::orders_grid)
         .get("/admin/sales/orders/view/{id}", AdminSalesController::order_view)
