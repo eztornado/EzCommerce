@@ -112,6 +112,7 @@ pub fn routes() -> Router {
         .delete("/admin/catalog/products/{id}", AdminCatalogController::delete_product)
         .post("/admin/catalog/products/mass-delete", AdminCatalogController::mass_delete_products)
         .post("/admin/catalog/products/reindex-flats", AdminCatalogController::reindex_flats)
+        .post("/admin/catalog/products/copy/{id}", AdminCatalogController::copy_product)
         .post("/admin/catalog/products/edit/{id}/variants", AdminCatalogController::store_variant)
         .delete("/admin/catalog/products/variants/{id}", AdminCatalogController::delete_variant)
         .post("/admin/catalog/categories", AdminCatalogController::categories_grid)

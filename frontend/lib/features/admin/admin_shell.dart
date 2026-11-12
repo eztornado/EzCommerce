@@ -631,6 +631,27 @@ class AdminProductsPage extends StatelessWidget {
               onPressed: () => context.go('/admin/products/edit/${row['id']}'),
             ),
             IconButton(
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              tooltip: 'Copy product',
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                try {
+                  final result = await admin.post('admin/catalog/products/copy/${row['id']}');
+                  final newId = result is Map && result['data'] is Map
+                      ? (result['data'] as Map)['id']
+                      : null;
+                  if (context.mounted && newId is int) {
+                    context.go('/admin/products/edit/$newId');
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+                  }
+                }
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
               onPressed: () async {
                 final admin = context.read<AdminProvider>();

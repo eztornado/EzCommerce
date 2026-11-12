@@ -267,6 +267,37 @@ impl AdminCatalogController {
             variants.push(Value::Object(variant));
         }
 
+        // Linked products (related/up-sell/cross-sell) para el editor.
+        let links = json!({
+            "related": db::select(
+                "SELECT `child_id` FROM `product_relations` WHERE `parent_id` = ?",
+                &[Value::from(id)],
+            )
+            .await
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|row| row["child_id"].as_i64())
+            .collect::<Vec<_>>(),
+            "up_sells": db::select(
+                "SELECT `child_id` FROM `product_up_sells` WHERE `parent_id` = ?",
+                &[Value::from(id)],
+            )
+            .await
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|row| row["child_id"].as_i64())
+            .collect::<Vec<_>>(),
+            "cross_sells": db::select(
+                "SELECT `child_id` FROM `product_cross_sells` WHERE `parent_id` = ?",
+                &[Value::from(id)],
+            )
+            .await
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|row| row["child_id"].as_i64())
+            .collect::<Vec<_>>(),
+        });
+
         resource(
             json!({
                 "product": product,
@@ -276,6 +307,7 @@ impl AdminCatalogController {
                 "images": images,
                 "super_attributes": super_attributes,
                 "variants": variants,
+                "links": links,
             }),
             Value::Null,
         )
@@ -358,6 +390,37 @@ impl AdminCatalogController {
             }
         }
 
+        // Linked products: {links: {related: [id], up_sells: [id], cross_sells: [id]}}.
+        if let Some(links) = body["links"].as_object() {
+            for (kind, ids) in links {
+                let table = match kind.as_str() {
+                    "related" => "product_relations",
+                    "up_sells" => "product_up_sells",
+                    "cross_sells" => "product_cross_sells",
+                    _ => continue,
+                };
+                let _ = db::execute(
+                    &format!("DELETE FROM `{table}` WHERE `parent_id` = ?"),
+                    &[Value::from(id)],
+                )
+                .await;
+                for child in ids.as_array().cloned().unwrap_or_default() {
+                    if let Some(child_id) = child.as_i64() {
+                        if child_id == id {
+                            continue;
+                        }
+                        let _ = db::execute(
+                            &format!(
+                                "INSERT OR IGNORE INTO `{table}` (`parent_id`, `child_id`) VALUES (?, ?)"
+                            ),
+                            &[Value::from(id), Value::from(child_id)],
+                        )
+                        .await;
+                    }
+                }
+            }
+        }
+
         // Inventories: {inventories: {source_id: qty}}.
         if let Some(inventories) = body["inventories"].as_object() {
             for (source, qty) in inventories {
@@ -408,6 +471,155 @@ impl AdminCatalogController {
             Ok(_) => resource(Value::Array(Vec::new()), "The product has been deleted successfully."),
             Err(error) => error.into(),
         }
+    }
+
+    /// `POST /api/admin/catalog/products/copy/{id}` - clona el producto con
+    /// SKU nuevo (`SKU-COPY`): atributos (todos los idiomas), categorías,
+    /// imágenes, super attributes y variantes.
+    pub async fn copy_product(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let product = db::find_by_id("products", id).await.ok().flatten();
+        let Some(product) = product else {
+            return message(StatusCode::NOT_FOUND, "Product not found.");
+        };
+
+        let copy_sku = format!("{}-COPY", product["sku"].as_str().unwrap_or("SKU"));
+        let taken = db::select_one(
+            "SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1",
+            &[Value::String(copy_sku.clone())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![(
+                "sku".into(),
+                "The copy SKU already exists: rename it and try again.".into(),
+            )]);
+        }
+
+        let copy_id = match db::insert(
+            "products",
+            &json!({
+                "sku": copy_sku,
+                "type": product["type"].clone(),
+                "parent_id": product["parent_id"].clone(),
+                "attribute_family_id": product["attribute_family_id"].clone(),
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(copy_id) => copy_id,
+            Err(error) => return error.into(),
+        };
+
+        // Atributos: copiar todas las filas EAV (globales y por idioma),
+        // excepto url_key (colisión de slug en la tienda). El sello temporal
+        // identifica las filas copiadas para reasignar el producto.
+        let stamp = now();
+        let _ = db::execute(
+            "INSERT INTO `product_attribute_values` \
+             (`product_id`, `attribute_id`, `channel`, `locale`, `text_value`, `boolean_value`, `integer_value`, \
+              `float_value`, `date_value`, `datetime_value`, `json_value`, `created_at`, `updated_at`) \
+             SELECT ?, `attribute_id`, `channel`, `locale`, `text_value`, `boolean_value`, `integer_value`, \
+              `float_value`, `date_value`, `datetime_value`, `json_value`, ?, ? \
+             FROM `product_attribute_values` \
+             WHERE `product_id` = ? AND `attribute_id` != (SELECT `id` FROM `attributes` WHERE `code` = 'url_key')",
+            &[Value::from(copy_id), Value::String(stamp.clone()), Value::String(stamp.clone()), Value::from(id)],
+        )
+        .await;
+
+        // Categorías e imágenes.
+        let _ = db::execute(
+            "INSERT OR IGNORE INTO `product_categories` (`product_id`, `category_id`) \
+             SELECT ?, `category_id` FROM `product_categories` WHERE `product_id` = ?",
+            &[Value::from(copy_id), Value::from(id)],
+        )
+        .await;
+        let _ = db::execute(
+            "INSERT INTO `product_images` (`product_id`, `type`, `path`, `position`, `created_at`, `updated_at`) \
+             SELECT ?, `type`, `path`, `position`, ?, ? FROM `product_images` WHERE `product_id` = ?",
+            &[Value::from(copy_id), Value::String(now()), Value::String(now()), Value::from(id)],
+        )
+        .await;
+        let _ = db::execute(
+            "INSERT OR IGNORE INTO `product_super_attributes` (`product_id`, `attribute_id`) \
+             SELECT ?, `attribute_id` FROM `product_super_attributes` WHERE `product_id` = ?",
+            &[Value::from(copy_id), Value::from(id)],
+        )
+        .await;
+
+        // Variantes con SKUs derivados.
+        let variants = db::select(
+            "SELECT `id`, `sku` FROM `products` WHERE `parent_id` = ? ORDER BY `id`",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or_default();
+        for variant in &variants {
+            let variant_sku = format!("{}-COPY", variant["sku"].as_str().unwrap_or("VARIANT"));
+            let taken = db::select_one(
+                "SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1",
+                &[Value::String(variant_sku.clone())],
+            )
+            .await
+            .ok()
+            .flatten();
+            if taken.is_some() {
+                continue;
+            }
+            let variant_copy_id = match db::insert(
+                "products",
+                &json!({
+                    "sku": variant_sku,
+                    "type": "simple",
+                    "parent_id": copy_id,
+                    "attribute_family_id": product["attribute_family_id"].clone(),
+                    "created_at": now(),
+                    "updated_at": now(),
+                }),
+            )
+            .await
+            {
+                Ok(variant_copy_id) => variant_copy_id,
+                Err(_) => continue,
+            };
+            let _ = db::execute(
+                "INSERT INTO `product_attribute_values` \
+                 (`product_id`, `attribute_id`, `channel`, `locale`, `text_value`, `boolean_value`, \
+                  `integer_value`, `float_value`, `date_value`, `datetime_value`, `json_value`, \
+                  `created_at`, `updated_at`) \
+                 SELECT ?, `attribute_id`, `channel`, `locale`, `text_value`, `boolean_value`, \
+                  `integer_value`, `float_value`, `date_value`, `datetime_value`, `json_value`, ?, ? \
+                 FROM `product_attribute_values` WHERE `product_id` = ?",
+                &[
+                    Value::from(variant_copy_id),
+                    Value::String(stamp.clone()),
+                    Value::String(stamp.clone()),
+                    Value::from(variant["id"].as_i64().unwrap_or(0)),
+                ],
+            )
+            .await;
+            let _ = db::execute(
+                "INSERT OR IGNORE INTO `product_inventories` (`product_id`, `inventory_source_id`, `qty`, `created_at`, `updated_at`) \
+                 SELECT ?, `inventory_source_id`, `qty`, ?, ? FROM `product_inventories` WHERE `product_id` = ?",
+                &[
+                    Value::from(variant_copy_id),
+                    Value::String(now()),
+                    Value::String(now()),
+                    Value::from(variant["id"].as_i64().unwrap_or(0)),
+                ],
+            )
+            .await;
+        }
+
+        crate::support::products::refresh_flat(copy_id).await;
+        resource(
+            json!({"id": copy_id, "sku": copy_sku}),
+            "The product has been copied successfully.",
+        )
     }
 
     /// `POST /api/admin/catalog/products/reindex-flats` - regenera las filas

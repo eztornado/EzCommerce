@@ -9,9 +9,8 @@ import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
 import '../../../core/utils/pick_image.dart';
 
-/// Editor de producto del admin: atributos base (nombre, precio,
-/// descripciones), categorías, inventario por almacén, imágenes (subida
-/// base64) y variantes de configurables.
+/// Editor de producto por pestañas (estilo Bagisto): Settings, Description,
+/// Images, Inventories, Variations, Linked products y SEO.
 class AdminProductEditorPage extends StatefulWidget {
   const AdminProductEditorPage({super.key, required this.productId});
   final String productId;
@@ -20,7 +19,10 @@ class AdminProductEditorPage extends StatefulWidget {
   State<AdminProductEditorPage> createState() => _AdminProductEditorPageState();
 }
 
-class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
+class _AdminProductEditorPageState extends State<AdminProductEditorPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 7, vsync: this);
+
   Map<String, dynamic>? _product;
   Map<String, dynamic> _attributes = {};
   List<Map<String, dynamic>> _inventories = [];
@@ -31,15 +33,26 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
   List<Map<String, dynamic>> _locales = [];
   String _locale = 'en';
   Set<int> _selectedCategories = {};
+  final Set<int> _related = {};
+  final Set<int> _upSells = {};
+  final Set<int> _crossSells = {};
+  final Map<int, String> _linkedNames = {};
   bool _loading = true;
   bool _saving = false;
 
   late final TextEditingController _sku;
   late final TextEditingController _name;
   late final TextEditingController _price;
+  late final TextEditingController _specialPrice;
+  late final TextEditingController _specialFrom;
+  late final TextEditingController _specialTo;
   late final TextEditingController _shortDescription;
   late final TextEditingController _description;
   late final TextEditingController _weight;
+  late final TextEditingController _urlKey;
+  late final TextEditingController _metaTitle;
+  late final TextEditingController _metaKeywords;
+  late final TextEditingController _metaDescription;
 
   bool get _isConfigurable => _product?['type'] == 'configurable';
 
@@ -49,10 +62,36 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
     _sku = TextEditingController();
     _name = TextEditingController();
     _price = TextEditingController();
+    _specialPrice = TextEditingController();
+    _specialFrom = TextEditingController();
+    _specialTo = TextEditingController();
     _shortDescription = TextEditingController();
     _description = TextEditingController();
     _weight = TextEditingController();
+    _urlKey = TextEditingController();
+    _metaTitle = TextEditingController();
+    _metaKeywords = TextEditingController();
+    _metaDescription = TextEditingController();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    _sku.dispose();
+    _name.dispose();
+    _price.dispose();
+    _specialPrice.dispose();
+    _specialFrom.dispose();
+    _specialTo.dispose();
+    _shortDescription.dispose();
+    _description.dispose();
+    _weight.dispose();
+    _urlKey.dispose();
+    _metaTitle.dispose();
+    _metaKeywords.dispose();
+    _metaDescription.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -68,6 +107,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
         query: {'locale': _locale});
     final tree = await admin.get('admin/catalog/categories/tree');
     if (data is Map && mounted) {
+      final links = (data['links'] ?? const {}) as Map;
       setState(() {
         _product = Map<String, dynamic>.from(data['product'] as Map);
         _attributes = Map<String, dynamic>.from((data['attributes'] ?? const {}) as Map);
@@ -80,12 +120,29 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
             .map((row) => (row['category_id'] ?? row['id']) as int)
             .whereType<int>()
             .toSet();
+        final linksMap = Map<String, dynamic>.from(links);
+        _related
+          ..clear()
+          ..addAll(decodeIds(linksMap['related']));
+        _upSells
+          ..clear()
+          ..addAll(decodeIds(linksMap['up_sells']));
+        _crossSells
+          ..clear()
+          ..addAll(decodeIds(linksMap['cross_sells']));
         _sku.text = (_product?['sku'] ?? '') as String;
         _name.text = (_attributes['name'] ?? '') as String;
         _price.text = (_attributes['price'] ?? '0').toString();
+        _specialPrice.text = (_attributes['special_price'] ?? '').toString();
+        _specialFrom.text = (_attributes['special_price_from'] ?? '').toString();
+        _specialTo.text = (_attributes['special_price_to'] ?? '').toString();
         _shortDescription.text = (_attributes['short_description'] ?? '') as String;
         _description.text = (_attributes['description'] ?? '') as String;
         _weight.text = (_attributes['weight'] ?? '0').toString();
+        _urlKey.text = (_attributes['url_key'] ?? '') as String;
+        _metaTitle.text = (_attributes['meta_title'] ?? '') as String;
+        _metaKeywords.text = (_attributes['meta_keywords'] ?? '') as String;
+        _metaDescription.text = (_attributes['meta_description'] ?? '') as String;
         _loading = false;
       });
     } else if (mounted) {
@@ -103,13 +160,31 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
         'attributes': {
           'name': _name.text,
           'price': num.tryParse(_price.text) ?? 0,
+          if (_specialPrice.text.trim().isNotEmpty) ...{
+            'special_price': num.tryParse(_specialPrice.text),
+            'special_price_from': _specialFrom.text.trim(),
+            'special_price_to': _specialTo.text.trim(),
+          } else ...{
+            'special_price': null,
+            'special_price_from': null,
+            'special_price_to': null,
+          },
           'weight': num.tryParse(_weight.text) ?? 0,
           'short_description': _shortDescription.text,
           'description': _description.text,
+          'url_key': _urlKey.text.trim(),
+          'meta_title': _metaTitle.text.trim(),
+          'meta_keywords': _metaKeywords.text.trim(),
+          'meta_description': _metaDescription.text.trim(),
           'status': 1,
           'visible_individually': 1,
         },
         'categories': _selectedCategories.toList(),
+        'links': {
+          'related': _related.toList(),
+          'up_sells': _upSells.toList(),
+          'cross_sells': _crossSells.toList(),
+        },
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -326,247 +401,450 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
     return result;
   }
 
+  /// Diálogo con buscador para seleccionar productos a enlazar.
+  Future<void> _pickLinkedProducts(Set<int> selected, String kind) async {
+    final search = TextEditingController();
+    List<Map<String, dynamic>> results = [];
+    final picked = Set<int>.from(selected);
+    Future<void> doSearch(String query) async {
+      final admin = context.read<AdminProvider>();
+      final data = await admin.post('admin/catalog/products', body: {
+        'search': query,
+        'per_page': 20,
+      });
+      results = decodeList(data is Map ? (data['data'] ?? data) : const []);
+      if (results.isEmpty && data is Map && data['records'] != null) {
+        results = decodeList(data['records']);
+      }
+    }
+
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text('Link products (${kind.replaceAll('_', ' ')})'),
+          content: SizedBox(
+            width: 480,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                controller: search,
+                decoration: InputDecoration(
+                  hintText: 'Search by SKU or name...',
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () async {
+                      await doSearch(search.text);
+                      setDialogState(() {});
+                    },
+                  ),
+                ),
+                onSubmitted: (value) async {
+                  await doSearch(value);
+                  setDialogState(() {});
+                },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 320,
+                child: results.isEmpty
+                    ? const Center(
+                        child: Text('Search to find products.',
+                            style: TextStyle(
+                                fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)))
+                    : ListView(children: [
+                        for (final product in results)
+                          CheckboxListTile(
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text('${product['name'] ?? product['sku']}',
+                                style:
+                                    const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                            subtitle: Text('${product['sku']}',
+                                style: const TextStyle(
+                                    fontFamily: 'Poppins', fontSize: 11, color: AppColors.zinc500)),
+                            value: picked.contains(product['id']),
+                            onChanged: (checked) => setDialogState(() {
+                              final id = product['id'] as int;
+                              checked == true ? picked.add(id) : picked.remove(id);
+                              if (checked == true) {
+                                _linkedNames[id] = '${product['name'] ?? product['sku']}';
+                              }
+                            }),
+                          ),
+                      ]),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            PrimaryButton(
+              label: 'Link',
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      selected
+        ..clear()
+        ..addAll(picked);
+    });
+  }
+
+  /// Sección de productos enlazados (chips + botón de búsqueda).
+  Widget _linkedSection(String title, Set<int> selected, String kind) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(
+          child: Text(title,
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        ),
+        TextButton.icon(
+          onPressed: () => _pickLinkedProducts(selected, kind),
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Add', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+        ),
+      ]),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final id in selected)
+            InputChip(
+              label: Text(_linkedNames[id] ?? 'Product #$id',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+              onDeleted: () => setState(() => selected.remove(id)),
+            ),
+          if (selected.isEmpty)
+            const Text('None',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+        ],
+      ),
+      const SizedBox(height: 16),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
     }
     final categoryNodes = _flattenCategories(_categoriesTree, true);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go('/admin/products'),
-                ),
-                Expanded(
-                  child: Text('Edit product #${widget.productId}',
-                      style: const TextStyle(
-                          fontFamily: 'Poppins', fontSize: 22, fontWeight: FontWeight.w500)),
-                ),
-                if (_locales.length > 1) ...[
-                  DropdownButton<String>(
-                    value: _locales.any((locale) => locale['code'] == _locale)
-                        ? _locale
-                        : 'en',
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      for (final locale in _locales)
-                        DropdownMenuItem(
-                          value: '${locale['code']}',
-                          child: Text('Language: ${locale['name']}',
-                              style: const TextStyle(
-                                  fontFamily: 'Poppins', fontSize: 13)),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null || value == _locale) return;
-                      setState(() {
-                        _locale = value;
-                        _loading = true;
-                      });
-                      _load();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                PrimaryButton(
-                  label: 'Save',
-                  isLoading: _saving,
-                  onPressed: _saving ? null : _save,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _Section(
-              title: 'General',
-              children: [
-                _field('SKU', _sku),
-                _field('Name', _name),
-                Row(children: [
-                  Expanded(child: _field('Price', _price)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _field('Weight', _weight)),
-                ]),
-                _field('Short description', _shortDescription, multiline: true),
-                _field('Description', _description, multiline: true, lines: 5),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Images',
-              children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    for (final (index, image) in _images.indexed)
-                      Stack(children: [
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-                            border: Border.all(color: AppColors.zinc200),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(EzTheme.radiusLg - 1),
-                            child: Image.network(
-                              apiUrlRelative('${image['path']}') ?? '',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(Icons.image_outlined,
-                                  color: AppColors.zinc300, size: 36),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: -8,
-                          top: -8,
-                          child: IconButton(
-                            icon: const Icon(Icons.remove_circle, color: AppColors.red600, size: 22),
-                            onPressed: () => _deleteImage(index),
-                          ),
-                        ),
-                      ]),
-                    GestureDetector(
-                      onTap: _uploadImage,
-                      child: Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-                          color: AppColors.zinc100,
-                        ),
-                        child: const Icon(Icons.add_a_photo_outlined,
-                            color: AppColors.zinc500, size: 28),
-                      ),
+    return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.zinc600),
+            onPressed: () => context.go('/admin/products'),
+          ),
+          title: Text('Edit product #${widget.productId}',
+              style: const TextStyle(
+                  fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w500)),
+          actions: [
+            if (_locales.length > 1)
+              DropdownButton<String>(
+                value: _locales.any((locale) => locale['code'] == _locale)
+                    ? _locale
+                    : 'en',
+                underline: const SizedBox.shrink(),
+                items: [
+                  for (final locale in _locales)
+                    DropdownMenuItem(
+                      value: '${locale['code']}',
+                      child: Text('Language: ${locale['name']}',
+                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                     ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Categories',
-              children: [
-                if (categoryNodes.isEmpty)
-                  const Text('No categories yet.',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500))
-                else
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      for (final category in categoryNodes)
-                        SizedBox(
-                          width: 220,
-                          child: CheckboxListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: Text('${category['name'] ?? category['slug']}',
-                                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-                            value: _selectedCategories.contains(category['id']),
-                            onChanged: (checked) => setState(() {
-                              final id = category['id'] as int;
-                              checked == true
-                                  ? _selectedCategories.add(id)
-                                  : _selectedCategories.remove(id);
-                            }),
-                          ),
-                        ),
-                    ],
-                  ),
-              ],
-            ),
-            if (_isConfigurable) ...[
-              const SizedBox(height: 16),
-              _Section(
-                title: 'Variants',
-                children: [
-                  if (_variants.isEmpty)
-                    const Text('No variants yet.',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500))
-                  else
-                    ..._variants.map((variant) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                    '${_variantLabel(variant)}  ·  ${variant['sku']}  ·  '
-                                    '${(Map<String, dynamic>.from((variant['attributes'] ?? const {}) as Map))['price'] ?? 0}',
-                                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-                              ),
-                              Text('Qty: ${variant['qty'] ?? 0}',
-                                  style: const TextStyle(
-                                      fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                tooltip: 'Delete variant',
-                                onPressed: () => _deleteVariant(variant['id'] as int),
-                              ),
-                            ],
-                          ),
-                        )),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _createVariant,
-                    icon: const Icon(Icons.add),
-                    label: const Text('New variant', style: TextStyle(fontFamily: 'Poppins')),
-                  ),
                 ],
+                onChanged: (value) {
+                  if (value == null || value == _locale) return;
+                  setState(() {
+                    _locale = value;
+                    _loading = true;
+                  });
+                  _load();
+                },
               ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: PrimaryButton(
+                label: 'Save',
+                isLoading: _saving,
+                onPressed: _saving ? null : _save,
+              ),
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabs,
+            isScrollable: true,
+            labelColor: AppColors.navyBlue,
+            unselectedLabelColor: AppColors.zinc600,
+            indicatorColor: AppColors.navyBlue,
+            tabs: const [
+              Tab(text: 'Settings'),
+              Tab(text: 'Description'),
+              Tab(text: 'Images'),
+              Tab(text: 'Inventories'),
+              Tab(text: 'Variations'),
+              Tab(text: 'Linked products'),
+              Tab(text: 'SEO'),
             ],
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Inventories',
-              children: [
-                ..._inventories.map((inventory) {
-                  final controller = inventory.putIfAbsent(
-                      '__controller',
-                      () => TextEditingController(
-                          text: '${inventory['qty'] ?? 0}')) as TextEditingController;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text('${inventory['name'] ?? 'Source'}',
-                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 14))),
-                        SizedBox(
-                          width: 120,
-                          child: TextField(
-                            controller: controller,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                                isDense: true, fillColor: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                OutlinedButton(
-                  onPressed: _saveInventories,
-                  child: const Text('Update inventories',
-                      style: TextStyle(fontFamily: 'Poppins')),
+          ),
+        ),
+        body: TabBarView(
+          controller: _tabs,
+          children: [
+            _settingsTab(categoryNodes),
+            _descriptionTab(),
+            _imagesTab(),
+            _inventoriesTab(),
+            _variationsTab(),
+            _linkedTab(),
+            _seoTab(),
+          ],
+        ),
+    );
+  }
+
+  Widget _settingsTab(List<Map<String, dynamic>> categoryNodes) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _field('SKU', _sku),
+        Row(children: [
+          Expanded(child: _field('Price', _price, number: true)),
+          const SizedBox(width: 12),
+          Expanded(child: _field('Weight', _weight, number: true)),
+        ]),
+        const SizedBox(height: 8),
+        const Text('Special price',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _field('Special price', _specialPrice, number: true)),
+          const SizedBox(width: 12),
+          Expanded(
+              child: _field('From (YYYY-MM-DD)', _specialFrom, number: false)),
+          const SizedBox(width: 12),
+          Expanded(child: _field('To (YYYY-MM-DD)', _specialTo)),
+        ]),
+        const SizedBox(height: 8),
+        const Text('Categories',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 16,
+          runSpacing: 4,
+          children: [
+            for (final category in categoryNodes)
+              SizedBox(
+                width: 220,
+                child: CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text('${category['name'] ?? category['slug']}',
+                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                  value: _selectedCategories.contains(category['id']),
+                  onChanged: (checked) => setState(() {
+                    final id = category['id'] as int;
+                    checked == true
+                        ? _selectedCategories.add(id)
+                        : _selectedCategories.remove(id);
+                  }),
                 ),
-              ],
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _descriptionTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _field('Name', _name),
+        const SizedBox(height: 8),
+        _field('Short description', _shortDescription, multiline: true),
+        _field('Description', _description, multiline: true, lines: 8),
+      ],
+    );
+  }
+
+  Widget _imagesTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final (index, image) in _images.indexed)
+              Stack(children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                    border: Border.all(color: AppColors.zinc200),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(EzTheme.radiusLg - 1),
+                    child: Image.network(
+                      apiUrlRelative('${image['path']}') ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(Icons.image_outlined,
+                          color: AppColors.zinc300, size: 36),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -8,
+                  top: -8,
+                  child: IconButton(
+                    icon: const Icon(Icons.remove_circle, color: AppColors.red600, size: 22),
+                    onPressed: () => _deleteImage(index),
+                  ),
+                ),
+              ]),
+            GestureDetector(
+              onTap: _uploadImage,
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                  color: AppColors.zinc100,
+                ),
+                child: const Icon(Icons.add_a_photo_outlined,
+                    color: AppColors.zinc500, size: 28),
+              ),
             ),
           ],
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _inventoriesTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        ..._inventories.map((inventory) {
+          final controller = inventory.putIfAbsent(
+              '__controller',
+              () => TextEditingController(
+                  text: '${inventory['qty'] ?? 0}')) as TextEditingController;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Expanded(child: Text('${inventory['name'] ?? 'Source'}',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 14))),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                        isDense: true, fillColor: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: _saveInventories,
+          child: const Text('Update inventories',
+              style: TextStyle(fontFamily: 'Poppins')),
+        ),
+      ],
+    );
+  }
+
+  Widget _variationsTab() {
+    if (!_isConfigurable) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('Only configurable products have variations.',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500)),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        if (_variants.isEmpty)
+          const Text('No variants yet.',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500))
+        else
+          ..._variants.map((variant) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                          '${_variantLabel(variant)}  ·  ${variant['sku']}  ·  '
+                          '${(Map<String, dynamic>.from((variant['attributes'] ?? const {}) as Map))['price'] ?? 0}',
+                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                    ),
+                    Text('Qty: ${variant['qty'] ?? 0}',
+                        style: const TextStyle(
+                            fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      tooltip: 'Delete variant',
+                      onPressed: () => _deleteVariant(variant['id'] as int),
+                    ),
+                  ],
+                ),
+              )),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _createVariant,
+          icon: const Icon(Icons.add),
+          label: const Text('New variant', style: TextStyle(fontFamily: 'Poppins')),
+        ),
+      ],
+    );
+  }
+
+  Widget _linkedTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text('Related products appear on the product page; up-sells and '
+            'cross-sells drive cart recommendations.',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+        const SizedBox(height: 16),
+        _linkedSection('Related products', _related, 'related'),
+        _linkedSection('Up-sells', _upSells, 'up_sells'),
+        _linkedSection('Cross-sells', _crossSells, 'cross_sells'),
+      ],
+    );
+  }
+
+  Widget _seoTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _field('URL key', _urlKey),
+        _field('Meta title', _metaTitle),
+        _field('Meta keywords', _metaKeywords),
+        _field('Meta description', _metaDescription, multiline: true),
+      ],
     );
   }
 
   Widget _field(String label, TextEditingController controller,
-      {bool multiline = false, int lines = 2}) {
+      {bool multiline = false, int lines = 2, bool number = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -577,37 +855,10 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
           TextField(
             controller: controller,
             maxLines: multiline ? lines : 1,
+            keyboardType: number ? TextInputType.number : null,
             decoration: const InputDecoration(
                 fillColor: Colors.white, border: OutlineInputBorder()),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-        border: Border.all(color: AppColors.zinc200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 12),
-          ...children,
         ],
       ),
     );
