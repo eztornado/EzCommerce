@@ -21,6 +21,7 @@ pub fn routes() -> Router {
         .get("/core/countries", CoreController::countries)
         .get("/core/states", CoreController::states)
         .get("/core/currencies", CoreController::currencies)
+        .post("/newsletter/subscribe", CoreController::newsletter_subscribe)
         // ------------------------------------------------------------------
         // Categories
         // ------------------------------------------------------------------
@@ -110,6 +111,7 @@ pub fn routes() -> Router {
         .put("/admin/catalog/products/edit/{id}", AdminCatalogController::update_product)
         .delete("/admin/catalog/products/{id}", AdminCatalogController::delete_product)
         .post("/admin/catalog/products/mass-delete", AdminCatalogController::mass_delete_products)
+        .post("/admin/catalog/products/reindex-flats", AdminCatalogController::reindex_flats)
         .post("/admin/catalog/products/edit/{id}/variants", AdminCatalogController::store_variant)
         .delete("/admin/catalog/products/variants/{id}", AdminCatalogController::delete_variant)
         .post("/admin/catalog/categories", AdminCatalogController::categories_grid)

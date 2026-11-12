@@ -410,6 +410,25 @@ impl AdminCatalogController {
         }
     }
 
+    /// `POST /api/admin/catalog/products/reindex-flats` - regenera las filas
+    /// de product_flat (por locale) y los índices de precio de todo el
+    /// catálogo. Útil tras activar locales nuevos o importar productos.
+    pub async fn reindex_flats(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select("SELECT `id` FROM `products` ORDER BY `id`", &[])
+            .await
+            .unwrap_or_default();
+        for row in &rows {
+            if let Some(id) = row["id"].as_i64() {
+                crate::support::products::refresh_flat(id).await;
+            }
+        }
+        resource(
+            json!({"products": rows.len()}),
+            format!("{} products have been reindexed.", rows.len()),
+        )
+    }
+
     /// `POST /api/admin/catalog/products/mass-delete` - `{indices: []}`.
     pub async fn mass_delete_products(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;

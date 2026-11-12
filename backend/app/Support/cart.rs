@@ -874,15 +874,33 @@ pub async fn save_payment_method(cart_id: i64, method: &str) -> ApiResult<()> {
 /// Los `formatted_*` llevan el símbolo de la moneda del carrito, como el
 /// `core()->formatPrice()` de Bagisto.
 pub async fn cart_resource(cart: &RowMap) -> Json {
-    let currency_row = db::select_one(
-        "SELECT * FROM `currencies` WHERE `code` = ? LIMIT 1",
-        &[cart["cart_currency_code"].clone()],
-    )
-    .await
-    .ok()
-    .flatten()
+    cart_resource_in(cart, None).await
+}
+
+/// Recurso del carrito en la moneda pedida (presentación): convierte los
+/// importes con la tasa del canal; los `base_*` del pedido siguen en base.
+pub async fn cart_resource_in(cart: &RowMap, currency: Option<&str>) -> Json {
+    let base_code = core::base_currency_code().await;
+    let currency_code = currency
+        .filter(|code| Some(*code) != base_code.as_deref())
+        .map(str::to_string);
+    let currency_row = match &currency_code {
+        Some(code) => core::resolve_currency_by_code(code).await,
+        None => db::select_one(
+            "SELECT * FROM `currencies` WHERE `code` = ? LIMIT 1",
+            &[cart["cart_currency_code"].clone()],
+        )
+        .await
+        .ok()
+        .flatten(),
+    }
     .unwrap_or_else(|| db::to_map(json!({"symbol": "", "decimal": 2})));
-    let fmt = |amount: f64| core::format_price(amount, &currency_row);
+    let rate = match (&currency_code, &base_code) {
+        (Some(code), Some(base)) => core::exchange_rate(base, code).await,
+        _ => 1.0,
+    };
+    let convert = |amount: f64| amount * rate;
+    let fmt = |amount: f64| core::format_price(convert(amount), &currency_row);
     let cart_id = cart["id"].as_i64().unwrap_or(0);
     let items = db::select(
         "SELECT * FROM `cart_items` WHERE `cart_id` = ? AND `parent_id` IS NULL ORDER BY `id`",
@@ -899,9 +917,9 @@ pub async fn cart_resource(cart: &RowMap) -> Json {
             "sku": item["sku"],
             "type": item["type"],
             "name": item["name"],
-            "price": item["price"],
+            "price": convert(item["price"].as_f64().unwrap_or(0.0)),
             "formatted_price": fmt(item["price"].as_f64().unwrap_or(0.0)),
-            "total": item["total"],
+            "total": convert(item["total"].as_f64().unwrap_or(0.0)),
             "formatted_total": fmt(item["total"].as_f64().unwrap_or(0.0)),
             "discount_amount": item["discount_amount"],
             "tax_amount": item["tax_amount"],
@@ -925,15 +943,15 @@ pub async fn cart_resource(cart: &RowMap) -> Json {
         "items_qty": cart["items_qty"],
         "shipping_method": cart["shipping_method"],
         "coupon_code": cart["coupon_code"],
-        "sub_total": cart["sub_total"],
+        "sub_total": convert(cart["sub_total"].as_f64().unwrap_or(0.0)),
         "formatted_sub_total": fmt(cart["sub_total"].as_f64().unwrap_or(0.0)),
-        "tax_total": cart["tax_total"],
+        "tax_total": convert(cart["tax_total"].as_f64().unwrap_or(0.0)),
         "formatted_tax_total": fmt(cart["tax_total"].as_f64().unwrap_or(0.0)),
-        "discount_amount": cart["discount_amount"],
+        "discount_amount": convert(cart["discount_amount"].as_f64().unwrap_or(0.0)),
         "formatted_discount_amount": fmt(cart["discount_amount"].as_f64().unwrap_or(0.0)),
-        "shipping_amount": cart["shipping_amount"],
+        "shipping_amount": convert(cart["shipping_amount"].as_f64().unwrap_or(0.0)),
         "formatted_shipping_amount": fmt(cart["shipping_amount"].as_f64().unwrap_or(0.0)),
-        "grand_total": cart["grand_total"],
+        "grand_total": convert(cart["grand_total"].as_f64().unwrap_or(0.0)),
         "formatted_grand_total": fmt(cart["grand_total"].as_f64().unwrap_or(0.0)),
         "cart_currency_code": cart["cart_currency_code"],
         "payment_method": payment.as_ref().and_then(|p| p["method"].as_str()),

@@ -662,7 +662,60 @@ class AdminProductsPage extends StatelessWidget {
             onPressed: () => context.go('/admin/products/create'),
           ),
         ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: _ReindexFlatsButton(),
+        ),
       ],
+    );
+  }
+}
+
+/// Regenera las filas product_flat por idioma y los índices de precio de
+/// todo el catálogo (tras activar locales nuevos o importar productos).
+class _ReindexFlatsButton extends StatefulWidget {
+  @override
+  State<_ReindexFlatsButton> createState() => _ReindexFlatsButtonState();
+}
+
+class _ReindexFlatsButtonState extends State<_ReindexFlatsButton> {
+  bool _running = false;
+
+  Future<void> _run() async {
+    if (_running) return;
+    setState(() => _running = true);
+    final admin = context.read<AdminProvider>();
+    try {
+      final result = await admin.post('admin/catalog/products/reindex-flats');
+      if (mounted) {
+        final message = result is Map && result['message'] != null
+            ? '${result['message']}'
+            : 'Products have been reindexed.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      }
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _running ? null : _run,
+      icon: _running
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.navyBlue))
+          : const Icon(Icons.refresh, size: 16),
+      label: const Text('Reindex translations',
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
     );
   }
 }

@@ -39,7 +39,8 @@ impl CheckoutController {
         if cart.is_empty() {
             return resource(Value::Null, Value::Null);
         }
-        resource(cart::cart_resource(&cart).await, Value::Null)
+        let currency = core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+        resource(cart::cart_resource_in(&cart, currency.as_deref()).await, Value::Null)
     }
 
     /// `POST /api/checkout/onepage/addresses` - saves billing (+shipping).

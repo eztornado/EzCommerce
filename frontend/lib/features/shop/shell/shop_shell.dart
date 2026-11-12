@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/models.dart';
 import '../../../core/state/app_state.dart';
@@ -743,10 +744,59 @@ class ShopFooter extends StatelessWidget {
         Text('Subscribe to stay in touch.',
             style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600)),
         const SizedBox(height: 16),
+        const _NewsletterForm(),
+      ],
+    );
+  }
+}
+
+/// Formulario de suscripción al newsletter: marca al cliente como suscrito
+/// para las campañas de email (#22).
+class _NewsletterForm extends StatefulWidget {
+  const _NewsletterForm();
+
+  @override
+  State<_NewsletterForm> createState() => _NewsletterFormState();
+}
+
+class _NewsletterFormState extends State<_NewsletterForm> {
+  final TextEditingController _email = TextEditingController();
+  bool _sending = false;
+
+  Future<void> _subscribe() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    try {
+      final result = await ApiClient.instance.post('newsletter/subscribe', body: {
+        'email': _email.text.trim(),
+      });
+      if (!mounted) return;
+      final message = result is Map && result['message'] != null
+          ? '${result['message']}'
+          : 'You have been subscribed successfully.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      _email.clear();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Stack(
           alignment: Alignment.centerRight,
           children: [
             TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 hintText: 'Email address',
                 filled: true,
@@ -765,14 +815,19 @@ class ShopFooter extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton(
-                onPressed: () {},
+                onPressed: _sending ? null : _subscribe,
                 style: TextButton.styleFrom(
                   backgroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(EzTheme.radiusXl)),
                 ),
-                child: const Text('Subscribe',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.gray900)),
+                child: _sending
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.navyBlue))
+                    : const Text('Subscribe',
+                        style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.gray900)),
               ),
             ),
           ],

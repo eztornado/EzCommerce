@@ -11,6 +11,7 @@ use larust_support::axum::Json;
 use larust_support::serde_json::{json, Map, Value};
 
 use crate::support::auth;
+use crate::support::core;
 use crate::support::cart;
 use crate::support::db;
 use crate::support::products;
@@ -200,7 +201,12 @@ impl CustomerController {
     }
 
     /// `POST /api/customer/wishlist/{id}/move-to-cart` - wishlist item id.
-    pub async fn move_to_cart(customer: auth::Customer, Path(item_id): Path<i64>) -> Response {
+    pub async fn move_to_cart(
+        customer: auth::Customer,
+        Path(item_id): Path<i64>,
+        Query(query): Query<HashMap<String, String>>,
+        headers: HeaderMap,
+    ) -> Response {
         let item = db::select_one(
             "SELECT * FROM `wishlist_items` WHERE `id` = ? AND `customer_id` = ? LIMIT 1",
             &[Value::from(item_id), Value::from(customer.id)],
@@ -275,7 +281,10 @@ impl CustomerController {
                     .ok()
                     .flatten();
                 let cart_json = match updated {
-                    Some(updated) => cart::cart_resource(&updated).await,
+                    Some(updated) => {
+                        let currency = core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+                        cart::cart_resource_in(&updated, currency.as_deref()).await
+                    }
                     None => Value::Null,
                 };
                 resource(

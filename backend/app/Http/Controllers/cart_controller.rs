@@ -68,7 +68,8 @@ impl CartController {
         if existing.is_empty() {
             return resource(Value::Null, Value::Null);
         }
-        resource(cart::cart_resource(&existing).await, Value::Null)
+        let currency = core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+        resource(cart::cart_resource_in(&existing, currency.as_deref()).await, Value::Null)
     }
 
     /// `POST /api/checkout/cart` - add a product
@@ -131,7 +132,14 @@ impl CartController {
             .or_else(|| body["items"].as_array().cloned())
             .unwrap_or_default();
         match cart::update_items(&cart, &items).await {
-            Ok(()) => resource(cart::cart_resource(&cart).await, "The cart has been updated successfully."),
+            Ok(()) => {
+                let currency =
+                    core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+                resource(
+                    cart::cart_resource_in(&cart, currency.as_deref()).await,
+                    "The cart has been updated successfully.",
+                )
+            }
             Err(error) => error.into(),
         }
     }
@@ -149,7 +157,14 @@ impl CartController {
         )
         .await;
         match cart::collect_totals(cart_id).await {
-            Ok(_) => resource(cart::cart_resource(&cart).await, "The cart has been cleared."),
+            Ok(_) => {
+                let currency =
+                    core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+                resource(
+                    cart::cart_resource_in(&cart, currency.as_deref()).await,
+                    "The cart has been cleared.",
+                )
+            }
             Err(error) => error.into(),
         }
     }
@@ -173,7 +188,11 @@ impl CartController {
             .await;
         }
         let _ = cart::collect_totals(cart_id).await;
-        resource(cart::cart_resource(&cart).await, "The selected items have been removed.")
+        let currency = core::shop_currency_code(&headers, query.get("currency").map(String::as_str)).await;
+        resource(
+            cart::cart_resource_in(&cart, currency.as_deref()).await,
+            "The selected items have been removed.",
+        )
     }
 
     /// `POST /api/checkout/cart/coupon` - `{code}` (coupon validation lands

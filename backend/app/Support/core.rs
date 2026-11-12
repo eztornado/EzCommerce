@@ -272,3 +272,18 @@ pub async fn resolve_currency_by_code(code: &str) -> Option<RowMap> {
     .ok()
     .flatten()
 }
+
+/// Código de la moneda del visitante (`?currency=` validado contra el canal,
+/// NULL si es la base) — para la presentación del carrito/checkout.
+pub async fn shop_currency_code(
+    headers: &HeaderMap,
+    query_currency: Option<&str>,
+) -> Option<String> {
+    let channel = current_channel(headers).await.ok()?;
+    let currency = resolve_currency(&channel, query_currency).await.ok()?;
+    let base = base_currency(&channel).await.ok()?;
+    if currency["code"].as_str() == base["code"].as_str() {
+        return None;
+    }
+    currency["code"].as_str().map(str::to_string)
+}

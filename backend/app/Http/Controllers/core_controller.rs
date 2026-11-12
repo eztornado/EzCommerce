@@ -13,7 +13,7 @@ use larust_support::serde_json::{json, Value};
 use crate::support::auth;
 use crate::support::core;
 use crate::support::db;
-use crate::support::response::{json_ok, message, ApiResult};
+use crate::support::response::{json_ok, message, resource, validation_error, ApiResult};
 
 pub struct CoreController;
 
@@ -125,6 +125,54 @@ impl CoreController {
             bytes,
         )
             .into_response()
+    }
+
+    /// `POST /api/newsletter/subscribe` - `{email}`: marca al cliente como
+    /// suscrito al newsletter (lo crea si no tiene cuenta).
+    pub async fn newsletter_subscribe(Json(body): Json<Value>) -> Response {
+        let Some(email) = body["email"]
+            .as_str()
+            .map(str::trim)
+            .map(str::to_lowercase)
+            .filter(|email| email.contains('@') && email.contains('.'))
+        else {
+            return validation_error(vec![("email".into(), "A valid email is required.".into())]);
+        };
+        let existing = db::select_one(
+            "SELECT `id`, `subscribed_to_news_letter` FROM `customers` WHERE `email` = ? LIMIT 1",
+            &[Value::String(email.clone())],
+        )
+        .await
+        .ok()
+        .flatten();
+        match existing {
+            Some(customer) => {
+                if customer["subscribed_to_news_letter"].as_i64().unwrap_or(0) == 1 {
+                    return resource(Value::Array(Vec::new()), "You are already subscribed.");
+                }
+                let _ = db::update(
+                    "customers",
+                    customer["id"].as_i64().unwrap_or(0),
+                    &json!({"subscribed_to_news_letter": 1, "updated_at": db::now_db()}),
+                )
+                .await;
+            }
+            None => {
+                let _ = db::insert(
+                    "customers",
+                    &json!({
+                        "email": email,
+                        "status": 1,
+                        "subscribed_to_news_letter": 1,
+                        "customer_group_id": 1,
+                        "created_at": db::now_db(),
+                        "updated_at": db::now_db(),
+                    }),
+                )
+                .await;
+            }
+        }
+        resource(Value::Array(Vec::new()), "You have been subscribed successfully.")
     }
 
     /// `POST /api/admin/upload` - stores a base64 file under
