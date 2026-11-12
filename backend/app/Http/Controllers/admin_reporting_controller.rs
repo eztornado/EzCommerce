@@ -17,7 +17,7 @@ use larust_support::serde_json::{json, Value};
 
 use crate::support::auth;
 use crate::support::db;
-use crate::support::response::resource;
+use crate::support::response::{csv_response, resource};
 
 pub struct AdminReportingController;
 
@@ -67,10 +67,37 @@ fn money(row: &larust_support::serde_json::Map<String, Value>, field: &str) -> f
 }
 
 impl AdminReportingController {
-    /// `GET /api/admin/reporting/sales`.
+    /// `GET /api/admin/reporting/sales`. `?format=csv` exporta la serie.
     pub async fn sales(admin: auth::Admin, Query(query): Query<HashMap<String, String>>) -> Response {
         let _ = admin;
         let (start, end) = period(&query);
+        if query.get("format").map(String::as_str) == Some("csv") {
+            let granularity = query.get("granularity").map(String::as_str).unwrap_or("day");
+            let group_expr = date_expr(granularity);
+            let rows = db::select(
+                &format!(
+                    "SELECT {} AS day, \
+                            CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) AS sales, \
+                            COUNT(*) AS orders \
+                     FROM `orders` WHERE `created_at` BETWEEN ? AND ? \
+                     GROUP BY {} ORDER BY day",
+                    group_expr, group_expr
+                ),
+                &[Value::String(start.clone()), Value::String(end.clone())],
+            )
+            .await
+            .unwrap_or_default();
+            let mut csv = String::from("label,sales,orders\n");
+            for row in &rows {
+                csv.push_str(&format!(
+                    "{},{:.2},{}\n",
+                    row["day"].as_str().unwrap_or_default(),
+                    row["sales"].as_f64().unwrap_or(0.0) / 100.0,
+                    row["orders"].as_i64().unwrap_or(0),
+                ));
+            }
+            return csv_response(&csv, "sales-report.csv");
+        }
         let granularity = query.get("granularity").map(String::as_str).unwrap_or("day");
         let group_expr = date_expr(granularity);
 
@@ -150,11 +177,32 @@ impl AdminReportingController {
              FROM `order_items` `oi` INNER JOIN `orders` `o` ON `o`.`id` = `oi`.`order_id` \
              WHERE `o`.`created_at` BETWEEN ? AND ? \
              GROUP BY `oi`.`product_id`, `oi`.`name`, `oi`.`sku` ORDER BY total DESC LIMIT 10",
-            &[Value::String(start), Value::String(end)],
+            &[Value::String(start.clone()), Value::String(end.clone())],
         )
         .await
         .unwrap_or_default();
-        resource(json!(rows), Value::Null)
+        if query.get("format").map(String::as_str) == Some("csv") {
+            let mut csv = String::from("product,sku,qty,revenue\n");
+            for row in &rows {
+                csv.push_str(&format!(
+                    "{},{},{},{:.2}\n",
+                    row["name"].as_str().unwrap_or_default().replace(',', " "),
+                    row["sku"].as_str().unwrap_or_default(),
+                    row["qty"].as_i64().unwrap_or(0),
+                    row["total"].as_f64().unwrap_or(0.0) / 100.0,
+                ));
+            }
+            return csv_response(&csv, "products-report.csv");
+        }
+        let plain: Vec<Value> = rows
+            .iter()
+            .map(|row| {
+                let mut plain = row.clone();
+                plain["total"] = json!(row["total"].as_f64().unwrap_or(0.0) / 100.0);
+                Value::Object(plain)
+            })
+            .collect();
+        resource(json!(plain), Value::Null)
     }
 
     /// `GET /api/admin/reporting/customers` - top por gasto.
@@ -168,10 +216,32 @@ impl AdminReportingController {
              FROM `customers` `c` INNER JOIN `orders` `o` ON `o`.`customer_id` = `c`.`id` \
              WHERE `o`.`created_at` BETWEEN ? AND ? \
              GROUP BY `c`.`id` ORDER BY total DESC LIMIT 10",
-            &[Value::String(start), Value::String(end)],
+            &[Value::String(start.clone()), Value::String(end.clone())],
         )
         .await
         .unwrap_or_default();
-        resource(json!(rows), Value::Null)
+        if query.get("format").map(String::as_str) == Some("csv") {
+            let mut csv = String::from("customer,email,orders,total\n");
+            for row in &rows {
+                csv.push_str(&format!(
+                    "{},{},{},{:.2}\n",
+                    format!("{} {}", row["first_name"].as_str().unwrap_or_default(), row["last_name"].as_str().unwrap_or_default())
+                        .trim(),
+                    row["email"].as_str().unwrap_or_default(),
+                    row["orders"].as_i64().unwrap_or(0),
+                    row["total"].as_f64().unwrap_or(0.0) / 100.0,
+                ));
+            }
+            return csv_response(&csv, "customers-report.csv");
+        }
+        let plain: Vec<Value> = rows
+            .iter()
+            .map(|row| {
+                let mut plain = row.clone();
+                plain["total"] = json!(row["total"].as_f64().unwrap_or(0.0) / 100.0);
+                Value::Object(plain)
+            })
+            .collect();
+        resource(json!(plain), Value::Null)
     }
 }

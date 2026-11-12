@@ -7,6 +7,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
+import 'admin_reporting.dart' show EzBarChart;
 import '../../../core/utils/download.dart';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +115,7 @@ class AdminShell extends StatelessWidget {
       ('Invoices', Icons.request_quote_outlined, '/admin/invoices'),
       ('Shipments', Icons.local_shipping_outlined, '/admin/shipments'),
       ('Refunds', Icons.assignment_return_outlined, '/admin/refunds'),
+      ('Reporting', Icons.query_stats_outlined, '/admin/reporting'),
       ('Customers', Icons.people_outline, '/admin/customers'),
       ('Communications', Icons.mark_email_unread_outlined, '/admin/communications'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
@@ -212,6 +214,9 @@ class AdminDashboardPage extends StatefulWidget {
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Map<String, dynamic>? _overAll;
   Map<String, dynamic>? _today;
+  Map<String, dynamic>? _salesReport;
+  List<Map<String, dynamic>> _topProducts = [];
+  List<Map<String, dynamic>> _topCustomers = [];
   bool _loading = true;
 
   @override
@@ -224,10 +229,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final admin = context.read<AdminProvider>();
     final overAll = await admin.get('admin/dashboard/stats', query: {'type': 'over-all'});
     final today = await admin.get('admin/dashboard/stats', query: {'type': 'today'});
+    final salesReport = await admin.get('admin/reporting/sales');
+    final topProducts = await admin.get('admin/reporting/products');
+    final topCustomers = await admin.get('admin/reporting/customers');
     if (mounted) {
       setState(() {
         _overAll = overAll is Map ? Map<String, dynamic>.from(overAll) : null;
         _today = today is Map ? Map<String, dynamic>.from(today) : null;
+        _salesReport = salesReport is Map ? Map<String, dynamic>.from(salesReport) : null;
+        _topProducts = decodeList(topProducts).take(5).toList();
+        _topCustomers = decodeList(topCustomers).take(5).toList();
         _loading = false;
       });
     }
@@ -276,6 +287,54 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
             ],
           ),
+          const SizedBox(height: 32),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+              border: Border.all(color: AppColors.zinc200),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Sales — last 30 days',
+                  style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 16),
+              Builder(builder: (context) {
+                final series = decodeList(_salesReport?['series']);
+                if (series.isEmpty) {
+                  return const Text('No sales in this period.',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500));
+                }
+                return EzBarChart(
+                  bars: [
+                    for (final point in series)
+                      ('${point['label']}', (point['sales'] as num? ?? 0).toDouble()),
+                  ],
+                );
+              }),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: RankingCard(
+                  title: 'Top products',
+                  items: [
+                for (final product in _topProducts)
+                  '${product['name']} — ${product['qty']} sold',
+              ]),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: RankingCard(
+                  title: 'Top customers',
+                  items: [
+                for (final customer in _topCustomers)
+                  '${customer['first_name']} ${customer['last_name']} — €${((customer['total'] as num? ?? 0)).toStringAsFixed(2)}',
+              ]),
+            ),
+          ]),
           const SizedBox(height: 32),
           // Recent orders de hoy
           if (_today != null && _today!['recent_orders'] is List)
@@ -616,6 +675,39 @@ class _EzDataGridState extends State<EzDataGrid> {
 // ---------------------------------------------------------------------------
 // Pantallas de datos
 // ---------------------------------------------------------------------------
+
+class RankingCard extends StatelessWidget {
+  const RankingCard({super.key, required this.title, required this.items});
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+        border: Border.all(color: AppColors.zinc200),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          const Text('No data.',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500))
+        else
+          for (final (index, item) in items.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('${index + 1}.  $item',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+            ),
+      ]),
+    );
+  }
+}
 
 class AdminProductsPage extends StatelessWidget {
   const AdminProductsPage({super.key});
