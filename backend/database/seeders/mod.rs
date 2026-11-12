@@ -94,6 +94,7 @@ pub async fn run() -> Result<(), AppError> {
     seed_customer_groups().await?;
     seed_attribute_family().await?;
     seed_system_attributes().await?;
+    mark_localizable_attributes().await?;
     seed_root_category().await?;
     seed_inventory_source().await?;
     seed_channel().await?;
@@ -236,6 +237,18 @@ async fn seed_attribute_family() -> Result<(), AppError> {
         )
         .await?;
     }
+    Ok(())
+}
+
+/// Atributos con contenido por idioma (Bagisto los marca per-locale).
+async fn mark_localizable_attributes() -> Result<(), AppError> {
+    let pool = pool()?;
+    sqlx::query(
+        "UPDATE `attributes` SET `value_per_locale` = 1          WHERE `code` IN ('name', 'description', 'short_description', 'url_key',          'meta_title', 'meta_description', 'meta_keywords')",
+    )
+    .execute(pool)
+    .await
+    .map_err(internal)?;
     Ok(())
 }
 

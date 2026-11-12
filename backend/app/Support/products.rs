@@ -16,8 +16,18 @@ use super::db::{self, RowMap};
 
 /// `ProductCardResource`: listing card fields.
 pub async fn card(product_id: i64) -> Option<Value> {
+    card_in(product_id, None, None).await
+}
+
+/// Locale/currency-aware card: contenido del idioma pedido (con fallback) y
+/// precios convertidos a la moneda pedida con las tasas del canal.
+pub async fn card_in(
+    product_id: i64,
+    locale: Option<&str>,
+    currency: Option<&str>,
+) -> Option<Value> {
     let product = db::find_by_id("products", product_id).await.ok().flatten()?;
-    let attributes = cart::attribute_map(product_id).await.ok()?;
+    let attributes = cart::attribute_map_in(product_id, locale).await.ok()?;
     let product_type = product["type"].as_str().unwrap_or("simple").to_string();
 
     // Effective price = special_price (ventana activa) o price, rebajado
@@ -30,8 +40,39 @@ pub async fn card(product_id: i64) -> Option<Value> {
         effective = catalog_discounted;
         on_sale = true;
     }
-    let price = core::format_amount(effective, 2);
-    let regular = core::format_amount(attributes["price"].as_f64().unwrap_or(0.0), 2);
+
+    // Conversión de presentación: base -> moneda pedida (los `base_*` del
+    // pedido y del carrito permanecen en la moneda base).
+    let currency_row = match currency {
+        Some(code) => core::resolve_currency_by_code(code).await,
+        None => None,
+    };
+    let base_code = core::base_currency_code().await;
+    let currency_code = currency_row
+        .as_ref()
+        .and_then(|row| row["code"].as_str())
+        .unwrap_or_default()
+        .to_string();
+    let effective = match (&currency_row, &base_code) {
+        (Some(_), Some(base)) if !currency_code.is_empty() => {
+            core::convert_price(effective, base, &currency_code).await
+        }
+        _ => effective,
+    };
+    let regular_amount = match (&currency_row, &base_code) {
+        (Some(_), Some(base)) if !currency_code.is_empty() => {
+            core::convert_price(attributes["price"].as_f64().unwrap_or(0.0), base, &currency_code).await
+        }
+        _ => attributes["price"].as_f64().unwrap_or(0.0),
+    };
+    let price = match &currency_row {
+        Some(row) => core::format_price(effective, row),
+        None => core::format_amount(effective, 2),
+    };
+    let regular = match &currency_row {
+        Some(row) => core::format_price(regular_amount, row),
+        None => core::format_amount(regular_amount, 2),
+    };
     let special = attributes["special_price"].as_f64().unwrap_or(0.0);
     if special > 0.0 && special < attributes["price"].as_f64().unwrap_or(0.0) {
         on_sale = true;
@@ -105,9 +146,17 @@ pub async fn card(product_id: i64) -> Option<Value> {
 /// `ProductResource`: full detail with attribute pairs, super attributes,
 /// variant options and associations.
 pub async fn detail(product_id: i64) -> Option<Value> {
-    let mut detail_value = card(product_id).await?;
+    detail_in(product_id, None, None).await
+}
+
+pub async fn detail_in(
+    product_id: i64,
+    locale: Option<&str>,
+    currency: Option<&str>,
+) -> Option<Value> {
+    let mut detail_value = card_in(product_id, locale, currency).await?;
     let product = db::find_by_id("products", product_id).await.ok().flatten()?;
-    let attributes = cart::attribute_map(product_id).await.ok()?;
+    let attributes = cart::attribute_map_in(product_id, locale).await.ok()?;
     let product_type = product["type"].as_str().unwrap_or("simple").to_string();
 
     // Attribute pairs shown in "Additional Information".
@@ -204,11 +253,22 @@ pub async fn detail(product_id: i64) -> Option<Value> {
             for value in &variant_attributes {
                 selection[value["code"].as_str().unwrap_or_default()] = value["integer_value"].clone();
             }
+            let variant_price = cart::attribute_map(variant_id)
+                .await
+                .ok()
+                .map(|attrs| cart::effective_price(&attrs))
+                .unwrap_or(0.0);
+            let variant_price = match (currency, core::base_currency_code().await) {
+                (Some(code), Some(base)) if code != base => {
+                    core::convert_price(variant_price, &base, code).await
+                }
+                _ => variant_price,
+            };
             variant_payload.push(json!({
                 "id": variant_id,
                 "sku": variant["sku"],
                 "attributes": selection,
-                "price": cart::attribute_map(variant_id).await.ok().map(|attrs| cart::effective_price(&attrs)),
+                "price": variant_price,
             }));
         }
         detail_value["variants"] = Value::Array(variant_payload);
@@ -285,6 +345,15 @@ pub async fn detail(product_id: i64) -> Option<Value> {
 
 /// Products associated: related / up-sell.
 pub async fn associations(product_id: i64, kind: &str) -> Vec<Value> {
+    associations_in(product_id, kind, None, None).await
+}
+
+pub async fn associations_in(
+    product_id: i64,
+    kind: &str,
+    locale: Option<&str>,
+    currency: Option<&str>,
+) -> Vec<Value> {
     let table = match kind {
         "related" => "product_relations",
         _ => "product_up_sells",
@@ -300,7 +369,7 @@ pub async fn associations(product_id: i64, kind: &str) -> Vec<Value> {
     let mut cards = Vec::new();
     for row in rows {
         if let Some(child) = row["child_id"].as_i64() {
-            if let Some(child_card) = card(child).await {
+            if let Some(child_card) = card_in(child, locale, currency).await {
                 cards.push(child_card);
             }
         }
@@ -356,6 +425,13 @@ async fn attr_id_by_code(code: &str) -> i64 {
 /// Writes a product attribute value (EAV upsert on
 /// `(channel, locale, attribute_id, product_id)`).
 pub async fn set_attribute(product_id: i64, code: &str, value: &Value) {
+    set_attribute_in(product_id, code, value, None).await;
+}
+
+/// Escribe un valor de atributo. Los atributos `value_per_locale = 1` se
+/// guardan bajo el locale indicado (o el por defecto si no se indica);
+/// el resto son globales (`locale`/`channel` NULL).
+pub async fn set_attribute_in(product_id: i64, code: &str, value: &Value, locale: Option<&str>) {
     let attribute_id = attr_id_by_code(code).await;
     if attribute_id == 0 {
         return;
@@ -366,6 +442,16 @@ pub async fn set_attribute(product_id: i64, code: &str, value: &Value) {
         .and_then(|row| row["type"].as_str())
         .unwrap_or("text")
         .to_string();
+    let per_locale = attribute
+        .as_ref()
+        .and_then(|row| row["value_per_locale"].as_i64())
+        .unwrap_or(0)
+        == 1;
+    let attribute_locale = if per_locale {
+        Some(locale.unwrap_or("en").to_string())
+    } else {
+        None
+    };
 
     let mut row = db::to_map(json!({"product_id": product_id, "attribute_id": attribute_id, "updated_at": now()}));
     // Índice directo de Map panica si la clave no existe: usar insert.
@@ -379,13 +465,36 @@ pub async fn set_attribute(product_id: i64, code: &str, value: &Value) {
         _ => row.insert("text_value".into(), value.clone()),
     };
 
-    let existing = db::select_one(
-        "SELECT `id` FROM `product_attribute_values` WHERE `product_id` = ? AND `attribute_id` = ? AND `channel` IS NULL AND `locale` IS NULL LIMIT 1",
-        &[Value::from(product_id), Value::from(attribute_id)],
-    )
-    .await
-    .ok()
-    .flatten();
+    let existing = match &attribute_locale {
+        // `IS ?` con placeholder no es portable a MySQL: ramificar.
+        Some(locale_code) => {
+            db::select_one(
+                "SELECT `id` FROM `product_attribute_values` WHERE `product_id` = ? AND `attribute_id` = ? \
+                 AND `channel` IS NULL AND `locale` = ? LIMIT 1",
+                &[
+                    Value::from(product_id),
+                    Value::from(attribute_id),
+                    Value::String(locale_code.clone()),
+                ],
+            )
+            .await
+            .ok()
+            .flatten()
+        }
+        None => {
+            db::select_one(
+                "SELECT `id` FROM `product_attribute_values` WHERE `product_id` = ? AND `attribute_id` = ? \
+                 AND `channel` IS NULL AND `locale` IS NULL LIMIT 1",
+                &[Value::from(product_id), Value::from(attribute_id)],
+            )
+            .await
+            .ok()
+            .flatten()
+        }
+    };
+    if let Some(locale_code) = attribute_locale {
+        row.insert("locale".into(), json!(locale_code));
+    }
     match existing {
         Some(existing) => {
             let _ = db::update(
@@ -409,7 +518,6 @@ pub async fn refresh_flat(product_id: i64) {
         Ok(Some(product)) => product,
         _ => return,
     };
-    let attributes = cart::attribute_map(product_id).await.unwrap_or_default();
     let quantity = cart::available_quantity(product_id, 1).await;
     let images_count = db::scalar_i64(
         "SELECT COUNT(*) FROM `product_images` WHERE `product_id` = ?",
@@ -418,66 +526,90 @@ pub async fn refresh_flat(product_id: i64) {
     .await
     .unwrap_or(0);
 
-    let existing = db::select_one(
-        "SELECT `id` FROM `product_flat` WHERE `product_id` = ? LIMIT 1",
-        &[Value::from(product_id)],
+    // Una fila de product_flat por locale habilitado del canal; el contenido
+    // traducido del locale con fallback al global (attribute_map_in).
+    let channel_id: i64 = db::scalar_i64(
+        "SELECT `id` FROM `channels` ORDER BY `id` LIMIT 1",
+        &[],
     )
     .await
-    .ok()
-    .flatten();
+    .unwrap_or(1);
+    let locale_codes: Vec<String> = match core::channel_locales(channel_id).await {
+        Ok(locales) if !locales.is_empty() => locales
+            .iter()
+            .map(|locale| locale["code"].as_str().unwrap_or("en").to_string())
+            .collect(),
+        _ => vec!["en".to_string()],
+    };
 
-    // Booleans/numerics get Bagisto defaults; NULLs would violate the NOT
-    // NULL constraints of product_flat.
-    let flag = |code: &str, default: i64| attributes[code].as_i64().unwrap_or(default);
-    let flat = json!({
-        "sku": product["sku"].clone(),
-        "type": product["type"].clone(),
-        "name": attributes["name"].clone(),
-        "short_description": attributes["short_description"].clone(),
-        "description": attributes["description"].clone(),
-        "url_key": attributes["url_key"].clone(),
-        "new": flag("new", 0),
-        "featured": flag("featured", 0),
-        "status": flag("status", 1),
-        "visible_individually": flag("visible_individually", 1),
-        "meta_title": attributes["meta_title"].clone(),
-        "meta_keywords": attributes["meta_keywords"].clone(),
-        "meta_description": attributes["meta_description"].clone(),
-        "price": attributes["price"].as_f64().unwrap_or(0.0),
-        "special_price": attributes["special_price"].clone(),
-        "special_price_from": attributes["special_price_from"].clone(),
-        "special_price_to": attributes["special_price_to"].clone(),
-        "weight": attributes["weight"].as_f64().unwrap_or(0.0),
-        "quantity": quantity,
-        "images_count": images_count,
-        "manage_stock": flag("manage_stock", 1),
-        "locale": "en",
-        "channel": "default",
-        "product_id": product_id,
-        "parent_id": product["parent_id"].clone(),
-        // Variants are never individually visible.
-        "visible_individually": if product["parent_id"].is_null() {
-            flag("visible_individually", 1)
-        } else {
-            0
-        },
-        "updated_at": now(),
-    });
+    for locale_code in &locale_codes {
+        let attributes = cart::attribute_map_in(product_id, Some(locale_code))
+            .await
+            .unwrap_or_default();
 
-    match existing {
-        Some(row) => {
-            if let Err(error) = db::update("product_flat", row["id"].as_i64().unwrap_or(0), &flat).await {
-                eprintln!("refresh_flat update failed: {error}");
+        let existing = db::select_one(
+            "SELECT `id` FROM `product_flat` WHERE `product_id` = ? AND `locale` = ? AND `channel` = 'default' LIMIT 1",
+            &[Value::from(product_id), Value::String(locale_code.clone())],
+        )
+        .await
+        .ok()
+        .flatten();
+
+        // Booleans/numerics get Bagisto defaults; NULLs would violate the NOT
+        // NULL constraints of product_flat.
+        let flag = |code: &str, default: i64| attributes[code].as_i64().unwrap_or(default);
+        let flat = json!({
+            "sku": product["sku"].clone(),
+            "type": product["type"].clone(),
+            "name": attributes["name"].clone(),
+            "short_description": attributes["short_description"].clone(),
+            "description": attributes["description"].clone(),
+            "url_key": attributes["url_key"].clone(),
+            "new": flag("new", 0),
+            "featured": flag("featured", 0),
+            "status": flag("status", 1),
+            "meta_title": attributes["meta_title"].clone(),
+            "meta_keywords": attributes["meta_keywords"].clone(),
+            "meta_description": attributes["meta_description"].clone(),
+            "price": attributes["price"].as_f64().unwrap_or(0.0),
+            "special_price": attributes["special_price"].clone(),
+            "special_price_from": attributes["special_price_from"].clone(),
+            "special_price_to": attributes["special_price_to"].clone(),
+            "weight": attributes["weight"].as_f64().unwrap_or(0.0),
+            "quantity": quantity,
+            "images_count": images_count,
+            "manage_stock": flag("manage_stock", 1),
+            "locale": locale_code,
+            "channel": "default",
+            "product_id": product_id,
+            "parent_id": product["parent_id"].clone(),
+            // Variants are never individually visible.
+            "visible_individually": if product["parent_id"].is_null() {
+                flag("visible_individually", 1)
+            } else {
+                0
+            },
+            "updated_at": now(),
+        });
+
+        match existing {
+            Some(row) => {
+                if let Err(error) = db::update("product_flat", row["id"].as_i64().unwrap_or(0), &flat).await {
+                    eprintln!("refresh_flat update failed: {error}");
+                }
             }
-        }
-        None => {
-            let mut flat = db::to_map(flat);
-            flat.insert("created_at".into(), json!(now()));
-            if let Err(error) = db::insert("product_flat", &flat).await {
-                eprintln!("refresh_flat insert failed: {error}");
+            None => {
+                let mut flat = db::to_map(flat);
+                flat.insert("created_at".into(), json!(now()));
+                if let Err(error) = db::insert("product_flat", &flat).await {
+                    eprintln!("refresh_flat insert failed: {error}");
+                }
             }
         }
     }
+
+    // Price index (independiente del locale): valores globales.
+    let attributes = cart::attribute_map(product_id).await.unwrap_or_default();
 
     // Price index for the guest + general groups.
     let price = cart::effective_price(&attributes);

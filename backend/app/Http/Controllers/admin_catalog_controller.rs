@@ -293,10 +293,12 @@ impl AdminCatalogController {
             .await;
         }
 
-        // Attributes payload: {attributes: {code: value}}.
+        // Attributes payload: {attributes: {code: value}, locale?}. Con
+        // `locale` los atributos traducibles se escriben para ese idioma.
+        let locale = body["locale"].as_str();
         if let Some(attributes) = body["attributes"].as_object() {
             for (code, value) in attributes {
-                crate::support::products::set_attribute(id, code, value).await;
+                crate::support::products::set_attribute_in(id, code, value, locale).await;
             }
         }
 

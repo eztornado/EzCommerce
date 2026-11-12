@@ -238,3 +238,28 @@ async fn channel_name(channel: &RowMap) -> Value {
     .map(|row| row["name"].clone())
     .unwrap_or(Value::Null)
 }
+
+/// Code of the first channel's base currency (la moneda de almacenamiento).
+pub async fn base_currency_code() -> Option<String> {
+    db::select_one(
+        "SELECT `c`.`code` FROM `channels` `ch` \
+         LEFT JOIN `currencies` `c` ON `c`.`id` = `ch`.`base_currency_id` \
+         ORDER BY `ch`.`id` LIMIT 1",
+        &[],
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|row| row["code"].as_str().map(str::to_string))
+}
+
+/// Currency row by code (para la conversión de presentación del shop).
+pub async fn resolve_currency_by_code(code: &str) -> Option<RowMap> {
+    db::select_one(
+        "SELECT * FROM `currencies` WHERE `code` = ? LIMIT 1",
+        &[Value::String(code.to_string())],
+    )
+    .await
+    .ok()
+    .flatten()
+}

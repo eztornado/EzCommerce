@@ -11,6 +11,7 @@ use larust_support::axum::Json;
 use larust_support::serde_json::{json, Map, Value};
 
 use crate::support::auth;
+use crate::support::core;
 use crate::support::db;
 use crate::support::products;
 use crate::support::response::{message, resource, validation_error};
@@ -20,7 +21,11 @@ pub struct ProductController;
 /// Builds the listing query from query params:
 /// `query, category_id (alias category), sort, price_min, price_max,
 /// limit/page/per_page, <attribute_code>=value`.
-async fn listing(query: &HashMap<String, String>) -> (Vec<Value>, Value) {
+async fn listing(
+    query: &HashMap<String, String>,
+    locale_code: Option<&str>,
+    currency_code: Option<&str>,
+) -> (Vec<Value>, Value) {
     let page = query.get("page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(1).max(1);
     let per_page = query
         .get("per_page")
@@ -35,6 +40,26 @@ async fn listing(query: &HashMap<String, String>) -> (Vec<Value>, Value) {
         "`pf`.`parent_id` IS NULL".to_string(),
     ];
     let mut binds: Vec<Value> = Vec::new();
+
+    // Contenido del idioma pedido (refresh_flat crea fila por locale).
+    let locale_filter = locale_code.unwrap_or("en").to_string();
+    where_clauses.push("`pf`.`locale` = ?".to_string());
+    binds.push(Value::String(locale_filter.clone()));
+
+    // Filtros de precio en la moneda del visitante -> convertir a base.
+    let base_code = core::base_currency_code().await;
+    let price_filter = |amount: f64| -> std::pin::Pin<Box<dyn std::future::Future<Output = f64> + Send>> {
+        let base_code = base_code.clone();
+        let currency_code = currency_code.map(str::to_string);
+        Box::pin(async move {
+            match (&currency_code, &base_code) {
+                (Some(code), Some(base)) if code != base => {
+                    core::convert_to_base(amount, base, code).await
+                }
+                _ => amount,
+            }
+        })
+    };
 
     if let Some(search) = query.get("query").map(String::as_str).map(str::trim).filter(|q| !q.is_empty()) {
         where_clauses.push("(`pf`.`name` LIKE ? OR `pf`.`sku` LIKE ?)".into());
@@ -54,10 +79,12 @@ async fn listing(query: &HashMap<String, String>) -> (Vec<Value>, Value) {
     }
 
     if let Some(min) = query.get("price_min").and_then(|p| p.parse::<f64>().ok()) {
+        let min = price_filter(min).await;
         where_clauses.push("`ppi`.`min_price` >= ?".into());
         binds.push(Value::from(min));
     }
     if let Some(max) = query.get("price_max").and_then(|p| p.parse::<f64>().ok()) {
+        let max = price_filter(max).await;
         where_clauses.push("`ppi`.`min_price` <= ?".into());
         binds.push(Value::from(max));
     }
@@ -140,7 +167,7 @@ async fn listing(query: &HashMap<String, String>) -> (Vec<Value>, Value) {
     let mut cards = Vec::new();
     for row in rows {
         if let Some(id) = row["product_id"].as_i64() {
-            if let Some(card) = products::card(id).await {
+            if let Some(card) = products::card_in(id, locale_code, currency_code).await {
                 cards.push(card);
             }
         }
@@ -157,26 +184,53 @@ async fn listing(query: &HashMap<String, String>) -> (Vec<Value>, Value) {
 
 impl ProductController {
     /// `GET /api/products` - paginated listing with search/filters/sort.
-    pub async fn index(Query(query): Query<HashMap<String, String>>) -> Response {
-        let (cards, meta) = listing(&query).await;
+    pub async fn index(
+        Query(query): Query<HashMap<String, String>>,
+        headers: HeaderMap,
+    ) -> Response {
+        let (locale, currency) = resolve_shop_context(&query, &headers).await;
+        let (cards, meta) = listing(&query, locale.as_deref(), currency.as_deref()).await;
         resource(json!({"data": cards, "meta": meta}), Value::Null)
     }
 
     /// `GET /api/products/{id}` - detail by id or url_key. Si el slug
     /// resuelve a una variante, se sirve el configurable padre.
-    pub async fn show(Path(id_or_key): Path<String>) -> Response {
+    pub async fn show(
+        Path(id_or_key): Path<String>,
+        Query(query): Query<HashMap<String, String>>,
+        headers: HeaderMap,
+    ) -> Response {
+        let (locale, currency) = resolve_shop_context(&query, &headers).await;
+        let locale_code = locale.unwrap_or_else(|| "en".to_string());
+        let currency_code = currency;
         let product_id = match id_or_key.parse::<i64>() {
             Ok(id) => id,
             Err(_) => {
-                let by_key = db::select_one(
+                // Fallback: slug del idioma por defecto si este locale no
+                // tiene traducción del url_key.
+                let localized = db::select_one(
                     "SELECT `pf`.`product_id`, `p`.`parent_id` FROM `product_flat` `pf` \
                      INNER JOIN `products` `p` ON `p`.`id` = `pf`.`product_id` \
-                     WHERE `pf`.`url_key` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
-                    &[Value::String(id_or_key.clone())],
+                     WHERE `pf`.`url_key` = ? AND `pf`.`locale` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
+                    &[Value::String(id_or_key.clone()), Value::String(locale_code.clone())],
                 )
                 .await
                 .ok()
                 .flatten();
+                let by_key = match localized {
+                    Some(row) => Some(row),
+                    None => {
+                        db::select_one(
+                            "SELECT `pf`.`product_id`, `p`.`parent_id` FROM `product_flat` `pf` \
+                             INNER JOIN `products` `p` ON `p`.`id` = `pf`.`product_id` \
+                             WHERE `pf`.`url_key` = ? ORDER BY `pf`.`id` DESC LIMIT 1",
+                            &[Value::String(id_or_key.clone())],
+                        )
+                        .await
+                        .ok()
+                        .flatten()
+                    }
+                };
                 let Some(row) = by_key else {
                     return message(StatusCode::NOT_FOUND, "Product not found.");
                 };
@@ -185,21 +239,31 @@ impl ProductController {
                     .unwrap_or_else(|| row["product_id"].as_i64().unwrap_or(0))
             }
         };
-        match products::detail(product_id).await {
+        match products::detail_in(product_id, Some(&locale_code), currency_code.as_deref()).await {
             Some(detail) => resource(detail, Value::Null),
             None => message(StatusCode::NOT_FOUND, "Product not found."),
         }
     }
 
     /// `GET /api/products/{id}/related`.
-    pub async fn related(Path(id): Path<i64>) -> Response {
-        let cards = products::associations(id, "related").await;
+    pub async fn related(
+        Path(id): Path<i64>,
+        Query(query): Query<HashMap<String, String>>,
+        headers: HeaderMap,
+    ) -> Response {
+        let (locale, currency) = resolve_shop_context(&query, &headers).await;
+        let cards = products::associations_in(id, "related", locale.as_deref(), currency.as_deref()).await;
         resource(json!(cards), Value::Null)
     }
 
     /// `GET /api/products/{id}/up-sell`.
-    pub async fn up_sell(Path(id): Path<i64>) -> Response {
-        let cards = products::associations(id, "up-sell").await;
+    pub async fn up_sell(
+        Path(id): Path<i64>,
+        Query(query): Query<HashMap<String, String>>,
+        headers: HeaderMap,
+    ) -> Response {
+        let (locale, currency) = resolve_shop_context(&query, &headers).await;
+        let cards = products::associations_in(id, "up-sell", locale.as_deref(), currency.as_deref()).await;
         resource(json!(cards), Value::Null)
     }
 
@@ -271,4 +335,27 @@ impl ProductController {
             Err(error) => error.into(),
         }
     }
+}
+
+/// Resuelve `(locale, currency)` del request validados contra el canal.
+async fn resolve_shop_context(
+    query: &HashMap<String, String>,
+    headers: &HeaderMap,
+) -> (Option<String>, Option<String>) {
+    let channel = core::current_channel(headers).await.ok();
+    let locale_code = match &channel {
+        Some(channel) => core::resolve_locale(channel, query.get("locale").map(String::as_str))
+            .await
+            .ok()
+            .and_then(|locale| locale["code"].as_str().map(str::to_string)),
+        None => None,
+    };
+    let currency_code = match &channel {
+        Some(channel) => core::resolve_currency(channel, query.get("currency").map(String::as_str))
+            .await
+            .ok()
+            .and_then(|currency| currency["code"].as_str().map(str::to_string)),
+        None => None,
+    };
+    (locale_code, currency_code)
 }

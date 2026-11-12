@@ -127,30 +127,65 @@ pub async fn get_or_create_cart(
 
 /// Attribute values of a single product (channel/locale-less rows).
 async fn load_attributes(product_id: i64) -> ApiResult<Vec<RowMap>> {
-    db::select(
-        "SELECT `a`.`code`, `a`.`type`, `v`.* FROM `product_attribute_values` `v` \
-         INNER JOIN `attributes` `a` ON `a`.`id` = `v`.`attribute_id` \
-         WHERE `v`.`product_id` = ? AND (`v`.`channel` IS NULL) AND (`v`.`locale` IS NULL)",
-        &[Value::from(product_id)],
-    )
-    .await
+    load_attributes_in(product_id, None).await
+}
+
+/// Values of a product with optional locale: rows of the requested locale
+/// take precedence over the default-locale/global ones.
+async fn load_attributes_in(product_id: i64, locale: Option<&str>) -> ApiResult<Vec<RowMap>> {
+    match locale {
+        Some(locale) => {
+            let mut rows = db::select(
+                "SELECT `a`.`code`, `a`.`type`, `v`.* FROM `product_attribute_values` `v` \
+                 INNER JOIN `attributes` `a` ON `a`.`id` = `v`.`attribute_id` \
+                 WHERE `v`.`product_id` = ? AND (`v`.`channel` IS NULL) \
+                   AND (`v`.`locale` IS NULL OR `v`.`locale` = ?)",
+                &[Value::from(product_id), Value::String(locale.to_string())],
+            )
+            .await?;
+            // Prioridad: primero las filas globales (NULL), después las del
+            // locale — el último gana al reconstruir el map.
+            rows.sort_by_key(|row| !row["locale"].as_str().unwrap_or_default().is_empty());
+            Ok(rows)
+        }
+        None => {
+            // Lectura sin locale (carrito/admin): globales con fallback al
+            // locale por defecto (los traducibles viven bajo un locale).
+            let mut rows = db::select(
+                "SELECT `a`.`code`, `a`.`type`, `v`.* FROM `product_attribute_values` `v` \
+                 INNER JOIN `attributes` `a` ON `a`.`id` = `v`.`attribute_id` \
+                 WHERE `v`.`product_id` = ? AND (`v`.`channel` IS NULL) \
+                   AND (`v`.`locale` IS NULL OR `v`.`locale` = 'en')",
+                &[Value::from(product_id)],
+            )
+            .await?;
+            rows.sort_by_key(|row| !row["locale"].as_str().unwrap_or_default().is_empty());
+            Ok(rows)
+        }
+    }
 }
 
 /// Flattened attribute map for a product, falling back to its parent for
 /// non-super attributes (configurable variants inherit price/description).
 pub async fn attribute_map(product_id: i64) -> ApiResult<Value> {
+    attribute_map_in(product_id, None).await
+}
+
+/// Locale-aware variant of `attribute_map`: traducible values of the
+/// requested locale override the global ones.
+pub async fn attribute_map_in(product_id: i64, locale: Option<&str>) -> ApiResult<Value> {
     let product = db::find_by_id("products", product_id)
         .await?
         .ok_or_else(|| ApiError::not_found("Product not found"))?;
     let parent_id = product["parent_id"].as_i64();
 
     let mut map = Map::new();
-    for row in load_attributes(product_id).await? {
+    for row in load_attributes_in(product_id, locale).await? {
         let code = row["code"].as_str().unwrap_or_default().to_string();
         map.insert(code, core::attribute_value(row["type"].as_str().unwrap_or("text"), &row));
     }
     if let Some(parent_id) = parent_id {
-        for row in load_attributes(parent_id).await? {
+        for row in load_attributes_in(parent_id, locale).await? {
             let code = row["code"].as_str().unwrap_or_default().to_string();
             // La variante nunca hereda el url_key del padre: saturaría el
             // resolver de la tienda con el slug del configurable.
