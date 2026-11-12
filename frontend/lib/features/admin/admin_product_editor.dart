@@ -28,6 +28,8 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
   List<Map<String, dynamic>> _superAttributes = [];
   List<Map<String, dynamic>> _variants = [];
   List<Map<String, dynamic>> _categoriesTree = [];
+  List<Map<String, dynamic>> _locales = [];
+  String _locale = 'en';
   Set<int> _selectedCategories = {};
   bool _loading = true;
   bool _saving = false;
@@ -55,7 +57,15 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
 
   Future<void> _load() async {
     final admin = context.read<AdminProvider>();
-    final data = await admin.get('admin/catalog/products/edit/${widget.productId}');
+    final contextData = await admin.get('core/context');
+    if (contextData is Map && _locales.isEmpty && mounted) {
+      final value = contextData['locales'];
+      if (value is List) {
+        _locales = value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    }
+    final data = await admin.get('admin/catalog/products/edit/${widget.productId}',
+        query: {'locale': _locale});
     final tree = await admin.get('admin/catalog/categories/tree');
     if (data is Map && mounted) {
       setState(() {
@@ -88,6 +98,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
     final admin = context.read<AdminProvider>();
     try {
       await admin.put('admin/catalog/products/edit/${widget.productId}', body: {
+        'locale': _locale,
         'sku': _sku.text,
         'attributes': {
           'name': _name.text,
@@ -339,6 +350,32 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage> {
                       style: const TextStyle(
                           fontFamily: 'Poppins', fontSize: 22, fontWeight: FontWeight.w500)),
                 ),
+                if (_locales.length > 1) ...[
+                  DropdownButton<String>(
+                    value: _locales.any((locale) => locale['code'] == _locale)
+                        ? _locale
+                        : 'en',
+                    underline: const SizedBox.shrink(),
+                    items: [
+                      for (final locale in _locales)
+                        DropdownMenuItem(
+                          value: '${locale['code']}',
+                          child: Text('Language: ${locale['name']}',
+                              style: const TextStyle(
+                                  fontFamily: 'Poppins', fontSize: 13)),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null || value == _locale) return;
+                      setState(() {
+                        _locale = value;
+                        _loading = true;
+                      });
+                      _load();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 PrimaryButton(
                   label: 'Save',
                   isLoading: _saving,

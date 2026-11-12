@@ -189,6 +189,63 @@ class CatalogProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Locales y monedas habilitados en el canal (para los selectores).
+  List<Map<String, dynamic>> get locales {
+    final value = context?['locales'];
+    if (value is List) {
+      return value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  List<Map<String, dynamic>> get currencies {
+    final value = context?['currencies'];
+    if (value is List) {
+      return value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  String get localeCode => '${context?['locale'] ?? 'en'}';
+  String get currencyCode => '${context?['currency'] ?? ''}';
+
+  /// Tasa de cambio de la moneda activa respecto a la base (presentación en
+  /// carrito/checkout; el backend convierte catálogo).
+  double get exchangeRate {
+    final rate = context?['exchange_rate'];
+    return rate is num && rate > 0 ? rate.toDouble() : 1.0;
+  }
+
+  /// Cambia el idioma de la tienda y recarga el contenido.
+  Future<void> changeLocale(String code) async {
+    await ApiClient.setShopLocale(code);
+    await loadContext();
+    await loadCategories();
+    await loadHomeSections();
+    await refreshProducts();
+  }
+
+  /// Cambia la moneda de la tienda y recarga el contenido.
+  Future<void> changeCurrency(String code) async {
+    await ApiClient.setShopCurrency(code);
+    await loadContext();
+    await loadCategories();
+    await loadHomeSections();
+    await refreshProducts();
+  }
+
+  /// Recarga el listado con los últimos filtros (cambio de idioma/moneda).
+  Future<void> refreshProducts() async {
+    _products = [];
+    _currentPage = 1;
+    await loadProducts(
+      categoryId: _lastCategoryId,
+      query: _lastQuery,
+      page: 1,
+      filters: _lastFilters,
+    );
+  }
+
   Future<void> loadCategories() async {
     try {
       final data = await ApiClient.instance.get('categories/tree');
@@ -226,7 +283,11 @@ class CatalogProvider extends ChangeNotifier {
       final records = ((list['data'] ?? const []) as List)
           .map((e) => Product(Map<String, dynamic>.from(e as Map)))
           .toList();
-      if (page == 1) _lastFilters = filters;
+      if (page == 1) {
+        _lastFilters = filters;
+        _lastQuery = query;
+        _lastCategoryId = categoryId;
+      }
       _products = page == 1 ? records : [..._products, ...records];
     } catch (_) {}
     _loading = false;
@@ -234,6 +295,8 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   Map<String, String> _lastFilters = const {};
+  String? _lastQuery;
+  int? _lastCategoryId;
 
   Future<void> loadMore({
     int? categoryId,

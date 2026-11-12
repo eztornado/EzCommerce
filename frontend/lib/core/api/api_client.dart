@@ -30,6 +30,8 @@ class ApiClient {
     _customerToken = prefs.getString('customer_token');
     _adminToken = prefs.getString('admin_token');
     _cartToken = prefs.getString('cart_token');
+    _shopLocale = prefs.getString('shop_locale');
+    _shopCurrency = prefs.getString('shop_currency');
   }
 
   Future<void> setCustomerSession(String token) async {
@@ -73,23 +75,59 @@ class ApiClient {
     return headers;
   }
 
-  Uri _uri(String path, Map<String, String>? query) {
+  String? _shopLocale;
+  String? _shopCurrency;
+
+  /// Idioma y moneda elegidos en la tienda; se adjuntan automáticamente a
+  /// todas las llamadas de shop (no admin).
+  static String? get shopLocale => instance._shopLocale;
+  static String? get shopCurrency => instance._shopCurrency;
+
+  static Future<void> setShopLocale(String? code) async {
+    instance._shopLocale = (code == null || code.isEmpty) ? null : code;
+    final prefs = await SharedPreferences.getInstance();
+    code == null || code.isEmpty
+        ? await prefs.remove('shop_locale')
+        : await prefs.setString('shop_locale', code);
+  }
+
+  static Future<void> setShopCurrency(String? code) async {
+    instance._shopCurrency = (code == null || code.isEmpty) ? null : code;
+    final prefs = await SharedPreferences.getInstance();
+    code == null || code.isEmpty
+        ? await prefs.remove('shop_currency')
+        : await prefs.setString('shop_currency', code);
+  }
+
+  Uri _uri(String path, Map<String, String>? query, {bool admin = false}) {
     final normalized = path.startsWith('/') ? path.substring(1) : path;
     final base = baseUrl.isEmpty ? '' : '$baseUrl/';
     final uri = Uri.parse('${base}api/$normalized');
-    return query == null || query.isEmpty ? uri : uri.replace(queryParameters: query);
+    var params = <String, String>{...?query};
+    if (!admin) {
+      // Contexto de la tienda: idioma y moneda elegidos (si el path ya trae
+      // query, se fusiona).
+      if (params.containsKey('?')) params.remove('?');
+      if (_shopLocale != null && !params.containsKey('locale')) {
+        params['locale'] = _shopLocale!;
+      }
+      if (_shopCurrency != null && !params.containsKey('currency')) {
+        params['currency'] = _shopCurrency!;
+      }
+    }
+    return params.isEmpty ? uri : uri.replace(queryParameters: params);
   }
 
   /// GET. Devuelve el `data` del envelope o lanza `ApiException`.
   Future<dynamic> get(String path, {Map<String, String>? query, bool admin = false}) async {
-    final response = await http.get(_uri(path, query), headers: _headers(admin: admin));
+    final response = await http.get(_uri(path, query, admin: admin), headers: _headers(admin: admin));
     return _handle(response);
   }
 
   /// POST.
   Future<dynamic> post(String path, {Object? body, bool admin = false}) async {
     final response = await http.post(
-      _uri(path, null),
+      _uri(path, null, admin: admin),
       headers: _headers(admin: admin),
       body: jsonEncode(body ?? {}),
     );
@@ -99,7 +137,7 @@ class ApiClient {
   /// PUT.
   Future<dynamic> put(String path, {Object? body, bool admin = false}) async {
     final response = await http.put(
-      _uri(path, null),
+      _uri(path, null, admin: admin),
       headers: _headers(admin: admin),
       body: jsonEncode(body ?? {}),
     );
@@ -109,7 +147,7 @@ class ApiClient {
   /// PATCH.
   Future<dynamic> patch(String path, {Object? body, bool admin = false}) async {
     final response = await http.patch(
-      _uri(path, null),
+      _uri(path, null, admin: admin),
       headers: _headers(admin: admin),
       body: jsonEncode(body ?? {}),
     );
@@ -119,7 +157,7 @@ class ApiClient {
   /// DELETE.
   Future<dynamic> delete(String path,
       {Map<String, String>? query, Object? body, bool admin = false}) async {
-    final request = http.Request('DELETE', _uri(path, query));
+    final request = http.Request('DELETE', _uri(path, query, admin: admin));
     request.headers.addAll(_headers(admin: admin));
     if (body != null) request.body = jsonEncode(body);
     final response = await http.Response.fromStream(await request.send());

@@ -103,18 +103,12 @@ class DesktopHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'USD - US Dollar',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600),
-                ),
+                _CurrencySelector(catalog: catalog),
                 const Text(
                   'Get ready for the new season — up to 30% off',
                   style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
                 ),
-                Text(
-                  'English',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600),
-                ),
+                _LocaleSelector(catalog: catalog),
               ],
             ),
           ),
@@ -564,11 +558,9 @@ class MobileDrawer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Text('USD',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600)),
+                  _CurrencySelector(catalog: catalog, compact: true),
                   Container(width: 2, height: 18, color: AppColors.zinc200, margin: const EdgeInsets.symmetric(horizontal: 16)),
-                  Text('English',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600)),
+                  _LocaleSelector(catalog: catalog, compact: true),
                 ],
               ),
             ),
@@ -953,4 +945,99 @@ void showMiniCart(BuildContext context) {
       );
     },
   );
+}
+
+/// Selector de moneda: solo las habilitadas en el canal (Settings).
+class _CurrencySelector extends StatelessWidget {
+  const _CurrencySelector({required this.catalog, this.compact = false});
+  final CatalogProvider catalog;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final currencies = catalog.currencies;
+    final label = compact
+        ? catalog.currencyCode
+        : () {
+            final match = currencies
+                .where((currency) => currency['code'] == catalog.currencyCode)
+                .firstOrNull;
+            return match == null
+                ? catalog.currencyCode
+                : '${match['code']} - ${match['name']}';
+          }();
+    if (currencies.length < 2) {
+      return Text(label,
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600));
+    }
+    return PopupMenuButton<String>(
+      tooltip: 'Currency',
+      onSelected: (code) => catalog.changeCurrency(code),
+      itemBuilder: (context) => [
+        for (final currency in currencies)
+          PopupMenuItem(
+            value: '${currency['code']}',
+            child: Text('${currency['code']} - ${currency['name']}',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label,
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600)),
+          const Icon(Icons.expand_more, size: 14, color: AppColors.zinc600),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Selector de idioma: solo los locales habilitados en el canal.
+class _LocaleSelector extends StatelessWidget {
+  const _LocaleSelector({required this.catalog, this.compact = false});
+  final CatalogProvider catalog;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final locales = catalog.locales;
+    final label = compact
+        ? () {
+            final match = locales
+                .where((locale) => locale['code'] == catalog.localeCode)
+                .firstOrNull;
+            return match == null ? catalog.localeCode : '${match['name']}';
+          }()
+        : () {
+            final match = locales
+                .where((locale) => locale['code'] == catalog.localeCode)
+                .firstOrNull;
+            return match == null ? catalog.localeCode : '${match['name']}';
+          }();
+    if (locales.length < 2) {
+      return Text(label,
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600));
+    }
+    return PopupMenuButton<String>(
+      tooltip: 'Language',
+      onSelected: (code) => catalog.changeLocale(code),
+      itemBuilder: (context) => [
+        for (final locale in locales)
+          PopupMenuItem(
+            value: '${locale['code']}',
+            child: Text('${locale['name']}',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label,
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc600)),
+          const Icon(Icons.expand_more, size: 14, color: AppColors.zinc600),
+        ]),
+      ),
+    );
+  }
 }

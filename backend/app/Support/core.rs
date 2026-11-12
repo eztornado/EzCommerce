@@ -205,6 +205,14 @@ pub async fn context_payload(
     let locales = channel_locales(channel["id"].as_i64().unwrap_or(0)).await?;
     let currencies = channel_currencies(channel["id"].as_i64().unwrap_or(0)).await?;
 
+    // Tasa de la moneda activa respecto a la base (presentación client-side
+    // en carrito/checkout; el catálogo ya viene convertido).
+    let base_code = base_currency(&channel).await.map(|c| c["code"].clone()).unwrap_or(Value::Null);
+    let exchange_rate = match (&base_code, currency["code"].as_str()) {
+        (Value::String(base), Some(code)) => exchange_rate(base, code).await,
+        _ => 1.0,
+    };
+
     Ok(json!({
         "channel": {
             "id": channel["id"],
@@ -213,11 +221,12 @@ pub async fn context_payload(
             "theme": channel["theme"],
             "logo": channel["logo"],
             "favicon": channel["favicon"],
-            "base_currency_code": base_currency(&channel).await.map(|c| c["code"].clone()).unwrap_or(Value::Null),
+            "base_currency_code": base_code,
             "default_locale_code": default_locale(&channel).await.map(|l| l["code"].clone()).unwrap_or(Value::Null),
         },
         "locale": locale["code"].clone(),
         "currency": currency["code"].clone(),
+        "exchange_rate": exchange_rate,
         "locales": locales.iter().map(|l| json!({
             "id": l["id"], "code": l["code"], "name": l["name"], "direction": l["direction"],
         })).collect::<Vec<_>>(),

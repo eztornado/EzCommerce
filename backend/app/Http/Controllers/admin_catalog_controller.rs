@@ -178,13 +178,22 @@ impl AdminCatalogController {
 
     /// `GET /api/admin/catalog/products/edit/{id}` - product with all data for
     /// the editor (attributes, categories, inventories, images, variants).
-    pub async fn show_product(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+    pub async fn show_product(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Query(query): Query<HashMap<String, String>>,
+    ) -> Response {
         let _ = admin;
         let product = match db::find_by_id("products", id).await {
             Ok(Some(product)) => product,
             _ => return message(StatusCode::NOT_FOUND, "Product not found."),
         };
-        let attributes = cart::attribute_map(id).await.unwrap_or_default();
+        // Contenido del idioma pedido (fallback al global/por defecto).
+        let locale = query
+            .get("locale")
+            .map(String::as_str)
+            .filter(|code| !code.is_empty() && *code != "en");
+        let attributes = cart::attribute_map_in(id, locale).await.unwrap_or_default();
         let categories = db::select(
             "SELECT `category_id` FROM `product_categories` WHERE `product_id` = ?",
             &[Value::from(id)],
