@@ -5,7 +5,7 @@
 use larust_http::{Route, Router};
 
 use crate::controllers::{
-    AdminAppearanceController, AdminAuthController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
+    AdminAppearanceController, AdminAuthController, AdminCommunicationController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
     AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController, RmaGdprController,
 };
@@ -230,4 +230,17 @@ pub fn routes() -> Router {
         .delete("/admin/appearance/sections/{id}", AdminAppearanceController::destroy)
         .post("/admin/appearance/sections/reorder", AdminAppearanceController::reorder)
         .post("/admin/appearance/sections/status/{id}", AdminAppearanceController::toggle_status)
+        // marketing communications
+        .get("/admin/marketing/communications/templates", AdminCommunicationController::templates)
+        .post("/admin/marketing/communications/templates/store", AdminCommunicationController::store_template)
+        .put("/admin/marketing/communications/templates/edit/{id}", AdminCommunicationController::update_template)
+        .delete("/admin/marketing/communications/templates/{id}", AdminCommunicationController::destroy_template)
+        .get("/admin/marketing/communications/events", AdminCommunicationController::events)
+        .post("/admin/marketing/communications/events/store", AdminCommunicationController::store_event)
+        .delete("/admin/marketing/communications/events/{id}", AdminCommunicationController::destroy_event)
+        .get("/admin/marketing/communications/campaigns", AdminCommunicationController::campaigns)
+        .post("/admin/marketing/communications/campaigns/store", AdminCommunicationController::store_campaign)
+        .put("/admin/marketing/communications/campaigns/edit/{id}", AdminCommunicationController::update_campaign)
+        .delete("/admin/marketing/communications/campaigns/{id}", AdminCommunicationController::destroy_campaign)
+        .post("/admin/marketing/communications/campaigns/send/{id}", AdminCommunicationController::send_campaign)
 }

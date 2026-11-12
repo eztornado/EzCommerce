@@ -1,4 +1,5 @@
 pub mod admin_appearance_controller;
+pub mod admin_communication_controller;
 pub mod admin_auth_controller;
 pub mod admin_cart_rule_controller;
 pub mod admin_catalog_controller;
@@ -21,6 +22,7 @@ pub mod product_controller;
 pub mod rma_gdpr_controller;
 
 pub use admin_appearance_controller::AdminAppearanceController;
+pub use admin_communication_controller::AdminCommunicationController;
 pub use admin_auth_controller::AdminAuthController;
 pub use admin_cart_rule_controller::AdminCartRuleController;
 pub use admin_catalog_controller::AdminCatalogController;
