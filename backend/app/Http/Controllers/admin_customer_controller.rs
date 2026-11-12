@@ -12,7 +12,7 @@ use larust_support::serde_json::{json, Value};
 use crate::support::auth;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{csv_response, message, resource};
+use crate::support::response::{csv_response, message, resource, validation_error};
 
 pub struct AdminCustomerController;
 
@@ -132,7 +132,7 @@ impl AdminCustomerController {
         }
     }
 
-    /// `POST /api/admin/customers/groups` - datagrid + list.
+    /// `POST /api/admin/customers/groups` - list.
     pub async fn groups(admin: auth::Admin) -> Response {
         let _ = admin;
         let rows = db::select(
@@ -142,5 +142,137 @@ impl AdminCustomerController {
         .await
         .unwrap_or_default();
         resource(json!(rows), Value::Null)
+    }
+
+    /// `POST /api/admin/customers/groups/store` - `{code, name}`.
+    pub async fn store_group(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let errors: Vec<(String, String)> = ["code", "name"]
+            .iter()
+            .filter(|field| body[**field].as_str().map(str::trim).unwrap_or_default().is_empty())
+            .map(|field| (field.to_string(), format!("The {field} field is required.")))
+            .collect();
+        if !errors.is_empty() {
+            return validation_error(errors);
+        }
+        let taken = db::select_one(
+            "SELECT `id` FROM `customer_groups` WHERE `code` = ? LIMIT 1",
+            &[Value::String(body["code"].as_str().unwrap_or_default().trim().to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![("code".into(), "The code has already been taken.".into())]);
+        }
+        match db::insert(
+            "customer_groups",
+            &json!({
+                "code": body["code"].as_str().unwrap_or_default().trim(),
+                "name": body["name"].as_str().unwrap_or_default().trim(),
+                "is_user_defined": 1,
+                "created_at": db::now_db(),
+                "updated_at": db::now_db(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The customer group has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/customers/groups/edit/{id}` - `{name?}`.
+    pub async fn update_group(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let group = db::find_by_id("customer_groups", id).await.ok().flatten();
+        let Some(group) = group else {
+            return message(StatusCode::NOT_FOUND, "Customer group not found.");
+        };
+        if group["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(StatusCode::UNPROCESSABLE_ENTITY, "System groups cannot be modified.");
+        }
+        let mut row = json!({"updated_at": db::now_db()});
+        if let Some(name) = body["name"].as_str() {
+            row["name"] = json!(name.trim());
+        }
+        match db::update("customer_groups", id, &row).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The customer group has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/customers/groups/{id}` - solo user-defined.
+    pub async fn destroy_group(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let group = db::find_by_id("customer_groups", id).await.ok().flatten();
+        let Some(group) = group else {
+            return message(StatusCode::NOT_FOUND, "Customer group not found.");
+        };
+        if group["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(StatusCode::UNPROCESSABLE_ENTITY, "System groups cannot be deleted.");
+        }
+        match db::delete("customer_groups", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The customer group has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `POST /api/admin/customers/reviews` - grid de moderación de reseñas.
+    pub async fn reviews(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let request = datagrid::parse_request(&body);
+        let grid = datagrid::DataGrid {
+            table: "product_reviews",
+            alias: "pr",
+            primary: "pr.id",
+            columns: vec![
+                datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("pr.id"), options: None },
+                datagrid::Column { index: "name", label: "Author", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("pr.name"), options: None },
+                datagrid::Column { index: "title", label: "Title", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("pr.title"), options: None },
+                datagrid::Column { index: "rating", label: "Rating", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("pr.rating"), options: None },
+                datagrid::Column { index: "status", label: "Status", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("pr.status"), options: Some(json!([
+                    {"label": "Approved", "value": "approved"}, {"label": "Pending", "value": "pending"},
+                    {"label": "Rejected", "value": "rejected"},
+                ])) },
+                datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("pr.created_at"), options: None },
+            ],
+            joins: Vec::new(),
+            where_clauses: Vec::new(),
+            actions: Value::Null,
+            mass_actions: Value::Null,
+            formatters: Vec::new(),
+        };
+        match grid.process(&request).await {
+            Ok(payload) => resource(payload, Value::Null),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/customers/reviews/{id}/status` - `{status}`.
+    pub async fn review_status(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let status = body["status"].as_str().unwrap_or_default();
+        if !matches!(status, "approved" | "pending" | "rejected") {
+            return validation_error(vec![("status".into(), "Invalid review status.".into())]);
+        }
+        match db::update(
+            "product_reviews",
+            id,
+            &json!({"status": status, "updated_at": db::now_db()}),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The review status has been updated."),
+            Err(error) => error.into(),
+        }
     }
 }

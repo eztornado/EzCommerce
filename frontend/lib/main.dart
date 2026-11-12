@@ -9,6 +9,7 @@ import 'features/admin/admin_product_editor.dart';
 import 'features/admin/admin_product_create.dart';
 import 'features/admin/admin_cart_rules.dart';
 import 'features/admin/admin_cms.dart';
+import 'features/admin/admin_customers_pages.dart';
 import 'features/admin/admin_reporting.dart';
 import 'features/admin/admin_sales_pages.dart';
 import 'features/admin/admin_catalog_rules.dart';
@@ -97,6 +98,8 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/admin/refunds', builder: (_, _) => const AdminRefundsPage()),
         GoRoute(path: '/admin/reporting', builder: (_, _) => const AdminReportingPage()),
         GoRoute(path: '/admin/customers', builder: (_, _) => const AdminCustomersPage()),
+        GoRoute(path: '/admin/customers/groups', builder: (_, _) => const AdminGroupsPage()),
+        GoRoute(path: '/admin/customers/reviews', builder: (_, _) => const AdminReviewsPage()),
         GoRoute(path: '/admin/communications', builder: (_, _) => const AdminCommunicationsPage()),
         GoRoute(path: '/admin/settings', builder: (_, _) => const AdminSettingsPage()),
       ],

@@ -117,6 +117,8 @@ class AdminShell extends StatelessWidget {
       ('Refunds', Icons.assignment_return_outlined, '/admin/refunds'),
       ('Reporting', Icons.query_stats_outlined, '/admin/reporting'),
       ('Customers', Icons.people_outline, '/admin/customers'),
+      ('Customer Groups', Icons.group_outlined, '/admin/customers/groups'),
+      ('Reviews', Icons.star_border_outlined, '/admin/customers/reviews'),
       ('Communications', Icons.mark_email_unread_outlined, '/admin/communications'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
     ];
@@ -1034,7 +1036,55 @@ class AdminCustomersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EzDataGrid(gridPath: 'admin/customers', title: 'Customers');
+    return EzDataGrid(
+      gridPath: 'admin/customers',
+      title: 'Customers',
+      detailBuilder: (data) {
+        final customer = Map<String, dynamic>.from((data['customer'] ?? const {}) as Map);
+        final orders = decodeList(data['orders']);
+        final reviews = decodeList(data['reviews']);
+        final addresses = decodeList(data['addresses']);
+        return SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${customer['first_name']} ${customer['last_name']}',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
+            Text('${customer['email']} · group ${customer['customer_group_id']} · '
+                '${(customer['subscribed_to_news_letter'] ?? 0) == 1 ? 'subscribed' : 'not subscribed'}',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+            const Divider(height: 24),
+            Text('Orders (${orders.length})',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            for (final order in orders)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('${order['increment_id']} · ${order['status']} · €${order['base_grand_total']} · ${order['created_at']}',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+              ),
+            const Divider(height: 24),
+            Text('Addresses (${addresses.length})',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            for (final address in addresses)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('${address['address1']}, ${address['city']} ${address['postcode']} (${address['country']})',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+              ),
+            const Divider(height: 24),
+            Text('Reviews (${reviews.length}) · Wishlist: ${data['wishlist_count']} items',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            for (final review in reviews)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('★${review['rating']} ${review['title']} (${review['status']})',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+              ),
+          ]),
+        );
+      },
+    );
   }
 }
 
