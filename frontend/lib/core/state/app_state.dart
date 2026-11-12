@@ -381,6 +381,15 @@ List<Map<String, dynamic>> decodeList(dynamic data) {
   return [];
 }
 
+/// Decodifica payloads de ids planos (`[1, 2]`) tolerando `null`.
+List<int> decodeIds(dynamic data) {
+  if (data is List) return data.whereType<int>().toList();
+  if (data is Map && data['data'] is List) {
+    return (data['data'] as List).whereType<int>().toList();
+  }
+  return [];
+}
+
 String? apiUrlRelative(String? path) =>
     path == null || path.isEmpty ? null : '${ApiClient.baseUrl}$path';
 

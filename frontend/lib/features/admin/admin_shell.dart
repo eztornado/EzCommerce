@@ -793,7 +793,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   /// Ids de locale/moneda usados por algún canal: no se pueden borrar.
   Set<int> get _localesInUse => {
         for (final channel in _channels)
-          ...decodeList(channel['locales']).map((id) => id as int),
+          ...decodeIds(channel['locales']),
         for (final channel in _channels) ...[
           if (channel['default_locale_id'] is int) channel['default_locale_id'] as int,
         ],
@@ -801,7 +801,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   Set<int> get _currenciesInUse => {
         for (final channel in _channels)
-          ...decodeList(channel['currencies']).map((id) => id as int),
+          ...decodeIds(channel['currencies']),
         for (final channel in _channels) ...[
           if (channel['base_currency_id'] is int) channel['base_currency_id'] as int,
         ],
@@ -935,10 +935,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     int? defaultLocaleId = channel?['default_locale_id'] as int?;
     int? baseCurrencyId = channel?['base_currency_id'] as int?;
     final selectedLocales = {
-      ...decodeList(channel?['locales']).map((id) => id as int),
+      ...decodeIds(channel?['locales']),
     };
     final selectedCurrencies = {
-      ...decodeList(channel?['currencies']).map((id) => id as int),
+      ...decodeIds(channel?['currencies']),
     };
     final saved = await showDialog<bool>(
       context: context,
@@ -1331,8 +1331,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
                   subtitle: Text(
                       'code: ${channel['code']} · theme: ${channel['theme']} · '
-                      'locales: ${decodeList(channel['locales']).length} · '
-                      'currencies: ${decodeList(channel['currencies']).length}',
+                      'locales: ${decodeIds(channel['locales']).length} · '
+                      'currencies: ${decodeIds(channel['currencies']).length}',
                       style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(

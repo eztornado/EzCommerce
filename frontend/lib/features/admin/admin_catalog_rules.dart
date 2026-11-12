@@ -104,7 +104,7 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
     for (final condition in decodeList(rule['conditions'])) {
       if (condition['attribute'] == 'product::categories') {
         _selectedCategories = {
-          ...decodeList(condition['value']).whereType<int>(),
+          ...decodeIds(condition['value']),
         };
       }
     }
