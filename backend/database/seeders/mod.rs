@@ -103,6 +103,7 @@ pub async fn run() -> Result<(), AppError> {
     if config["seed_demo_data"].as_bool().unwrap_or(true) {
         seed_demo_catalog().await?;
         seed_demo_home().await?;
+        seed_demo_media().await?;
         seed_demo_cart_rules().await?;
         seed_demo_catalog_rule().await?;
         seed_demo_customers_orders().await?;
@@ -1077,6 +1078,117 @@ async fn seed_demo_home() -> Result<(), AppError> {
     .execute(pool)
     .await
     .map_err(internal)?;
+
+    Ok(())
+}
+
+/// Medios demo (idempotente): imágenes de producto, banners de categoría y
+/// slides del hero. Se puede ejecutar sobre una base ya existente.
+async fn seed_demo_media() -> Result<(), AppError> {
+    let pool = pool()?;
+    let stamp = now();
+
+    // Limpieza de índices huérfanos (productos eliminados desde el admin).
+    for table in ["product_flat", "product_price_indices", "product_inventory_indices"] {
+        let _ = sqlx::query(&format!(
+            "DELETE FROM `{table}` WHERE `product_id` NOT IN (SELECT `id` FROM `products`)"
+        ))
+        .execute(pool)
+        .await;
+    }
+
+    let product_images: &[(&str, &[&str])] = &[
+        ("EZ-WATCH-01", &["products/watch.jpg", "products/watch-2.jpg"]),
+        ("EZ-HEAD-01", &["products/headphones.jpg", "products/headphones-2.jpg"]),
+        ("EZ-TEE-01", &["products/tshirt.jpg", "products/tshirt-2.jpg"]),
+        ("EZ-JEAN-01", &["products/jeans.jpg", "products/jeans-2.jpg"]),
+        ("EZ-DRESS-01", &["products/dress.jpg", "products/dress-2.jpg"]),
+        ("EZ-BAG-01", &["products/bag.jpg", "products/bag-2.jpg"]),
+        ("EZ-MUG-01", &["products/mug.jpg"]),
+        ("EZ-LAMP-01", &["products/lamp.jpg", "products/lamp-2.jpg"]),
+        ("EZ-SNEAKER-01", &["products/sneaker.jpg", "products/sneaker-2.jpg"]),
+        ("EZ-IMPORT-01", &["products/keyboard.jpg"]),
+        ("EZ-IMPORT-02", &["products/camera.jpg"]),
+    ];
+
+    for (sku, paths) in product_images {
+        let product_id: Option<i64> = sqlx::query_scalar("SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1")
+            .bind(sku)
+            .fetch_optional(pool)
+            .await
+            .map_err(internal)?;
+        let Some(product_id) = product_id else { continue };
+        let _ = sqlx::query("DELETE FROM `product_images` WHERE `product_id` = ?")
+            .bind(product_id)
+            .execute(pool)
+            .await;
+        for (position, path) in paths.iter().enumerate() {
+            let _ = sqlx::query(
+                "INSERT INTO `product_images` (`type`, `path`, `position`, `product_id`, `created_at`, `updated_at`) \
+                 VALUES ('image', ?, ?, ?, ?, ?)",
+            )
+            .bind(*path)
+            .bind(position as i64)
+            .bind(product_id)
+            .bind(&stamp)
+            .bind(&stamp)
+            .execute(pool)
+            .await;
+        }
+    }
+
+    let category_images: &[(&str, &str)] = &[
+        ("electronics", "categories/electronics.jpg"),
+        ("men", "categories/men.jpg"),
+        ("women", "categories/women.jpg"),
+        ("home", "categories/home.jpg"),
+    ];
+    for (slug, path) in category_images {
+        let _ = sqlx::query(
+            "UPDATE `categories` SET `image` = ?, `category_banner` = ?, `updated_at` = ? \
+             WHERE `id` = (SELECT `category_id` FROM `category_translations` WHERE `slug` = ? LIMIT 1)",
+        )
+        .bind(*path)
+        .bind(*path)
+        .bind(&stamp)
+        .bind(*slug)
+        .execute(pool)
+        .await;
+    }
+
+    let slides = json!({
+        "slides": [
+            {
+                "image": "/storage/hero/hero-1.jpg",
+                "title": "The Autumn Edit",
+                "subtitle": "Considered essentials for the season ahead.",
+                "button": {"title": "Shop the collection", "link": "/category/3"},
+                "link": "/category/3"
+            },
+            {
+                "image": "/storage/hero/hero-2.jpg",
+                "title": "Technology, refined",
+                "subtitle": "Headphones, watches and everyday carry.",
+                "button": {"title": "Shop electronics", "link": "/category/2"},
+                "link": "/category/2"
+            },
+            {
+                "image": "/storage/hero/hero-3.jpg",
+                "title": "New season, new you",
+                "subtitle": "Up to 30% off selected styles this week.",
+                "button": {"title": "Shop women", "link": "/category/4"},
+                "link": "/category/4"
+            }
+        ]
+    });
+    let _ = sqlx::query(
+        "UPDATE `theme_section_translations` SET `options` = ? \
+         WHERE `theme_section_id` IN (SELECT `id` FROM `theme_sections` WHERE `type` = 'image_carousel') \
+           AND `locale` = 'en'",
+    )
+    .bind(slides.to_string())
+    .execute(pool)
+    .await;
 
     Ok(())
 }

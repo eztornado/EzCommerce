@@ -38,6 +38,8 @@ async fn listing(
         "`pf`.`status` = 1".to_string(),
         "`pf`.`visible_individually` = 1".to_string(),
         "`pf`.`parent_id` IS NULL".to_string(),
+        // Ignora filas de `product_flat` cuyo producto ya no existe.
+        "`pf`.`product_id` IN (SELECT `id` FROM `products`)".to_string(),
     ];
     let mut binds: Vec<Value> = Vec::new();
 

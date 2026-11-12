@@ -186,6 +186,9 @@ class CatalogProvider extends ChangeNotifier {
       final data = await ApiClient.instance.get('core/context');
       context = Map<String, dynamic>.from(data as Map);
     } catch (_) {}
+    // El árbol de categorías alimenta el header y el home; debe cargarse al
+    // arrancar, no solo al cambiar de idioma/moneda.
+    await loadCategories();
     notifyListeners();
   }
 

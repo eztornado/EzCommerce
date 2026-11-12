@@ -14,6 +14,28 @@ use super::catalog_rules;
 use super::core;
 use super::db::{self, RowMap};
 
+/// Unidades disponibles del producto en el canal por defecto. Un
+/// configurable no tiene inventario propio: se suma el de sus variantes.
+async fn stock_quantity(product_id: i64, product_type: &str) -> i64 {
+    if product_type == "configurable" {
+        let variants = db::select(
+            "SELECT `id` FROM `products` WHERE `parent_id` = ?",
+            &[Value::from(product_id)],
+        )
+        .await
+        .unwrap_or_default();
+        let mut total = 0;
+        for variant in variants {
+            if let Some(variant_id) = variant["id"].as_i64() {
+                total += cart::available_quantity(variant_id, 1).await;
+            }
+        }
+        total
+    } else {
+        cart::available_quantity(product_id, 1).await
+    }
+}
+
 /// `ProductCardResource`: listing card fields.
 pub async fn card(product_id: i64) -> Option<Value> {
     card_in(product_id, None, None).await
@@ -98,6 +120,10 @@ pub async fn card_in(
     .unwrap_or(None)
     .unwrap_or_else(db::empty_row);
 
+    // El stock real vive en `product_inventories` (fuentes del canal), no en
+    // el mapa EAV. Para un configurable se suma el de sus variantes.
+    let available = stock_quantity(product_id, &product_type).await;
+
     let saleable = match product_type.as_str() {
         "configurable" => {
             db::scalar_i64(
@@ -107,12 +133,10 @@ pub async fn card_in(
             .await
             .unwrap_or(0)
                 > 0
+                && available > 0
         }
         "downloadable" | "booking" => true,
-        "virtual" | "simple" => {
-            attributes["quantity"].as_i64().unwrap_or(0) > 0
-                || cart::available_quantity(product_id, 1).await > 0
-        }
+        "virtual" | "simple" => available > 0,
         _ => true,
     };
 
@@ -132,8 +156,8 @@ pub async fn card_in(
         "is_saleable": saleable,
         "base_image": base_image.map(|path| json!({"url": format!("/storage/{path}")})),
         "images": images.iter().map(|row| json!({"url": format!("/storage/{}", row["path"].as_str().unwrap_or_default())})).collect::<Vec<_>>(),
-        "in_stock": attributes["quantity"].as_i64().unwrap_or(0) > 0,
-        "quantity": attributes["quantity"],
+        "in_stock": available > 0,
+        "quantity": available,
         "short_description": attributes["short_description"],
         "ratings": {
             "average": ratings["average"],

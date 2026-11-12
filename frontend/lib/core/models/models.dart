@@ -123,6 +123,11 @@ class CartItem {
   String get formattedPrice => (json['formatted_price'] ?? '') as String;
   String get formattedTotal => (json['formatted_total'] ?? '') as String;
   int? get productId => json['product_id'] as int?;
+  String? get imageUrl {
+    final base = json['base_image'];
+    if (base is Map && base['url'] != null) return base['url'] as String;
+    return null;
+  }
   Map<String, dynamic>? get additional =>
       json['additional'] is Map ? Map<String, dynamic>.from(json['additional'] as Map) : null;
 }

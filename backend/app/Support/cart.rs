@@ -911,6 +911,28 @@ pub async fn cart_resource_in(cart: &RowMap, currency: Option<&str>) -> Json {
     let mut items_json: Vec<Json> = Vec::new();
     for item in items {
         let options = item["additional"].clone();
+        let product_id = item["product_id"].as_i64().unwrap_or(0);
+        let image = db::select_one(
+            "SELECT `path` FROM `product_images` WHERE `product_id` = ? ORDER BY `position`, `id` LIMIT 1",
+            &[Value::from(product_id)],
+        )
+        .await
+        .ok()
+        .flatten()
+        .or_else(|| None);
+        let image = match image {
+            Some(row) => row["path"].as_str().map(str::to_string),
+            None => db::select_one(
+                "SELECT `pi`.`path` FROM `product_images` `pi` \
+                 INNER JOIN `products` `p` ON `p`.`parent_id` = `pi`.`product_id` \
+                 WHERE `p`.`id` = ? ORDER BY `pi`.`position`, `pi`.`id` LIMIT 1",
+                &[Value::from(product_id)],
+            )
+            .await
+            .ok()
+            .flatten()
+            .and_then(|row| row["path"].as_str().map(str::to_string)),
+        };
         items_json.push(json!({
             "id": item["id"],
             "quantity": item["quantity"],
@@ -924,6 +946,7 @@ pub async fn cart_resource_in(cart: &RowMap, currency: Option<&str>) -> Json {
             "discount_amount": item["discount_amount"],
             "tax_amount": item["tax_amount"],
             "product_id": item["product_id"],
+            "base_image": image.map(|path| json!({"url": format!("/storage/{path}")})),
             "additional": options,
         }));
     }

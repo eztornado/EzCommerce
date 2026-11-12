@@ -64,22 +64,35 @@ class _HeaderLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.go('/'),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.storefront, color: AppColors.navyBlue, size: 28),
-          SizedBox(width: 8),
-          Text(
-            'EzCommerce',
-            style: TextStyle(
-              fontFamily: 'DM Serif Display',
-              fontSize: 22,
-              color: AppColors.navyBlue,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => context.go('/'),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: const [
+            Text(
+              'EzCommerce',
+              style: TextStyle(
+                fontFamily: EzTheme.serif,
+                fontSize: 27,
+                height: 1,
+                color: AppColors.navyBlue,
+              ),
             ),
-          ),
-        ],
+            Text(
+              '.',
+              style: TextStyle(
+                fontFamily: EzTheme.serif,
+                fontSize: 30,
+                height: 1,
+                color: AppColors.darkPink,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -91,25 +104,44 @@ class DesktopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final catalog = context.watch<CatalogProvider>();
+    final offer = (catalog.context?['header_offer'] as String?)?.trim();
     return Column(
       children: [
-        // Topbar: moneda | oferta | locale
+        // Topbar: moneda | oferta | idioma
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 60),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: AppColors.zinc200)),
           ),
           child: SizedBox(
-            height: 36,
+            height: 44,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _CurrencySelector(catalog: catalog),
-                Text(
-                  (catalog.context?['header_offer'] as String?)?.isNotEmpty == true
-                      ? catalog.context!['header_offer'] as String
-                      : 'Get ready for the new season — up to 30% off',
-                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
+                GestureDetector(
+                  onTap: () => context.go('/search'),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: offer == null || offer.isEmpty
+                              ? 'Get ready for the new season — up to 30% off. '
+                              : '$offer ',
+                        ),
+                        const TextSpan(
+                          text: 'Shop now',
+                          style: TextStyle(decoration: TextDecoration.underline),
+                        ),
+                      ],
+                    ),
+                    style: const TextStyle(
+                      fontFamily: EzTheme.sans,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.gray900,
+                    ),
+                  ),
                 ),
                 _LocaleSelector(catalog: catalog),
               ],
@@ -118,15 +150,19 @@ class DesktopHeader extends StatelessWidget {
         ),
         // Barra principal: logo | categorías | búsqueda + iconos
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 10),
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 60),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.zinc200)),
+          ),
           child: Row(
             children: [
               const _HeaderLogo(),
-              const SizedBox(width: 40),
+              const SizedBox(width: 44),
               Expanded(child: CategoryMenu(categories: catalog.categories)),
               const SizedBox(width: 24),
               const HeaderSearchBox(),
-              const SizedBox(width: 20),
+              const SizedBox(width: 22),
               const HeaderIcons(),
             ],
           ),
@@ -142,62 +178,65 @@ class CategoryMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: categories.take(6).map((category) {
-        return MenuAnchor(
-          builder: (context, controller, child) {
-            return MouseRegion(
-              onEnter: (_) => controller.open(),
-              onExit: (_) => controller.close(),
-              child: GestureDetector(
-                onTap: () => context.go('/category/${category.id}'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(width: 4, color: Colors.transparent)),
-                  ),
-                  child: Text(
-                    category.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                ),
+      children: [
+        for (final category in categories.take(6)) _CategoryMenuItem(category: category),
+      ],
+    );
+  }
+}
+
+class _CategoryMenuItem extends StatefulWidget {
+  const _CategoryMenuItem({required this.category});
+  final ShopCategory category;
+
+  @override
+  State<_CategoryMenuItem> createState() => _CategoryMenuItemState();
+}
+
+class _CategoryMenuItemState extends State<_CategoryMenuItem> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = GoRouterState.of(context).uri.path == '/category/${widget.category.id}';
+    final highlighted = _hovering || active;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: () => context.go('/category/${widget.category.id}'),
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                width: 3,
+                color: highlighted ? AppColors.navyBlue : Colors.transparent,
               ),
-            );
-          },
-          menuChildren: [
-                  Container(
-                    padding: const EdgeInsets.all(36),
-                    constraints: const BoxConstraints(maxWidth: 640),
-                    child: Wrap(
-                      spacing: 48,
-                      runSpacing: 16,
-                      children: category.children
-                          .map((child) => GestureDetector(
-                                onTap: () => context.go('/category/${child.id}'),
-                                child: Text(
-                                  child.name,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.navyBlue,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                ],
-        );
-      }).toList(),
+            ),
+          ),
+          child: Text(
+            widget.category.name.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: EzTheme.sans,
+              fontSize: 12,
+              letterSpacing: .4,
+              fontWeight: FontWeight.w500,
+              color: highlighted ? AppColors.navyBlue : AppColors.gray900,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -215,18 +254,31 @@ class _HeaderSearchBoxState extends State<HeaderSearchBox> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 380,
+      width: 430,
+      height: 44,
       child: TextField(
         controller: _controller,
         textInputAction: TextInputAction.search,
-        onSubmitted: (query) => context.go('/search?q=$query'),
+        onSubmitted: (query) => context.go('/search?q=${Uri.encodeQueryComponent(query)}'),
+        style: const TextStyle(fontFamily: EzTheme.sans, fontSize: 13),
         decoration: InputDecoration(
           hintText: 'Search products here',
-          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.zinc500),
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          prefixIcon: const Icon(Icons.search, size: 19, color: AppColors.zinc500),
+          prefixIconConstraints: const BoxConstraints(minWidth: 44),
+          contentPadding: const EdgeInsets.symmetric(vertical: 11),
+          filled: true,
+          fillColor: AppColors.zinc100,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
             borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+            borderSide: const BorderSide(color: AppColors.zinc400),
           ),
         ),
       ),
@@ -244,34 +296,41 @@ class HeaderIcons extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: const Icon(Icons.compare_arrows_outlined, size: 24, color: AppColors.gray900),
-          onPressed: () {},
+        _HeaderIconButton(
+          icon: Icons.compare_arrows,
+          tooltip: 'Compare',
+          onTap: () {},
         ),
         // Mini carrito con badge
         Stack(
+          clipBehavior: Clip.none,
           children: [
-            IconButton(
-              icon: const Icon(Icons.shopping_cart_outlined, size: 24, color: AppColors.gray900),
-              onPressed: () => showMiniCart(context),
+            _HeaderIconButton(
+              icon: Icons.shopping_bag_outlined,
+              tooltip: 'Cart',
+              onTap: () => showMiniCart(context),
             ),
             if (cart.itemCount > 0)
               Positioned(
-                right: 4,
-                top: 4,
+                right: 2,
+                top: 3,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
+                  constraints: const BoxConstraints(minWidth: 17),
+                  height: 17,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
                     color: AppColors.navyBlue,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(999),
                   ),
+                  alignment: Alignment.center,
                   child: Text(
                     '${cart.itemCount}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 9,
+                      height: 1,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'Poppins',
+                      fontFamily: EzTheme.sans,
                     ),
                   ),
                 ),
@@ -281,9 +340,10 @@ class HeaderIcons extends StatelessWidget {
         // Cuenta
         MenuAnchor(
           builder: (context, controller, child) {
-            return IconButton(
-              icon: const Icon(Icons.person_outline, size: 24, color: AppColors.gray900),
-              onPressed: () => controller.open(),
+            return _HeaderIconButton(
+              icon: Icons.person_outline,
+              tooltip: 'Account',
+              onTap: controller.open,
             );
           },
           menuChildren: [
@@ -368,6 +428,51 @@ class HeaderIcons extends StatelessWidget {
         Navigator.of(context, rootNavigator: true).pop();
         context.go(route);
       },
+    );
+  }
+}
+
+class _HeaderIconButton extends StatefulWidget {
+  const _HeaderIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  State<_HeaderIconButton> createState() => _HeaderIconButtonState();
+}
+
+class _HeaderIconButtonState extends State<_HeaderIconButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: _hovering ? AppColors.zinc100 : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(widget.icon, size: 22, color: AppColors.gray900),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -585,24 +690,37 @@ class ServicesStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.of(context).size.width < 768;
     final services = const [
-      (Icons.local_shipping_outlined, 'Free Delivery', 'Lorem ipsum dolor sit amet'),
-      (Icons.inventory_2_outlined, 'Quality Products', 'Lorem ipsum dolor sit amet'),
-      (Icons.attach_money, 'Money Back Guarantee', 'Lorem ipsum dolor sit amet'),
-      (Icons.headset_outlined, 'Online Support 24/7', 'Lorem ipsum dolor sit amet'),
+      (Icons.local_shipping_outlined, 'Free Delivery', 'On all orders over €50'),
+      (Icons.workspace_premium_outlined, 'Quality Products', 'Curated, premium materials'),
+      (Icons.replay_outlined, 'Money Back Guarantee', '30-day easy returns'),
+      (Icons.headset_mic_outlined, 'Online Support 24/7', 'We are here to help'),
     ];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 32),
-      child: isNarrow
-          ? Wrap(
-              spacing: 24,
-              runSpacing: 24,
-              alignment: WrapAlignment.center,
-              children: services.map((s) => _ServiceItem(s.$1, s.$2, s.$3)).toList(),
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: services.map((s) => Expanded(child: _ServiceItem(s.$1, s.$2, s.$3))).toList(),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1440),
+        child: Container(
+          margin: const EdgeInsets.only(top: 88),
+          padding: EdgeInsets.symmetric(horizontal: isNarrow ? 20 : 60, vertical: 40),
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: AppColors.zinc100),
+              bottom: BorderSide(color: AppColors.zinc100),
             ),
+          ),
+          child: isNarrow
+              ? Wrap(
+                  spacing: 24,
+                  runSpacing: 28,
+                  alignment: WrapAlignment.center,
+                  children: services.map((s) => _ServiceItem(s.$1, s.$2, s.$3)).toList(),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children:
+                      services.map((s) => Expanded(child: _ServiceItem(s.$1, s.$2, s.$3))).toList(),
+                ),
+        ),
+      ),
     );
   }
 }
@@ -619,15 +737,16 @@ class _ServiceItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 56,
-          height: 56,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.black, width: 1),
+            color: Colors.white,
+            border: Border.all(color: AppColors.gray900, width: 1),
           ),
-          child: Icon(icon, size: 24, color: AppColors.navyBlue),
+          child: Icon(icon, size: 25, color: AppColors.navyBlue),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 18),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,17 +754,17 @@ class _ServiceItem extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  fontFamily: 'DM Serif Display',
+                  fontFamily: EzTheme.serif,
                   fontSize: 16,
                   color: AppColors.gray900,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500),
+                style: TextStyle(fontFamily: EzTheme.sans, fontSize: 12, color: AppColors.zinc500),
               ),
             ],
           ),
@@ -669,25 +788,39 @@ class ShopFooter extends StatelessWidget {
       color: AppColors.lightOrange,
       child: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: isNarrow ? 24 : 60, vertical: 48),
-            child: isNarrow
-                ? Column(children: [_newsletter(), const SizedBox(height: 32), _links()])
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _links()),
-                      const SizedBox(width: 48),
-                      Expanded(flex: 2, child: _newsletter()),
-                    ],
-                  ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1440),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isNarrow ? 24 : 60, vertical: 56),
+                child: isNarrow
+                    ? Column(children: [_newsletter(), const SizedBox(height: 36), _links()])
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 3, child: _links()),
+                          const SizedBox(width: 56),
+                          Expanded(flex: 2, child: _newsletter()),
+                        ],
+                      ),
+              ),
+            ),
           ),
           Container(
             color: AppColors.footerBand,
-            padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
-            child: Text(
-              '© Copyright ${DateTime.now().year}, EzCommerce. All rights reserved.',
-              style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc600),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1440),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isNarrow ? 24 : 60),
+                  child: Text(
+                    '© Copyright ${DateTime.now().year}, EzCommerce. All rights reserved.',
+                    style: TextStyle(
+                        fontFamily: EzTheme.sans, fontSize: 12, color: AppColors.zinc600),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -697,29 +830,38 @@ class ShopFooter extends StatelessWidget {
 
   Widget _links() {
     final columns = {
-      'About Us': ['Customer Service', 'What\'s New'],
-      'Contact Us': ['Terms of Use', 'Privacy Policy'],
-      'Customer Service': ['Shipping Policy', 'Return Policy'],
-      'What\'s New': ['Refund Policy', 'Payment Policy'],
+      'Shop': ['New Arrivals', 'Electronics', 'Men', 'Women', 'Home & Living'],
+      'Customer Service': ['Contact Us', 'Shipping Policy', 'Return & Refunds', 'Track Order'],
+      'About': ['Our Story', 'Sustainability', 'Careers', 'Press'],
+      'Legal': ['Terms of Use', 'Privacy Policy', 'Cookie Policy'],
     };
     return Wrap(
-      spacing: 56,
-      runSpacing: 24,
+      spacing: 44,
+      runSpacing: 28,
       children: columns.entries
           .map((entry) => SizedBox(
-                width: 180,
+                width: 150,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(entry.key,
                         style: const TextStyle(
-                            fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w600)),
+                            fontFamily: EzTheme.sans,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.navyBlue)),
                     const SizedBox(height: 16),
                     ...entry.value.map(
                       (link) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(link,
-                            style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc600)),
+                        padding: const EdgeInsets.only(bottom: 11),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Text(link,
+                              style: TextStyle(
+                                  fontFamily: EzTheme.sans,
+                                  fontSize: 13,
+                                  color: AppColors.zinc600)),
+                        ),
                       ),
                     ),
                   ],
@@ -897,15 +1039,24 @@ void showMiniCart(BuildContext context) {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      width: 64,
-                                      height: 64,
-                                      decoration: BoxDecoration(
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                                      child: Container(
+                                        width: 72,
+                                        height: 72,
                                         color: AppColors.zinc100,
-                                        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                                        child: item.imageUrl == null
+                                            ? const Icon(Icons.image_outlined,
+                                                color: AppColors.zinc300, size: 24)
+                                            : Image.network(
+                                                apiUrlRelative(item.imageUrl)!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) => const Icon(
+                                                    Icons.image_outlined,
+                                                    color: AppColors.zinc300,
+                                                    size: 24),
+                                              ),
                                       ),
-                                      child: const Icon(Icons.image_outlined,
-                                          color: AppColors.zinc300, size: 24),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -1021,7 +1172,7 @@ class _CurrencySelector extends StatelessWidget {
                 .firstOrNull;
             return match == null
                 ? catalog.currencyCode
-                : '${match['code']} - ${match['name']}';
+                : '${match['symbol'] ?? ''} ${match['code']}';
           }();
     if (currencies.length < 2) {
       return Text(label,
@@ -1034,8 +1185,8 @@ class _CurrencySelector extends StatelessWidget {
         for (final currency in currencies)
           PopupMenuItem(
             value: '${currency['code']}',
-            child: Text('${currency['code']} - ${currency['name']}',
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+            child: Text('${currency['symbol'] ?? ''} ${currency['code']}',
+                style: const TextStyle(fontFamily: EzTheme.sans, fontSize: 13)),
           ),
       ],
       child: Padding(
