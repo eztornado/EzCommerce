@@ -10,7 +10,7 @@ use larust_support::serde_json::{json, Value};
 
 use crate::support::auth;
 use crate::support::db;
-use crate::support::response::{resource, validation_error};
+use crate::support::response::{csv_response, resource, validation_error};
 
 pub struct AdminDataTransferController;
 
@@ -219,5 +219,57 @@ impl AdminDataTransferController {
             }),
             format!("{processed} rows imported, {invalid_rows_count} invalid."),
         )
+    }
+
+    /// `GET /api/admin/data-transfer/export-customers` - CSV de clientes.
+    pub async fn export_customers(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `id`, `first_name`, `last_name`, `email`, `status`, `customer_group_id` \
+             FROM `customers` ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        let mut csv = String::from("id,first_name,last_name,email,status,group_id\n");
+        for row in &rows {
+            csv.push_str(&format!(
+                "{},{},{},{},{},{}\n",
+                row["id"].as_i64().unwrap_or(0),
+                row["first_name"].as_str().unwrap_or_default().replace(',', " "),
+                row["last_name"].as_str().unwrap_or_default().replace(',', " "),
+                row["email"].as_str().unwrap_or_default(),
+                row["status"].as_i64().unwrap_or(0),
+                row["customer_group_id"].as_i64().unwrap_or(0),
+            ));
+        }
+        csv_response(&csv, "customers.csv")
+    }
+
+    /// `GET /api/admin/data-transfer/export-orders` - CSV de pedidos.
+    pub async fn export_orders(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT `increment_id`, `status`, `customer_email`, `base_grand_total`, \
+                    `base_tax_amount`, `base_shipping_amount`, `created_at` \
+             FROM `orders` ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        let mut csv = String::from("increment_id,status,customer_email,grand_total,tax,shipping,created_at\n");
+        for row in &rows {
+            csv.push_str(&format!(
+                "{},{},{},{:.2},{:.2},{:.2},{}\n",
+                row["increment_id"].as_str().unwrap_or_default(),
+                row["status"].as_str().unwrap_or_default(),
+                row["customer_email"].as_str().unwrap_or_default().replace(',', " "),
+                row["base_grand_total"].as_f64().unwrap_or(0.0),
+                row["base_tax_amount"].as_f64().unwrap_or(0.0),
+                row["base_shipping_amount"].as_f64().unwrap_or(0.0),
+                row["created_at"].as_str().unwrap_or_default(),
+            ));
+        }
+        csv_response(&csv, "orders.csv")
     }
 }

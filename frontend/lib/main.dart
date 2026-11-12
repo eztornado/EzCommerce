@@ -12,6 +12,7 @@ import 'features/admin/admin_cms.dart';
 import 'features/admin/admin_customers_pages.dart';
 import 'features/admin/admin_reporting.dart';
 import 'features/admin/admin_sales_pages.dart';
+import 'features/admin/admin_settings_extra.dart';
 import 'features/admin/admin_seo_pages.dart';
 import 'features/admin/admin_catalog_rules.dart';
 import 'features/admin/admin_categories.dart';
@@ -102,6 +103,9 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/admin/customers/groups', builder: (_, _) => const AdminGroupsPage()),
         GoRoute(path: '/admin/customers/reviews', builder: (_, _) => const AdminReviewsPage()),
         GoRoute(path: '/admin/search-seo', builder: (_, _) => const AdminSearchSeoPage()),
+        GoRoute(path: '/admin/configuration', builder: (_, _) => const AdminConfigurationPage()),
+        GoRoute(path: '/admin/families', builder: (_, _) => const AdminFamiliesPage()),
+        GoRoute(path: '/admin/data-transfer', builder: (_, _) => const AdminDataTransferPage()),
         GoRoute(path: '/admin/communications', builder: (_, _) => const AdminCommunicationsPage()),
         GoRoute(path: '/admin/settings', builder: (_, _) => const AdminSettingsPage()),
       ],

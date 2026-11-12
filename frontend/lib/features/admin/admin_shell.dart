@@ -122,6 +122,9 @@ class AdminShell extends StatelessWidget {
       ('Search SEO', Icons.travel_explore_outlined, '/admin/search-seo'),
       ('Communications', Icons.mark_email_unread_outlined, '/admin/communications'),
       ('Settings', Icons.settings_outlined, '/admin/settings'),
+      ('Configuration', Icons.tune_outlined, '/admin/configuration'),
+      ('Attribute Families', Icons.family_restroom_outlined, '/admin/families'),
+      ('Data Transfer', Icons.import_export_outlined, '/admin/data-transfer'),
     ];
 
     return Scaffold(
@@ -1103,6 +1106,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   List<Map<String, dynamic>> _taxCategories = [];
   List<Map<String, dynamic>> _taxRates = [];
   List<Map<String, dynamic>> _exchangeRates = [];
+  List<Map<String, dynamic>> _inventorySources = [];
   bool _loading = true;
 
   @override
@@ -1119,6 +1123,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     final taxCategories = await admin.get('admin/settings/taxes/categories');
     final taxRates = await admin.get('admin/settings/taxes/rates');
     final exchangeRates = await admin.get('admin/settings/exchange-rates');
+    final inventorySources = await admin.get('admin/settings/inventory-sources');
     if (mounted) {
       setState(() {
         _channels = decodeList(channels);
@@ -1127,8 +1132,56 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         _taxCategories = decodeList(taxCategories);
         _taxRates = decodeList(taxRates);
         _exchangeRates = decodeList(exchangeRates);
+        _inventorySources = decodeList(inventorySources);
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _inventorySourceDialog([Map<String, dynamic>? source]) async {
+    final code = TextEditingController(text: '${source?['code'] ?? ''}');
+    final name = TextEditingController(text: '${source?['name'] ?? ''}');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(source == null ? 'New inventory source' : 'Edit inventory source'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: code,
+              enabled: source == null,
+              decoration: const InputDecoration(labelText: 'Code'),
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          PrimaryButton(
+            label: 'Save',
+            onPressed: () => (code.text.trim().isEmpty || name.text.trim().isEmpty)
+                ? null
+                : Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final admin = context.read<AdminProvider>();
+    try {
+      source == null
+          ? await admin.post('admin/settings/inventory-sources/store', body: {
+              'code': code.text.trim(),
+              'name': name.text.trim(),
+            })
+          : await admin.put('admin/settings/inventory-sources/edit/${source['id']}', body: {
+              'name': name.text.trim(),
+            });
+      await _load();
+    } catch (error) {
+      _showError(error);
     }
   }
 
@@ -1828,6 +1881,40 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       onPressed: () =>
                           _delete('tax rate', 'admin/settings/taxes/rates/${rate['id']}'),
                     ),
+                  ]),
+                ),
+            ],
+          ),
+          _Section(
+            title: 'Inventory sources',
+            actions: [
+              TextButton.icon(
+                onPressed: () => _inventorySourceDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New Source', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+            children: [
+              for (final source in _inventorySources)
+                ListTile(
+                  title: Text('${source['name'] ?? source['code']}',
+                      style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          color: (source['status'] ?? 1) == 1 ? Colors.black : AppColors.zinc500)),
+                  subtitle: Text('code: ${source['code']}',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      onPressed: () => _inventorySourceDialog(source),
+                    ),
+                    if (source['id'] != 1)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+                        onPressed: () =>
+                            _delete('inventory source', 'admin/settings/inventory-sources/${source['id']}'),
+                      ),
                   ]),
                 ),
             ],

@@ -769,6 +769,93 @@ impl AdminSettingController {
         .unwrap_or_default();
         resource(json!(rows), Value::Null)
     }
+
+    // ------------------------------------------------------------------
+    // Inventory sources (almacenes)
+    // ------------------------------------------------------------------
+
+    /// `GET /api/admin/settings/inventory-sources`.
+    pub async fn inventory_sources(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT * FROM `inventory_sources` ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
+    /// `POST /api/admin/settings/inventory-sources/store` - `{code, name, ...}`.
+    pub async fn store_inventory_source(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let Some(code) = body["code"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("code".into(), "The code field is required.".into())]);
+        };
+        let taken = db::select_one(
+            "SELECT `id` FROM `inventory_sources` WHERE `code` = ? LIMIT 1",
+            &[Value::String(code.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![("code".into(), "The code has already been taken.".into())]);
+        }
+        match db::insert(
+            "inventory_sources",
+            &json!({
+                "code": code,
+                "name": body["name"].as_str().unwrap_or_default().trim(),
+                "description": body["description"].clone(),
+                "priority": body["priority"].as_i64().unwrap_or(0),
+                "status": body["status"].as_i64().unwrap_or(1),
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The inventory source has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/settings/inventory-sources/edit/{id}`.
+    pub async fn update_inventory_source(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let mut row = json!({"updated_at": now()});
+        if !body["name"].is_null() {
+            row["name"] = body["name"].clone();
+        }
+        if !body["description"].is_null() {
+            row["description"] = body["description"].clone();
+        }
+        if let Some(status) = body["status"].as_i64() {
+            row["status"] = json!(status);
+        }
+        match db::update("inventory_sources", id, &row).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The inventory source has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/settings/inventory-sources/{id}` - la fuente
+    /// por defecto (id 1) no se borra.
+    pub async fn destroy_inventory_source(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        if id == 1 {
+            return message(StatusCode::UNPROCESSABLE_ENTITY, "The default inventory source cannot be deleted.");
+        }
+        match db::delete("inventory_sources", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The inventory source has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
 }
 
 /// `true` si el código de moneda ya existe (excluyendo `except_id`).

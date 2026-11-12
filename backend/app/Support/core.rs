@@ -213,6 +213,12 @@ pub async fn context_payload(
         _ => 1.0,
     };
 
+    let header_offer = get_config_data("general.content.header_offer", channel["code"].as_str(), locale["code"].as_str())
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(Value::Null);
+
     Ok(json!({
         "channel": {
             "id": channel["id"],
@@ -224,6 +230,7 @@ pub async fn context_payload(
             "base_currency_code": base_code,
             "default_locale_code": default_locale(&channel).await.map(|l| l["code"].clone()).unwrap_or(Value::Null),
         },
+        "header_offer": header_offer,
         "locale": locale["code"].clone(),
         "currency": currency["code"].clone(),
         "exchange_rate": exchange_rate,

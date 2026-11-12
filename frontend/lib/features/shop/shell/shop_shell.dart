@@ -105,9 +105,11 @@ class DesktopHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _CurrencySelector(catalog: catalog),
-                const Text(
-                  'Get ready for the new season — up to 30% off',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
+                Text(
+                  (catalog.context?['header_offer'] as String?)?.isNotEmpty == true
+                      ? catalog.context!['header_offer'] as String
+                      : 'Get ready for the new season — up to 30% off',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 _LocaleSelector(catalog: catalog),
               ],

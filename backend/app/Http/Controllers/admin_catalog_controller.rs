@@ -161,6 +161,107 @@ impl AdminCatalogController {
         resource(json!(rows), Value::Null)
     }
 
+    /// `GET /api/admin/catalog/families` - familias de atributos.
+    pub async fn families(admin: auth::Admin) -> Response {
+        let _ = admin;
+        let rows = db::select(
+            "SELECT * FROM `attribute_families` ORDER BY `id`",
+            &[],
+        )
+        .await
+        .unwrap_or_default();
+        resource(json!(rows), Value::Null)
+    }
+
+    /// `POST /api/admin/catalog/families/store` - `{code, name}`.
+    pub async fn store_family(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        let Some(code) = body["code"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("code".into(), "The code field is required.".into())]);
+        };
+        let taken = db::select_one(
+            "SELECT `id` FROM `attribute_families` WHERE `code` = ? LIMIT 1",
+            &[Value::String(code.to_string())],
+        )
+        .await
+        .ok()
+        .flatten();
+        if taken.is_some() {
+            return validation_error(vec![("code".into(), "The code has already been taken.".into())]);
+        }
+        match db::insert(
+            "attribute_families",
+            &json!({
+                "code": code,
+                "name": body["name"].as_str().unwrap_or_default().trim(),
+                "status": 1,
+                "is_user_defined": 1,
+                "created_at": now(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The attribute family has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/catalog/families/edit/{id}` - solo user-defined.
+    pub async fn update_family(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let family = db::find_by_id("attribute_families", id).await.ok().flatten();
+        let Some(family) = family else {
+            return message(StatusCode::NOT_FOUND, "Family not found.");
+        };
+        if family["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(StatusCode::UNPROCESSABLE_ENTITY, "The default family cannot be modified.");
+        }
+        match db::update(
+            "attribute_families",
+            id,
+            &json!({"name": body["name"].as_str().unwrap_or_default().trim(), "updated_at": now()}),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The attribute family has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/catalog/families/{id}` - solo user-defined y sin
+    /// productos asignados.
+    pub async fn destroy_family(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let family = db::find_by_id("attribute_families", id).await.ok().flatten();
+        let Some(family) = family else {
+            return message(StatusCode::NOT_FOUND, "Family not found.");
+        };
+        if family["is_user_defined"].as_i64().unwrap_or(1) == 0 {
+            return message(StatusCode::UNPROCESSABLE_ENTITY, "The default family cannot be deleted.");
+        }
+        let in_use = db::scalar_i64(
+            "SELECT COUNT(*) FROM `products` WHERE `attribute_family_id` = ?",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or(0);
+        if in_use > 0 {
+            return validation_error(vec![(
+                "id".into(),
+                "The family has products assigned and cannot be deleted.".into(),
+            )]);
+        }
+        match db::delete("attribute_families", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The attribute family has been deleted successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `GET /api/admin/catalog/attributes/all` - todos los atributos con su
     /// tipo (para el editor de condiciones de reglas).
     pub async fn all_attributes(admin: auth::Admin) -> Response {
