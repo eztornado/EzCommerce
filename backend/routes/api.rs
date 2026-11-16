@@ -113,6 +113,8 @@ pub fn routes() -> Router {
         .post("/admin/catalog/products/mass-delete", AdminCatalogController::mass_delete_products)
         .post("/admin/catalog/products/reindex-flats", AdminCatalogController::reindex_flats)
         .post("/admin/catalog/products/copy/{id}", AdminCatalogController::copy_product)
+        .get("/admin/catalog/products/booking/{id}", AdminCatalogController::booking_config)
+        .post("/admin/catalog/products/booking/{id}", AdminCatalogController::store_booking_config)
         .post("/admin/catalog/products/edit/{id}/variants", AdminCatalogController::store_variant)
         .delete("/admin/catalog/products/variants/{id}", AdminCatalogController::delete_variant)
         .post("/admin/catalog/categories", AdminCatalogController::categories_grid)

@@ -25,32 +25,11 @@ jobs:
           cp .env.example .env
           cargo run -- migrate:fresh --seed
 
-  frontend:
-    name: Frontend Flutter
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          # Fijada para reproducibilidad: desde 3.48 el import de
-          # flutter/material.dart emite infos de deprecación masivos.
-          flutter-version: 3.47.4
-          channel: stable
-          cache: true
-      - name: pub get
-        run: flutter pub get
-      - name: analyze
-        run: flutter analyze
-      - name: build web
-        run: flutter build web --release
 
   docker:
     name: Docker images
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [backend, frontend-react]
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4

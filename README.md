@@ -2,22 +2,20 @@
 
 Plataforma de comercio electrónico de código completo: una tienda online
 responsive y un panel de administración, construidos con un **backend API en
-Rust** (framework Larust) y un **frontend Flutter** que compila a web, Android
-e iOS desde la misma base de código.
+Rust** (framework Larust) y un **frontend web en React con Mantine**.
 
 Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
 **MySQL/MariaDB** en producción y SQLite como base de datos de desarrollo.
 
 ## Características
 
-### Tienda (Flutter, responsive web + móvil)
+### Tienda (React, responsive web)
 
 - Página de inicio configurable por secciones (carruseles de imágenes,
-  productos y categorías, banners de contenido, tira de servicios)
-- Catálogo con búsqueda, filtros por atributos y precio, ordenación y carga
-  progresiva
+  productos y categorías, banners de contenido)
+- Catálogo con búsqueda, filtros por atributos y precio, ordenación
 - Ficha de producto con galería, variantes configurables con swatches de
-  color, productos agrupados, bundles y descargables
+  color y productos agrupados
 - Carrito para invitados (token de carrito firmado) y clientes registrados,
   cupones y estimación de envío
 - Checkout de una página: dirección, método de envío, método de pago,
@@ -25,27 +23,31 @@ Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
 - Cuenta de cliente: perfil, pedidos (detalle, cancelación, reordenar),
   direcciones, wishlist, reseñas de productos
 - Autenticación completa: registro, login, restablecimiento de contraseña
-- Panel de administración accesible desde la misma app
+- Selector de idioma y moneda del canal en la cabecera
 
-### Panel de administración (Flutter)
+### Panel de administración (React)
 
-- Dashboard con métricas de ventas, pedidos, clientes y stock bajo mínimos
+- Dashboard con métricas de ventas, pedidos, clientes y gráfica de los
+  últimos 30 días
 - DataGrid genérico con búsqueda, filtros, ordenación, paginación, acciones
   masivas y exportación CSV
 - Productos: creación por tipos (simple, virtual, configurable, agrupado,
-  bundle, descargable), atributos EAV, inventario por almacén, imágenes,
-  precios especiales por fechas y por grupo de cliente
-- Categorías (árbol jerárquico) y atributos con familias y grupos
+  bundle, descargable), editor por pestañas con precios especiales por
+  ventana de fechas, linked products, variantes, inventario por almacén,
+  imágenes y copia de producto
+- Categorías (árbol jerárquico), atributos con familias y grupos
 - Pedidos con ciclo completo: facturas, envíos (multi-almacén), reembolsos y
   cancelación, con estados derivados de las cantidades y descuento de stock
-- Clientes: ficha 360º, direcciones, notas y pedidos asociados
+- Clientes: ficha con pedidos, direcciones, reseñas y wishlist; grupos de
+  clientes y moderación de reseñas
 - Marketing: reglas de carrito con cupones (porcentaje, importe fijo, compra
   X consigue Y, reparto proporcional) y reglas de catálogo con reindexado de
   precios
-- CMS, reglas de SEO (URL rewrites, términos y sinónimos de búsqueda),
-  localización (canales, monedas, idiomas), usuarios y roles con ACL
-- RMA (devoluciones) y solicitudes GDPR con exportación y anonimización de
-  datos
+- Communications: plantillas de email, eventos y campañas con envío a los
+  suscriptores
+- Search SEO: URL rewrites, términos y sinónimos de búsqueda
+- CMS, localización (canales, monedas, idiomas), usuarios y roles con ACL
+- Reporting por rangos de fecha con export CSV
 
 ### Backend API (Rust)
 
@@ -55,22 +57,23 @@ Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
   envío planificadas y gratuitas, y reserva de inventario
 - Precios materializados (`product_flat`, índices de precio e inventario) al
   estilo de Bagisto
+- Localización por idioma y conversión de moneda con tasas de cambio
+- Reservas (bookings) por slots para productos de tipo booking
 - Migraciones SQL con doble dialecto (SQLite/MySQL) y seeders idempotentes
 - Salud del servicio en `/up` y almacenamiento de imágenes con servir estático
 
 ## Estructura del repositorio
 
 ```
-backend/    API en Rust (Larust): controladores, motor de carrito/ventas,
-            migraciones SQL y seeders
-frontend/   App Flutter: tienda (features/shop) y panel de administración
-            (features/admin) compartiendo núcleo (core/)
+backend/         API en Rust (Larust): controladores, motor de carrito/ventas,
+                 migraciones SQL y seeders
+frontend-react/  App web React (Mantine): tienda y panel de administración
 ```
 
 ## Requisitos
 
 - Rust estable (backend)
-- Flutter estable (frontend)
+- Node 20+ (frontend)
 - MariaDB/MySQL 10.4+ en producción; SQLite para desarrollo local
 
 ## Datos de ejemplo
@@ -106,14 +109,15 @@ cargo run                           # API en http://127.0.0.1:34187
 Frontend:
 
 ```bash
-cd frontend
-flutter pub get
-flutter run -d chrome               # o flutter build web
+cd frontend-react
+npm install
+npm run dev   # Vite con proxy /api -> http://127.0.0.1:34187
 ```
 
-La URL del API se configura en `frontend/lib/core/api/api_client.dart`
-(`ApiClient.baseUrl`). Las credenciales del administrador y el resto de
-parámetros se definen en `backend/.env` (ver `.env.example`).
+La URL del API se configura con `VITE_API_BASE` en `frontend-react` (vacía
+por defecto: rutas `/api` relativas al propio dominio, con proxy de Vite en
+desarrollo). Las credenciales del administrador y el resto de parámetros se
+definen en `backend/.env` (ver `.env.example`).
 
 ## Despliegue con Docker Compose
 
@@ -126,7 +130,7 @@ Servicios:
 - `api` — binario Rust; ejecuta migraciones y seeders antes de servir
   (healthcheck en `/up`, volumen `api_storage` para las imágenes subidas)
 - `db` — MariaDB 11 con volumen persistente
-- `web` — nginx que sirve el SPA Flutter compilado y hace proxy de `/api` y
+- `web` — nginx que sirve el SPA React compilado y hace proxy de `/api` y
   `/storage` hacia el API (mismo origen, sin CORS)
 
 Variables principales (ver `docker-compose.yml`): `JWT_SECRET`, `DB_*`,
@@ -160,7 +164,7 @@ al propio dominio). Si el API se publica en otro dominio, cambiar ese build-arg.
 GitHub Actions (`.github/workflows/ci.yml`) valida en cada push:
 
 - Backend: `cargo check` + migraciones y seeders sobre SQLite
-- Frontend: `flutter analyze` + `flutter build web`
+- Frontend: `npm install` + `npm run build` (TypeScript + Vite)
 - Construcción de las imágenes Docker (API y web)
 
 ## API
