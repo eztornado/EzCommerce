@@ -223,8 +223,8 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
                         ),
                         Switch(
                           value: (section['status'] ?? 1) == 1,
-                          activeColor: AppColors
-                              .navyBlue, // ignore: deprecated_member_use
+                          activeThumbColor: AppColors
+                              .navyBlue,
                           onChanged: (_) => _toggleStatus(section),
                         ),
                         IconButton(
@@ -613,10 +613,11 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
           onChanged: (value) {
             try {
               final parsed = jsonDecode(value);
-              if (parsed is Map<String, dynamic>)
+              if (parsed is Map<String, dynamic>) {
                 _options
                   ..clear()
                   ..addAll(parsed);
+              }
             } catch (_) {}
           },
         ),

@@ -258,8 +258,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
                 children: [
                   Switch(
                     value: _applyToShipping,
-                    activeColor:
-                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    activeThumbColor:
+                    AppColors.navyBlue,
                     onChanged: (value) =>
                         setState(() => _applyToShipping = value),
                   ),
@@ -270,8 +270,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
                   const SizedBox(width: 16),
                   Switch(
                     value: _freeShipping,
-                    activeColor:
-                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    activeThumbColor:
+                    AppColors.navyBlue,
                     onChanged: (value) => setState(() => _freeShipping = value),
                   ),
                   const Text(
@@ -285,8 +285,8 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
                 children: [
                   Switch(
                     value: _couponType == 2,
-                    activeColor:
-                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    activeThumbColor:
+                    AppColors.navyBlue,
                     onChanged: (value) =>
                         setState(() => _couponType = value ? 2 : 1),
                   ),

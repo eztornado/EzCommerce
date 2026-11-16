@@ -1839,8 +1839,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             children: [
               Switch(
                 value: _notify,
-                activeColor:
-                    AppColors.navyBlue, // ignore: deprecated_member_use
+                activeThumbColor:
+                    AppColors.navyBlue,
                 onChanged: (value) => setState(() => _notify = value),
               ),
               const Text(
