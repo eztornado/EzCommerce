@@ -56,7 +56,7 @@ services:
 
   web:
     build:
-      context: ./frontend
+      context: ./frontend-react
       args:
         # SAME_ORIGIN: el SPA llama a /api en su propio dominio (proxy nginx).
         API_BASE_URL: SAME_ORIGIN
