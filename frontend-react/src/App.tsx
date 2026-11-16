@@ -21,6 +21,8 @@ import { CartRulesPage, CatalogRulesPage, SearchSeoPage } from './pages/admin/Ma
 import { InventorySourcesPage } from './pages/admin/SettingsPages';
 import { ConfigurationPage, DataTransferPage } from './pages/admin/SettingsExtra';
 import ReportingPage from './pages/admin/ReportingPage';
+import OrderDetailPage from './pages/admin/OrdersDetailPage';
+import SettingsTabsPage from './pages/admin/SettingsTabsPage';
 
 export default function App() {
   const loadContext = useShop((s) => s.loadContext);
@@ -61,6 +63,8 @@ export default function App() {
           <Route path="configuration" element={<ConfigurationPage />} />
           <Route path="data-transfer" element={<DataTransferPage />} />
           <Route path="reporting" element={<ReportingPage />} />
+          <Route path="orders/view/:id" element={<OrderDetailPage />} />
+          <Route path="settings-tabs" element={<SettingsTabsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
