@@ -8,6 +8,7 @@ use larust_support::orm::{backend, pool, Backend};
 use larust_support::serde_json::{json, Value};
 
 use crate::config::app::config;
+use crate::support::db;
 
 fn internal(error: impl std::error::Error + Send + Sync + 'static) -> AppError {
     AppError::Internal(Box::new(error))
@@ -1265,12 +1266,10 @@ async fn seed_demo_cart_rules() -> Result<(), AppError> {
     .map_err(internal)?;
     let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `cart_rules`").fetch_one(pool).await.map_err(internal)?;
     for channel_id in [1] {
-        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)")
-            .bind(rule_id).bind(channel_id).execute(pool).await;
+        let _ = db::execute("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)", &[Value::from(rule_id), Value::from(channel_id)]).await;
     }
     for group_id in [1, 2] {
-        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)")
-            .bind(rule_id).bind(group_id).execute(pool).await;
+        let _ = db::execute("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)", &[Value::from(rule_id), Value::from(group_id)]).await;
     }
 
     // Cupón WELCOME10: 10 EUR fijos.
@@ -1285,12 +1284,10 @@ async fn seed_demo_cart_rules() -> Result<(), AppError> {
     .map_err(internal)?;
     let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `cart_rules`").fetch_one(pool).await.map_err(internal)?;
     for channel_id in [1] {
-        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)")
-            .bind(rule_id).bind(channel_id).execute(pool).await;
+        let _ = db::execute("INSERT OR IGNORE INTO `cart_rule_channels` (`cart_rule_id`, `channel_id`) VALUES (?, ?)", &[Value::from(rule_id), Value::from(channel_id)]).await;
     }
     for group_id in [1, 2] {
-        let _ = sqlx::query("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)")
-            .bind(rule_id).bind(group_id).execute(pool).await;
+        let _ = db::execute("INSERT OR IGNORE INTO `cart_rule_customer_groups` (`cart_rule_id`, `customer_group_id`) VALUES (?, ?)", &[Value::from(rule_id), Value::from(group_id)]).await;
     }
     let _ = sqlx::query(
         "INSERT INTO `cart_rule_coupons` (`code`, `usage_limit`, `usage_per_customer`, `times_used`, `type`, `is_primary`, `cart_rule_id`, `created_at`, `updated_at`) \
@@ -1325,11 +1322,9 @@ async fn seed_demo_catalog_rule() -> Result<(), AppError> {
     .await
     .map_err(internal)?;
     let rule_id: i64 = sqlx::query_scalar("SELECT MAX(`id`) FROM `catalog_rules`").fetch_one(pool).await.map_err(internal)?;
-    let _ = sqlx::query("INSERT OR IGNORE INTO `catalog_rule_channels` (`catalog_rule_id`, `channel_id`) VALUES (?, 1)")
-        .bind(rule_id).execute(pool).await;
+    let _ = db::execute("INSERT OR IGNORE INTO `catalog_rule_channels` (`catalog_rule_id`, `channel_id`) VALUES (?, 1)", &[Value::from(rule_id)]).await;
     for group_id in [1, 2] {
-        let _ = sqlx::query("INSERT OR IGNORE INTO `catalog_rule_customer_groups` (`catalog_rule_id`, `customer_group_id`) VALUES (?, ?)")
-            .bind(rule_id).bind(group_id).execute(pool).await;
+        let _ = db::execute("INSERT OR IGNORE INTO `catalog_rule_customer_groups` (`catalog_rule_id`, `customer_group_id`) VALUES (?, ?)", &[Value::from(rule_id), Value::from(group_id)]).await;
     }
     // Reindexa los precios de todo el catálogo con la regla aplicada.
     if let Err(error) = crate::support::catalog_rules::reindex_all().await {

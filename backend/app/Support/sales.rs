@@ -299,8 +299,8 @@ pub async fn order_resource(order_id: i64) -> ApiResult<Value> {
 
     // Derived action permissions (`canShip/canInvoice/canCancel/canRefund`).
     let totals = db::select_one(
-        "SELECT SUM(`qty_ordered`) AS ordered, SUM(`qty_invoiced`) AS invoiced, \
-                SUM(`qty_shipped`) AS shipped, SUM(`qty_canceled`) AS canceled, SUM(`qty_refunded`) AS refunded \
+        "SELECT CAST(SUM(`qty_ordered`) AS SIGNED) AS ordered, CAST(SUM(`qty_invoiced`) AS SIGNED) AS invoiced, \
+                CAST(SUM(`qty_shipped`) AS SIGNED) AS shipped, CAST(SUM(`qty_canceled`) AS SIGNED) AS canceled, CAST(SUM(`qty_refunded`) AS SIGNED) AS refunded \
          FROM `order_items` WHERE `order_id` = ?",
         &[Value::from(order_id)],
     )
@@ -326,8 +326,8 @@ pub async fn order_resource(order_id: i64) -> ApiResult<Value> {
 /// (`OrderRepository::updateOrderStatus`).
 pub async fn update_order_status(order_id: i64) -> ApiResult<()> {
     let totals = db::select_one(
-        "SELECT SUM(`qty_ordered`) AS ordered, SUM(`qty_invoiced`) AS invoiced, \
-                SUM(`qty_shipped`) AS shipped, SUM(`qty_canceled`) AS canceled, SUM(`qty_refunded`) AS refunded \
+        "SELECT CAST(SUM(`qty_ordered`) AS SIGNED) AS ordered, CAST(SUM(`qty_invoiced`) AS SIGNED) AS invoiced, \
+                CAST(SUM(`qty_shipped`) AS SIGNED) AS shipped, CAST(SUM(`qty_canceled`) AS SIGNED) AS canceled, CAST(SUM(`qty_refunded`) AS SIGNED) AS refunded \
          FROM `order_items` WHERE `order_id` = ?",
         &[Value::from(order_id)],
     )
@@ -544,9 +544,10 @@ pub async fn cancel_order(order_id: i64) -> ApiResult<()> {
         if is_stockable(item["type"].as_str().unwrap_or("simple")) {
             let product_id = item["product_id"].as_i64().unwrap_or(0);
             let _ = db::execute(
-                "UPDATE `product_ordered_inventories` SET `qty` = MAX(`qty` - ?, 0), `updated_at` = ? \
+                "UPDATE `product_ordered_inventories` SET `qty` = CASE WHEN `qty` - ? < 0 THEN 0 ELSE `qty` - ? END, `updated_at` = ? \
                  WHERE `product_id` = ? AND `channel_id` = ?",
                 &[
+                    Value::from(qty_to_cancel),
                     Value::from(qty_to_cancel),
                     Value::String(now()),
                     Value::from(product_id),
@@ -633,9 +634,10 @@ pub async fn create_shipment(
 
         // Discount the inventory source (floor at 0).
         let _ = db::execute(
-            "UPDATE `product_inventories` SET `qty` = MAX(`qty` - ?, 0), `updated_at` = ? \
+            "UPDATE `product_inventories` SET `qty` = CASE WHEN `qty` - ? < 0 THEN 0 ELSE `qty` - ? END, `updated_at` = ? \
              WHERE `product_id` = ? AND `inventory_source_id` = ?",
             &[
+                Value::from(qty),
                 Value::from(qty),
                 Value::String(now()),
                 item["product_id"].clone(),
@@ -787,15 +789,17 @@ pub async fn create_refund(
              WHERE `product_id` = ? AND `inventory_source_id` = 1",
             &[
                 Value::from(qty),
+                Value::from(qty),
                 Value::String(now()),
                 item["product_id"].clone(),
             ],
         )
         .await;
         let _ = db::execute(
-            "UPDATE `product_ordered_inventories` SET `qty` = MAX(`qty` - ?, 0), `updated_at` = ? \
+            "UPDATE `product_ordered_inventories` SET `qty` = CASE WHEN `qty` - ? < 0 THEN 0 ELSE `qty` - ? END, `updated_at` = ? \
              WHERE `product_id` = ?",
             &[
+                Value::from(qty),
                 Value::from(qty),
                 Value::String(now()),
                 item["product_id"].clone(),

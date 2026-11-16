@@ -301,7 +301,10 @@ pub async fn scalar_i64(sql: &str, binds: &[Value]) -> ApiResult<i64> {
 
 pub async fn execute(sql: &str, binds: &[Value]) -> ApiResult<u64> {
     let db_pool = pool()?;
-    let mut query = sqlx::query(sql);
+    // `INSERT OR IGNORE` es sintaxis de SQLite; MySQL la rechaza. Se reescribe
+    // para que los upserts escritos para SQLite funcionen en ambos motores.
+    let sql = sql.replace("INSERT OR IGNORE INTO", "INSERT IGNORE INTO");
+    let mut query = sqlx::query(&sql);
     for value in binds {
         query = bind_value(query, value);
     }
