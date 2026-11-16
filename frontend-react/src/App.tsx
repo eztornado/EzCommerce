@@ -13,6 +13,13 @@ import AdminLoginPage from './pages/admin/LoginPage';
 import AdminShell from './pages/admin/AdminShell';
 import DashboardPage from './pages/admin/DashboardPage';
 import ProductsPage from './pages/admin/ProductsPage';
+import { OrdersPage, InvoicesPage, ShipmentsPage, RefundsPage } from './pages/admin/SalesPages';
+import { CategoriesPage, AttributesPage, FamiliesPage } from './pages/admin/CatalogPages';
+import { CustomersPage, GroupsPage, ReviewsPage } from './pages/admin/CustomersPages';
+import { CartRulesPage, CatalogRulesPage, SearchSeoPage } from './pages/admin/MarketingPages';
+import { InventorySourcesPage } from './pages/admin/SettingsPages';
+import { ConfigurationPage, DataTransferPage } from './pages/admin/SettingsExtra';
+import ReportingPage from './pages/admin/ReportingPage';
 
 export default function App() {
   const loadContext = useShop((s) => s.loadContext);
@@ -35,6 +42,23 @@ export default function App() {
         <Route path="/admin" element={<AdminShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
+          <Route path="attributes" element={<AttributesPage />} />
+          <Route path="families" element={<FamiliesPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="shipments" element={<ShipmentsPage />} />
+          <Route path="refunds" element={<RefundsPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/groups" element={<GroupsPage />} />
+          <Route path="customers/reviews" element={<ReviewsPage />} />
+          <Route path="cart-rules" element={<CartRulesPage />} />
+          <Route path="catalog-rules" element={<CatalogRulesPage />} />
+          <Route path="search-seo" element={<SearchSeoPage />} />
+          <Route path="inventory-sources" element={<InventorySourcesPage />} />
+          <Route path="configuration" element={<ConfigurationPage />} />
+          <Route path="data-transfer" element={<DataTransferPage />} />
+          <Route path="reporting" element={<ReportingPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
