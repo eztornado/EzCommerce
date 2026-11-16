@@ -179,6 +179,32 @@ pub async fn create_order_from_cart(cart_id: i64) -> ApiResult<Value> {
         )
         .await?;
 
+        // Bookings: registrar la reserva del slot elegido (producto tipo
+        // booking; el slot viene en el additional del cart item).
+        if item["type"].as_str() == Some("booking") {
+            // El additional del cart item envuelve los extras en "options".
+            let options = item["additional"]
+                .get("options")
+                .cloned()
+                .unwrap_or_else(|| item["additional"].clone());
+            let booking_from = options.get("booking_from").and_then(Value::as_i64).unwrap_or(0);
+            let booking_to = options.get("booking_to").and_then(Value::as_i64).unwrap_or(0);
+            let _ = db::insert(
+                "bookings",
+                &json!({
+                    "qty": item["quantity"].clone(),
+                    "from": booking_from,
+                    "to": booking_to,
+                    "product_id": item["product_id"].clone(),
+                    "order_item_id": item_id,
+                    "order_id": order_id,
+                    "created_at": now(),
+                    "updated_at": now(),
+                }),
+            )
+            .await?;
+        }
+
         // Reserve stock for stockable products.
         if is_stockable(item["type"].as_str().unwrap_or("simple")) {
             let product_id = item["product_id"].as_i64().unwrap_or(0);

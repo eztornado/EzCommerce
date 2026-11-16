@@ -1224,3 +1224,119 @@ fn categories_tree_from(
         payload
     })
 }
+
+// Booking: configuración de reservas del producto (ubicado tras families).
+
+impl AdminCatalogController {
+    /// `GET /api/admin/catalog/products/booking/{id}` - config de reserva.
+    pub async fn booking_config(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let booking = db::select_one(
+            "SELECT * FROM `booking_products` WHERE `product_id` = ? LIMIT 1",
+            &[Value::from(id)],
+        )
+        .await
+        .ok()
+        .flatten();
+        let slots = match &booking {
+            Some(row) => db::select_one(
+                "SELECT * FROM `booking_product_default_slots` WHERE `booking_product_id` = ? LIMIT 1",
+                &[row["id"].clone()],
+            )
+            .await
+            .ok()
+            .flatten(),
+            None => None,
+        };
+        resource(
+            json!({
+                "booking": booking,
+                "slots": slots,
+            }),
+            Value::Null,
+        )
+    }
+
+    /// `POST /api/admin/catalog/products/booking/{id}` - upsert de la config:
+    /// `{qty, location, available_every_week, duration, break_time, slots}`.
+    pub async fn store_booking_config(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let product = db::find_by_id("products", id).await.ok().flatten();
+        if product.is_none() {
+            return message(StatusCode::NOT_FOUND, "Product not found.");
+        }
+        let existing = db::select_one(
+            "SELECT `id` FROM `booking_products` WHERE `product_id` = ? LIMIT 1",
+            &[Value::from(id)],
+        )
+        .await
+        .ok()
+        .flatten();
+        let booking_id = match existing {
+            Some(row) => {
+                let _ = db::update(
+                    "booking_products",
+                    row["id"].as_i64().unwrap_or(0),
+                    &json!({
+                        "qty": body["qty"].as_i64().unwrap_or(1),
+                        "location": body["location"].clone(),
+                        "available_every_week": body["available_every_week"].as_i64().unwrap_or(1),
+                        "updated_at": now(),
+                    }),
+                )
+                .await;
+                row["id"].as_i64().unwrap_or(0)
+            }
+            None => match db::insert(
+                "booking_products",
+                &json!({
+                    "type": "default",
+                    "qty": body["qty"].as_i64().unwrap_or(1),
+                    "location": body["location"].clone(),
+                    "available_every_week": body["available_every_week"].as_i64().unwrap_or(1),
+                    "product_id": id,
+                    "created_at": now(),
+                    "updated_at": now(),
+                }),
+            )
+            .await
+            {
+                Ok(booking_id) => booking_id,
+                Err(error) => return error.into(),
+            },
+        };
+
+        // Upsert de los slots semanales (duration, break y JSON de franjas).
+        let slots_existing = db::select_one(
+            "SELECT `id` FROM `booking_product_default_slots` WHERE `booking_product_id` = ? LIMIT 1",
+            &[Value::from(booking_id)],
+        )
+        .await
+        .ok()
+        .flatten();
+        let slots_row = json!({
+            "duration": body["duration"].as_f64().unwrap_or(30.0),
+            "break_time": body["break_time"].as_f64().unwrap_or(0.0),
+            "slots": body["slots"].clone(),
+            "booking_type": "default",
+            "booking_product_id": booking_id,
+            "updated_at": now(),
+        });
+        match slots_existing {
+            Some(row) => {
+                let _ = db::update("booking_product_default_slots", row["id"].as_i64().unwrap_or(0), &slots_row).await;
+            }
+            None => {
+                let mut slots_row = db::to_map(slots_row);
+                slots_row.insert("created_at".into(), json!(now()));
+                let _ = db::insert("booking_product_default_slots", &Value::Object(slots_row)).await;
+            }
+        }
+
+        resource(json!({"id": booking_id}), "The booking configuration has been saved successfully.")
+    }
+}

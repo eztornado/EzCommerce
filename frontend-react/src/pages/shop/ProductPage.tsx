@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Group, Image, Text, Select, NumberInput, Button, SimpleGrid, Stack, Card, Table, Alert, Loader, Center } from '@mantine/core';
+import { Container, Group, Image, Text, Select, NumberInput, Button, SimpleGrid, Stack, Card, Table, Alert, Loader, Center, TextInput } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { shopQuery } from '../../store';
@@ -17,6 +17,8 @@ export default function ProductPage() {
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingSlot, setBookingSlot] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -46,6 +48,13 @@ export default function ProductPage() {
     setError('');
     try {
       const body: any = { product_id: product.id, quantity, ...selected };
+      if (product.type === 'booking' && bookingDate && bookingSlot) {
+        const [start, end] = bookingSlot.split('-');
+        body.booking_from = Math.floor(new Date(`${bookingDate}T${start.trim()}:00`).getTime() / 1000);
+        body.booking_to = Math.floor(new Date(`${bookingDate}T${(end ?? start).trim()}:00`).getTime() / 1000);
+        body.booking_slot = bookingSlot;
+        body.booking_date = bookingDate;
+      }
       const data = await api.post('checkout/cart', body);
       if (data?.cart_token) localStorage.setItem('cart_token', data.cart_token);
       window.dispatchEvent(new Event('cart-updated'));
@@ -80,6 +89,29 @@ export default function ProductPage() {
           </Group>
           <Text c="dimmed" size="sm">{product.in_stock ? 'In stock' : 'Out of stock'}</Text>
 
+          {product.type === 'booking' && product.booking && (
+            <Stack gap="sm">
+              {product.booking.location && product.booking.show_location === 1 && (
+                <Text size="sm" c="dimmed">Location: {product.booking.location}</Text>
+              )}
+              <TextInput
+                label="Booking date"
+                type="date"
+                value={bookingDate}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setBookingDate(e.currentTarget.value)}
+              />
+              <Select
+                label="Time slot"
+                placeholder="Select a slot"
+                data={Object.entries(product.booking.slots ?? {}).flatMap(([day, slots]) =>
+                  (slots as string[]).map((slot) => ({ value: `${day} ${slot}`, label: `${day} ${slot}` })),
+                )}
+                value={bookingSlot}
+                onChange={(v) => setBookingSlot(v ?? '')}
+              />
+            </Stack>
+          )}
+
           {isConfigurable && superAttrs.map((attr) => (
             <Select
               key={attr.code}
@@ -94,7 +126,7 @@ export default function ProductPage() {
           <Group>
             <NumberInput label="Quantity" min={1} value={quantity} onChange={(v) => setQuantity(Number(v) || 1)} w={110} />
             <Button
-              mt="lg" size="md" disabled={isConfigurable && !allSelected} loading={adding} onClick={addToCart}>
+              mt="lg" size="md" disabled={(isConfigurable && !allSelected) || (product.type === 'booking' && (!bookingDate || !bookingSlot))} loading={adding} onClick={addToCart}>
               Add to cart
             </Button>
           </Group>

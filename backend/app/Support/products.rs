@@ -229,6 +229,44 @@ pub async fn detail_in(
     detail_value["additional_information"] = Value::Array(additional);
     detail_value["description"] = attributes["description"].clone();
 
+    // Bookings: exponer la configuración de reservas (tipo default con
+    // slots semanales) para que la tienda muestre fecha y franja.
+    if product_type == "booking" {
+        let booking_row = db::select_one(
+            "SELECT * FROM `booking_products` WHERE `product_id` = ? LIMIT 1",
+            &[Value::from(product_id)],
+        )
+        .await
+        .unwrap_or_default();
+        let slots = match &booking_row {
+            Some(row) => db::select_one(
+                "SELECT `duration`, `break_time`, `slots` FROM `booking_product_default_slots` \
+                 WHERE `booking_product_id` = ? LIMIT 1",
+                &[row["id"].clone()],
+            )
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(db::empty_row),
+            None => db::empty_row(),
+        };
+        let slots_parsed: Value = serde_json::from_str(
+            slots["slots"].as_str().unwrap_or("{}"),
+        )
+        .unwrap_or_else(|_| json!({}));
+        let booking = booking_row.unwrap_or_else(db::empty_row);
+        detail_value["booking"] = json!({
+            "type": booking["type"],
+            "qty": booking["qty"],
+            "location": booking["location"],
+            "show_location": booking["show_location"],
+            "available_every_week": booking["available_every_week"],
+            "duration": slots["duration"],
+            "break_time": slots["break_time"],
+            "slots": slots_parsed,
+        });
+    }
+
     if product_type == "configurable" {
         let super_attributes = db::select(
             "SELECT `a`.`id`, `a`.`code`, `a`.`admin_name`, `a`.`swatch_type` FROM `product_super_attributes` `ps` \
