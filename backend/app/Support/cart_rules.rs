@@ -84,7 +84,7 @@ async fn can_process_rule(rule: &RowMap, coupon_code: Option<&str>, customer_id:
     if let Some(customer_id) = customer_id {
         if let Some(limit) = coupon["usage_per_customer"].as_i64().filter(|l| *l > 0) {
             let used = db::scalar_i64(
-                "SELECT COALESCE(SUM(`times_used`), 0) FROM `cart_rule_coupon_usage` \
+                "SELECT COALESCE(CAST(SUM(`times_used`) AS SIGNED), 0) FROM `cart_rule_coupon_usage` \
                  WHERE `cart_rule_coupon_id` = ? AND `customer_id` = ?",
                 &[coupon["id"].clone(), Value::from(customer_id)],
             )

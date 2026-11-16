@@ -112,7 +112,7 @@ pub async fn card_in(
         .map(str::to_string);
 
     let ratings = db::select_one(
-        "SELECT COALESCE(AVG(`rating`), 0) AS average, COUNT(*) AS total FROM `product_reviews` \
+        "SELECT COALESCE(CAST(AVG(`rating`) AS DOUBLE), 0) AS average, COUNT(*) AS total FROM `product_reviews` \
          WHERE `product_id` = ? AND `status` = 'approved'",
         &[Value::from(product_id)],
     )

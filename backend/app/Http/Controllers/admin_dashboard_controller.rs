@@ -70,7 +70,7 @@ impl AdminDashboardController {
         let response = match kind {
             "over-all" => {
                 let sales_current: f64 = db::scalar_i64(
-                    "SELECT CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) \
+                    "SELECT CAST(COALESCE(CAST(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) \
                      FROM `orders` WHERE `created_at` BETWEEN ? AND ?",
                     &[Value::String(start.clone()), Value::String(end.clone())],
                 )
@@ -78,7 +78,7 @@ impl AdminDashboardController {
                 .unwrap_or(0) as f64
                     / 100.0;
                 let sales_previous: f64 = db::scalar_i64(
-                    "SELECT CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) \
+                    "SELECT CAST(COALESCE(CAST(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) \
                      FROM `orders` WHERE `created_at` BETWEEN ? AND ?",
                     &[Value::String(prev_start.clone()), Value::String(prev_end.clone())],
                 )
@@ -121,7 +121,7 @@ impl AdminDashboardController {
             "today" => {
                 let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
                 let sales: f64 = db::scalar_i64(
-                    "SELECT CAST(COALESCE(SUM(`base_grand_total`), 0) * 100 AS INTEGER) FROM `orders` WHERE DATE(`created_at`) = ?",
+                    "SELECT CAST(COALESCE(CAST(SUM(`base_grand_total`) AS SIGNED), 0) * 100 AS INTEGER) FROM `orders` WHERE DATE(`created_at`) = ?",
                     &[Value::String(today.clone())],
                 )
                 .await
@@ -157,7 +157,7 @@ impl AdminDashboardController {
                 // Series over time (daily).
                 let rows = db::select(
                     "SELECT DATE(`created_at`) AS day, \
-                            CAST(COALESCE(SUM(`base_grand_total`), 0) * 100 AS INTEGER) AS total, \
+                            CAST(COALESCE(CAST(SUM(`base_grand_total`) AS SIGNED), 0) * 100 AS INTEGER) AS total, \
                             COUNT(*) AS orders \
                      FROM `orders` WHERE `created_at` BETWEEN ? AND ? GROUP BY DATE(`created_at`) ORDER BY day",
                     &[Value::String(start), Value::String(end)],
@@ -175,7 +175,7 @@ impl AdminDashboardController {
             "top-selling-products" => {
                 let rows = db::select(
                     "SELECT `oi`.`product_id`, `oi`.`name`, SUM(`oi`.`qty_ordered`) AS qty, \
-                            CAST(COALESCE(SUM(`oi`.`base_total`), 0) * 100 AS INTEGER) AS total \
+                            CAST(COALESCE(CAST(SUM(`oi`.`base_total`) AS SIGNED), 0) * 100 AS INTEGER) AS total \
                      FROM `order_items` `oi` INNER JOIN `orders` `o` ON `o`.`id` = `oi`.`order_id` \
                      WHERE `o`.`created_at` BETWEEN ? AND ? \
                      GROUP BY `oi`.`product_id`, `oi`.`name` ORDER BY qty DESC LIMIT 5",
@@ -189,7 +189,7 @@ impl AdminDashboardController {
                 let rows = db::select(
                     "SELECT `c`.`id`, `c`.`first_name`, `c`.`last_name`, `c`.`email`, \
                             COUNT(`o`.`id`) AS orders, \
-                            CAST(COALESCE(SUM(`o`.`base_grand_total`), 0) * 100 AS INTEGER) AS total \
+                            CAST(COALESCE(CAST(SUM(`o`.`base_grand_total`) AS SIGNED), 0) * 100 AS INTEGER) AS total \
                      FROM `customers` `c` INNER JOIN `orders` `o` ON `o`.`customer_id` = `c`.`id` \
                      WHERE `o`.`created_at` BETWEEN ? AND ? \
                      GROUP BY `c`.`id` ORDER BY total DESC LIMIT 5",
@@ -202,7 +202,7 @@ impl AdminDashboardController {
             "stock-threshold-products" => {
                 let rows = db::select(
                     "SELECT `p`.`id`, `p`.`sku`, COALESCE(`pf`.`name`, `p`.`sku`) AS name, \
-                            COALESCE(SUM(`pi`.`qty`), 0) - COALESCE((SELECT SUM(`qty`) FROM `product_ordered_inventories` `poi` WHERE `poi`.`product_id` = `p`.`id`), 0) AS qty \
+                            COALESCE(CAST(SUM(`pi`.`qty`) AS SIGNED), 0) - COALESCE((SELECT CAST(SUM(`qty`) AS SIGNED) FROM `product_ordered_inventories` `poi` WHERE `poi`.`product_id` = `p`.`id`), 0) AS qty \
                      FROM `products` `p` \
                      LEFT JOIN `product_flat` `pf` ON `pf`.`product_id` = `p`.`id` \
                      LEFT JOIN `product_inventories` `pi` ON `pi`.`product_id` = `p`.`id` \

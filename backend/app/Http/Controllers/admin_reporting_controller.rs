@@ -1,11 +1,11 @@
 //! Reporting: sales/products/customers con rangos y granularidad
 //! (`start`, `end`, `granularity=day|week|month`). Mirrors las fórmulas de
 //! `Webkul\Admin\Helpers\Reporting\*`:
-//! - total_sales = SUM(base_grand_total_invoiced - base_grand_total_refunded)
-//! - tax_collected = SUM(base_tax_amount_invoiced)
-//! - shipping_collected = SUM(base_shipping_invoiced)
-//! - refunds = SUM(base_grand_total_refunded)
-//! - coupon_discount = SUM(base_discount_amount) donde coupon_code no nulo
+//! - total_sales = CAST(SUM(base_grand_total_invoiced - base_grand_total_refunded) AS SIGNED)
+//! - tax_collected = CAST(SUM(base_tax_amount_invoiced) AS SIGNED)
+//! - shipping_collected = CAST(SUM(base_shipping_invoiced) AS SIGNED)
+//! - refunds = CAST(SUM(base_grand_total_refunded) AS SIGNED)
+//! - coupon_discount = CAST(SUM(base_discount_amount) AS SIGNED) donde coupon_code no nulo
 
 use std::collections::HashMap;
 
@@ -77,7 +77,7 @@ impl AdminReportingController {
             let rows = db::select(
                 &format!(
                     "SELECT {} AS day, \
-                            CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) AS sales, \
+                            CAST(COALESCE(CAST(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) AS sales, \
                             COUNT(*) AS orders \
                      FROM `orders` WHERE `created_at` BETWEEN ? AND ? \
                      GROUP BY {} ORDER BY day",
@@ -103,12 +103,12 @@ impl AdminReportingController {
 
         let totals = db::select_one(
             "SELECT \
-                CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) AS total_sales, \
+                CAST(COALESCE(CAST(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) AS total_sales, \
                 COUNT(*) AS total_orders, \
-                CAST(COALESCE(SUM(`base_tax_amount_invoiced`), 0) * 100 AS INTEGER) AS tax_collected, \
-                CAST(COALESCE(SUM(`base_shipping_invoiced`), 0) * 100 AS INTEGER) AS shipping_collected, \
-                CAST(COALESCE(SUM(`base_grand_total_refunded`), 0) * 100 AS INTEGER) AS refunds, \
-                CAST(COALESCE(SUM(CASE WHEN `coupon_code` IS NOT NULL THEN `base_discount_amount` ELSE 0 END), 0) * 100 AS INTEGER) AS coupon_discount \
+                CAST(COALESCE(CAST(SUM(`base_tax_amount_invoiced`) AS SIGNED), 0) * 100 AS INTEGER) AS tax_collected, \
+                CAST(COALESCE(CAST(SUM(`base_shipping_invoiced`) AS SIGNED), 0) * 100 AS INTEGER) AS shipping_collected, \
+                CAST(COALESCE(CAST(SUM(`base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) AS refunds, \
+                CAST(COALESCE(CAST(SUM(CASE WHEN `coupon_code` IS NOT NULL THEN `base_discount_amount` ELSE 0 END) AS SIGNED), 0) * 100 AS INTEGER) AS coupon_discount \
              FROM `orders` WHERE `created_at` BETWEEN ? AND ?",
             &[Value::String(start.clone()), Value::String(end.clone())],
         )
@@ -119,7 +119,7 @@ impl AdminReportingController {
         let series = db::select(
             &format!(
                 "SELECT {} AS day, \
-                        CAST(COALESCE(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`), 0) * 100 AS INTEGER) AS sales, \
+                        CAST(COALESCE(CAST(SUM(`base_grand_total_invoiced` - `base_grand_total_refunded`) AS SIGNED), 0) * 100 AS INTEGER) AS sales, \
                         COUNT(*) AS orders \
                  FROM `orders` WHERE `created_at` BETWEEN ? AND ? \
                  GROUP BY {} ORDER BY day",
@@ -173,7 +173,7 @@ impl AdminReportingController {
         let rows = db::select(
             "SELECT `oi`.`product_id`, `oi`.`name`, `oi`.`sku`, \
                     SUM(`oi`.`qty_ordered`) AS qty, \
-                    CAST(COALESCE(SUM(`oi`.`base_total`), 0) * 100 AS INTEGER) AS total \
+                    CAST(COALESCE(CAST(SUM(`oi`.`base_total`) AS SIGNED), 0) * 100 AS INTEGER) AS total \
              FROM `order_items` `oi` INNER JOIN `orders` `o` ON `o`.`id` = `oi`.`order_id` \
              WHERE `o`.`created_at` BETWEEN ? AND ? \
              GROUP BY `oi`.`product_id`, `oi`.`name`, `oi`.`sku` ORDER BY total DESC LIMIT 10",
@@ -212,7 +212,7 @@ impl AdminReportingController {
         let rows = db::select(
             "SELECT `c`.`id`, `c`.`email`, `c`.`first_name`, `c`.`last_name`, \
                     COUNT(`o`.`id`) AS orders, \
-                    CAST(COALESCE(SUM(`o`.`base_grand_total`), 0) * 100 AS INTEGER) AS total \
+                    CAST(COALESCE(CAST(SUM(`o`.`base_grand_total`) AS SIGNED), 0) * 100 AS INTEGER) AS total \
              FROM `customers` `c` INNER JOIN `orders` `o` ON `o`.`customer_id` = `c`.`id` \
              WHERE `o`.`created_at` BETWEEN ? AND ? \
              GROUP BY `c`.`id` ORDER BY total DESC LIMIT 10",

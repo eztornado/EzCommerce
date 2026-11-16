@@ -231,7 +231,7 @@ pub async fn product_type(product_id: i64) -> ApiResult<String> {
 /// Available stock: inventory sources (status=1) minus ordered (reserved).
 pub async fn available_quantity(product_id: i64, channel_id: i64) -> i64 {
     let available: i64 = db::scalar_i64(
-        "SELECT COALESCE(SUM(`pi`.`qty`), 0) FROM `product_inventories` `pi` \
+        "SELECT COALESCE(CAST(SUM(`pi`.`qty`) AS SIGNED), 0) FROM `product_inventories` `pi` \
          INNER JOIN `inventory_sources` `isrc` ON `isrc`.`id` = `pi`.`inventory_source_id` \
          WHERE `pi`.`product_id` = ? AND `isrc`.`status` = 1 \
          AND `isrc`.`id` IN (SELECT `inventory_source_id` FROM `channel_inventory_sources` WHERE `channel_id` = ?)",
@@ -240,7 +240,7 @@ pub async fn available_quantity(product_id: i64, channel_id: i64) -> i64 {
     .await
     .unwrap_or(0);
     let ordered: i64 = db::scalar_i64(
-        "SELECT COALESCE(SUM(`qty`), 0) FROM `product_ordered_inventories` WHERE `product_id` = ?",
+        "SELECT COALESCE(CAST(SUM(`qty`) AS SIGNED), 0) FROM `product_ordered_inventories` WHERE `product_id` = ?",
         &[Value::from(product_id)],
     )
     .await
@@ -328,7 +328,7 @@ pub async fn add_product(
         if manage_stock {
             let available = available_quantity(target_id, channel_id).await;
             let already: i64 = db::scalar_i64(
-                "SELECT COALESCE(SUM(`quantity`), 0) FROM `cart_items` WHERE `cart_id` = ? AND `product_id` = ?",
+                "SELECT COALESCE(CAST(SUM(`quantity`) AS SIGNED), 0) FROM `cart_items` WHERE `cart_id` = ? AND `product_id` = ?",
                 &[cart["id"].clone(), Value::from(target_id)],
             )
             .await

@@ -358,7 +358,7 @@ impl AdminCatalogController {
                 "qty".into(),
                 Value::from(
                     db::scalar_i64(
-                        "SELECT COALESCE(SUM(`qty`), 0) FROM `product_inventories` WHERE `product_id` = ?",
+                        "SELECT COALESCE(CAST(SUM(`qty`) AS SIGNED), 0) FROM `product_inventories` WHERE `product_id` = ?",
                         &[Value::from(variant_id)],
                     )
                     .await
