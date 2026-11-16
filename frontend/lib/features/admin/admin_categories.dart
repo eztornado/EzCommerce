@@ -82,37 +82,38 @@ class _AdminCategoriesPageState extends State<AdminCategoriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final phone = MediaQuery.of(context).size.width < 720;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(phone ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Categories',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 24,
+                    fontSize: phone ? 20 : 24,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
               PrimaryButton(
-                label: 'New Category',
+                label: phone ? 'New' : 'New Category',
                 onPressed: () => _openEditor(parentId: 1),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: phone ? 16 : 24),
           if (_loading)
             const Center(
               child: CircularProgressIndicator(color: AppColors.navyBlue),
             )
           else
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(phone ? 8 : 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(EzTheme.radiusXl),
@@ -120,12 +121,13 @@ class _AdminCategoriesPageState extends State<AdminCategoriesPage> {
               ),
               child: Column(
                 children: [
-                  const _CategoriesHeader(),
+                  _CategoriesHeader(compact: phone),
                   const Divider(height: 1, color: AppColors.zinc200),
                   ..._tree.map(
                     (category) => _CategoryTile(
                       category: category,
                       depth: 0,
+                      compact: phone,
                       onEdit: (item) => _openEditor(category: item),
                       onDelete: (item) => _delete(item.id ?? 0),
                       onAddChild: (item) => _openEditor(parentId: item.id),
@@ -141,7 +143,8 @@ class _AdminCategoriesPageState extends State<AdminCategoriesPage> {
 }
 
 class _CategoriesHeader extends StatelessWidget {
-  const _CategoriesHeader();
+  const _CategoriesHeader({this.compact = false});
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -151,17 +154,23 @@ class _CategoriesHeader extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: AppColors.zinc500,
     );
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Expanded(child: Text('Name', style: style)),
-          SizedBox(width: 100, child: Text('Status', style: style)),
-          SizedBox(
-            width: 90,
-            child: Text('Position', style: style, textAlign: TextAlign.center),
-          ),
-          SizedBox(width: 144),
+          const Expanded(child: Text('Name', style: style)),
+          if (!compact) ...[
+            const SizedBox(width: 100, child: Text('Status', style: style)),
+            const SizedBox(
+              width: 90,
+              child: Text(
+                'Position',
+                style: style,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+          SizedBox(width: compact ? 132 : 144),
         ],
       ),
     );
@@ -175,6 +184,7 @@ class _CategoryTile extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onAddChild,
+    this.compact = false,
   });
 
   final ShopCategory category;
@@ -182,6 +192,7 @@ class _CategoryTile extends StatelessWidget {
   final void Function(ShopCategory) onEdit;
   final void Function(ShopCategory) onDelete;
   final void Function(ShopCategory) onAddChild;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -220,45 +231,47 @@ class _CategoryTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 100,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: status.withValues(alpha: .1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        category.isActive ? 'Active' : 'Inactive',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: status,
+                if (!compact)
+                  SizedBox(
+                    width: 100,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: status.withValues(alpha: .1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          category.isActive ? 'Active' : 'Inactive',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: status,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 90,
-                  child: Text(
-                    '${category.position}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      color: AppColors.zinc600,
+                if (!compact)
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      '${category.position}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        color: AppColors.zinc600,
+                      ),
                     ),
                   ),
-                ),
                 SizedBox(
-                  width: 144,
+                  width: compact ? 132 : 144,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -292,6 +305,7 @@ class _CategoryTile extends StatelessWidget {
           _CategoryTile(
             category: child,
             depth: depth + 1,
+            compact: compact,
             onEdit: onEdit,
             onDelete: onDelete,
             onAddChild: onAddChild,

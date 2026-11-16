@@ -141,6 +141,18 @@ class _CategoryPageState extends State<CategoryPage> {
                         ],
                       ),
                       const SizedBox(height: 18),
+                      if ((_category?.name ?? '').isNotEmpty) ...[
+                        Text(
+                          _category!.name,
+                          style: TextStyle(
+                            fontFamily: EzTheme.serif,
+                            fontSize: width < 640 ? 28 : 34,
+                            height: 1.15,
+                            color: AppColors.navyBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       if (banner != null) ...[
                         const SizedBox(height: 2),
                         ClipRRect(
@@ -376,9 +388,10 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                       widget.query.trim().isEmpty
                           ? 'All Products'
                           : "Search results for: '${widget.query}'",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: EzTheme.serif,
-                        fontSize: 30,
+                        fontSize: width < 640 ? 24 : 30,
+                        height: 1.2,
                         color: AppColors.navyBlue,
                       ),
                     ),
@@ -388,6 +401,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                       sortOptions: _CategoryPageState._sortOptions,
                       mode: _mode,
                       perPage: 12,
+                      compact: width < 720,
                       onSort: (value) {
                         setState(() => _sort = value);
                         context.read<CatalogProvider>().loadProducts(
@@ -645,15 +659,16 @@ class _ProductCollection extends StatelessWidget {
       return LayoutBuilder(
         builder: (context, constraints) {
           final columns = _columns(constraints.maxWidth);
-          final width = (constraints.maxWidth - 32 * (columns - 1)) / columns;
+          final gap = _gap(constraints.maxWidth);
+          final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
           return Wrap(
-            spacing: 32,
-            runSpacing: 32,
+            spacing: gap,
+            runSpacing: gap,
             children: List.generate(
               columns * 2,
               (_) => SizedBox(
                 width: width,
-                height: width * 300 / 291 + 154,
+                height: _height(width, constraints.maxWidth),
                 child: const _CardSkeleton(),
               ),
             ),
@@ -712,7 +727,7 @@ class _ProductCollection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = _columns(constraints.maxWidth);
-        const gap = 32.0;
+        final gap = _gap(constraints.maxWidth);
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return GridView.builder(
           shrinkWrap: true,
@@ -721,8 +736,8 @@ class _ProductCollection extends StatelessWidget {
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             crossAxisSpacing: gap,
-            mainAxisSpacing: 32,
-            mainAxisExtent: width * 300 / 291 + 154,
+            mainAxisSpacing: constraints.maxWidth < 600 ? 24 : 32,
+            mainAxisExtent: _height(width, constraints.maxWidth),
           ),
           itemBuilder: (context, index) =>
               ProductCard(product: products[index]),
@@ -731,11 +746,17 @@ class _ProductCollection extends StatelessWidget {
     );
   }
 
-  int _columns(double width) {
-    if (width >= 900) return 3;
-    if (width >= 600) return 2;
-    return 1;
+  double _gap(double width) {
+    if (width >= 600) return 32;
+    return 16;
   }
+
+  double _height(double cardWidth, double containerWidth) {
+    final imageHeight = cardWidth * 300 / 291;
+    return imageHeight + (containerWidth < 600 ? 104 : 154);
+  }
+
+  int _columns(double width) => width >= 900 ? 3 : 2;
 }
 
 class _ProductListTile extends StatefulWidget {
@@ -751,11 +772,12 @@ class _ProductListTileState extends State<_ProductListTile> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final image = apiUrlRelative(product.imageUrl);
+    final phone = MediaQuery.of(context).size.width < 640;
     return InkWell(
       onTap: () => context.go('/product/${product.id}'),
       borderRadius: BorderRadius.circular(EzTheme.radiusXl),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(phone ? 12 : 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(EzTheme.radiusXl),
           border: Border.all(color: AppColors.zinc200),
@@ -766,8 +788,8 @@ class _ProductListTileState extends State<_ProductListTile> {
             ClipRRect(
               borderRadius: BorderRadius.circular(EzTheme.radiusLg),
               child: SizedBox(
-                width: 210,
-                height: 220,
+                width: phone ? 108 : 210,
+                height: phone ? 120 : 220,
                 child: Container(
                   color: AppColors.zinc100,
                   child: image != null
@@ -788,7 +810,7 @@ class _ProductListTileState extends State<_ProductListTile> {
                 ),
               ),
             ),
-            const SizedBox(width: 28),
+            SizedBox(width: phone ? 14 : 28),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -797,9 +819,11 @@ class _ProductListTileState extends State<_ProductListTile> {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(
+                      maxLines: phone ? 2 : null,
+                      overflow: phone ? TextOverflow.ellipsis : null,
+                      style: TextStyle(
                         fontFamily: EzTheme.sans,
-                        fontSize: 20,
+                        fontSize: phone ? 15 : 20,
                         fontWeight: FontWeight.w500,
                         color: AppColors.gray900,
                       ),
@@ -809,9 +833,9 @@ class _ProductListTileState extends State<_ProductListTile> {
                       children: [
                         Text(
                           product.formattedPrice,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: EzTheme.sans,
-                            fontSize: 18,
+                            fontSize: phone ? 15 : 18,
                             fontWeight: FontWeight.w600,
                             color: AppColors.gray900,
                           ),
@@ -829,7 +853,8 @@ class _ProductListTileState extends State<_ProductListTile> {
                         ],
                       ],
                     ),
-                    if ((product.shortDescription ?? '').isNotEmpty) ...[
+                    if (!phone &&
+                        (product.shortDescription ?? '').isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Text(
                         product.shortDescription!,
@@ -842,9 +867,9 @@ class _ProductListTileState extends State<_ProductListTile> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 18),
+                    SizedBox(height: phone ? 12 : 18),
                     SizedBox(
-                      width: 200,
+                      width: phone ? double.infinity : 200,
                       child: AddToCartButton(
                         productId: product.id ?? 0,
                         label: product.type == 'configurable'

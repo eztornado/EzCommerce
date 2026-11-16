@@ -136,19 +136,20 @@ class _AdminGroupsPageState extends State<AdminGroupsPage> {
         child: CircularProgressIndicator(color: AppColors.navyBlue),
       );
     }
+    final phone = MediaQuery.of(context).size.width < 640;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(phone ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Customer Groups',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 24,
+                    fontSize: phone ? 20 : 24,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -156,9 +157,9 @@ class _AdminGroupsPageState extends State<AdminGroupsPage> {
               TextButton.icon(
                 onPressed: () => _groupDialog(),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text(
-                  'New Group',
-                  style: TextStyle(fontFamily: 'Poppins'),
+                label: Text(
+                  phone ? 'New' : 'New Group',
+                  style: const TextStyle(fontFamily: 'Poppins'),
                 ),
               ),
             ],

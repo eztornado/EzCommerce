@@ -809,7 +809,7 @@ class ServicesStrip extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1440),
         child: Container(
-          margin: const EdgeInsets.only(top: 88),
+          margin: EdgeInsets.only(top: isNarrow ? 48 : 88),
           padding: EdgeInsets.symmetric(
             horizontal: isNarrow ? 20 : 60,
             vertical: 40,
@@ -920,6 +920,7 @@ class ShopFooter extends StatelessWidget {
                 ),
                 child: isNarrow
                     ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _newsletter(),
                           const SizedBox(height: 36),
@@ -974,47 +975,53 @@ class ShopFooter extends StatelessWidget {
       'About': ['Our Story', 'Sustainability', 'Careers', 'Press'],
       'Legal': ['Terms of Use', 'Privacy Policy', 'Cookie Policy'],
     };
-    return Wrap(
-      spacing: 44,
-      runSpacing: 28,
-      children: columns.entries
-          .map(
-            (entry) => SizedBox(
-              width: 150,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.key,
-                    style: const TextStyle(
-                      fontFamily: EzTheme.sans,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navyBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...entry.value.map(
-                    (link) => Padding(
-                      padding: const EdgeInsets.only(bottom: 11),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Text(
-                          link,
-                          style: TextStyle(
-                            fontFamily: EzTheme.sans,
-                            fontSize: 13,
-                            color: AppColors.zinc600,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final phone = constraints.maxWidth < 600;
+        final cell = phone ? (constraints.maxWidth - 16) / 2 : 150.0;
+        return Wrap(
+          spacing: phone ? 16 : 44,
+          runSpacing: 28,
+          children: columns.entries
+              .map(
+                (entry) => SizedBox(
+                  width: cell,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontFamily: EzTheme.sans,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navyBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...entry.value.map(
+                        (link) => Padding(
+                          padding: const EdgeInsets.only(bottom: 11),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Text(
+                              link,
+                              style: TextStyle(
+                                fontFamily: EzTheme.sans,
+                                fontSize: 13,
+                                color: AppColors.zinc600,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 

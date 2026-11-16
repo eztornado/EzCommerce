@@ -92,60 +92,77 @@ class AccountScaffold extends StatelessWidget {
     ];
     final currentPath = GoRouterState.of(context).uri.path;
 
-    final sidebar = SizedBox(
-      width: isNarrow ? double.infinity : 288,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    void logout() async {
+      await auth.logout();
+      if (context.mounted) context.go('/');
+    }
+
+    // Tarjeta del cliente
+    final profileCard = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.zinc50,
+        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+      ),
+      child: Row(
         children: [
-          // Tarjeta del cliente
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.zinc50,
-              borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.white,
+            child: const Icon(
+              Icons.person_outline,
+              color: AppColors.navyBlue,
+              size: 26,
             ),
-            child: Row(
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Colors.white,
-                  child: const Icon(
-                    Icons.person_outline,
-                    color: AppColors.navyBlue,
-                    size: 26,
+                Text(
+                  'Hello, ${auth.customer!.name}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: EzTheme.sans,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray900,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hello, ${auth.customer!.name}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: EzTheme.sans,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.gray900,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        auth.customer!.email,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: EzTheme.sans,
-                          fontSize: 12,
-                          color: AppColors.zinc500,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 2),
+                Text(
+                  auth.customer!.email,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: EzTheme.sans,
+                    fontSize: 12,
+                    color: AppColors.zinc500,
                   ),
                 ),
               ],
             ),
           ),
+          if (isNarrow)
+            IconButton(
+              tooltip: 'Logout',
+              icon: const Icon(
+                Icons.logout,
+                size: 19,
+                color: AppColors.navyBlue,
+              ),
+              onPressed: logout,
+            ),
+        ],
+      ),
+    );
+
+    final sidebar = SizedBox(
+      width: 288,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          profileCard,
           const SizedBox(height: 20),
           // Navegación
           Container(
@@ -170,14 +187,7 @@ class AccountScaffold extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          SecondaryButton(
-            label: 'Logout',
-            expand: true,
-            onPressed: () async {
-              await auth.logout();
-              if (context.mounted) context.go('/');
-            },
-          ),
+          SecondaryButton(label: 'Logout', expand: true, onPressed: logout),
         ],
       ),
     );
@@ -229,15 +239,18 @@ class AccountScaffold extends StatelessWidget {
                         Expanded(
                           child: Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: EzTheme.serif,
-                              fontSize: 34,
+                              fontSize: width < 640 ? 26 : 34,
                               height: 1.15,
                               color: AppColors.navyBlue,
                             ),
                           ),
                         ),
-                        ?trailing,
+                        if (trailing != null) ...[
+                          const SizedBox(width: 12),
+                          trailing!,
+                        ],
                       ],
                     ),
                     const SizedBox(height: 26),
@@ -245,8 +258,26 @@ class AccountScaffold extends StatelessWidget {
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              sidebar,
-                              const SizedBox(height: 28),
+                              profileCard,
+                              const SizedBox(height: 16),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    for (var i = 0; i < menu.length; i++) ...[
+                                      _AccountTab(
+                                        label: menu[i].$1,
+                                        icon: menu[i].$2,
+                                        selected: currentPath == menu[i].$3,
+                                        onTap: () => context.go(menu[i].$3),
+                                      ),
+                                      if (i != menu.length - 1)
+                                        const SizedBox(width: 8),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
                               child,
                             ],
                           )
@@ -265,6 +296,62 @@ class AccountScaffold extends StatelessWidget {
           ),
           const ShopFooterSections(),
         ],
+      ),
+    );
+  }
+}
+
+class _AccountTab extends StatelessWidget {
+  const _AccountTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.navyBlue : Colors.white,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.navyBlue : AppColors.zinc200,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : AppColors.zinc500,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: EzTheme.sans,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? Colors.white : AppColors.zinc600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -453,6 +540,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final compact = width < 980;
+    final phone = width < 700;
 
     if (_loading) {
       return const AccountScaffold(
@@ -502,6 +590,34 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
             ],
           ),
+        ),
+      );
+    }
+
+    if (phone) {
+      return AccountScaffold(
+        title: 'Orders',
+        trailing: Text(
+          '${_orders.length} ${_orders.length == 1 ? 'order' : 'orders'}',
+          style: const TextStyle(
+            fontFamily: EzTheme.sans,
+            fontSize: 13,
+            color: AppColors.zinc500,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final order in _orders)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _OrderCard(
+                  order: order,
+                  date: _formatDate(order.createdAt),
+                  status: _statusPill(order.status),
+                ),
+              ),
+          ],
         ),
       );
     }
@@ -704,6 +820,101 @@ class _OrderRowState extends State<_OrderRow> {
                     ],
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderCard extends StatelessWidget {
+  const _OrderCard({
+    required this.order,
+    required this.date,
+    required this.status,
+  });
+
+  final Order order;
+  final String date;
+  final Widget status;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = order.totalItemCount ?? order.items.length;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+      child: InkWell(
+        onTap: () => context.go('/account/orders/${order.id}'),
+        borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+            border: Border.all(color: AppColors.zinc200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '#${order.incrementId}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: EzTheme.sans,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.navyBlue,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  status,
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$items ${items == 1 ? 'item' : 'items'} · $date',
+                style: const TextStyle(
+                  fontFamily: EzTheme.sans,
+                  fontSize: 12,
+                  color: AppColors.zinc500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: AppColors.zinc100),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    order.formattedTotal,
+                    style: const TextStyle(
+                      fontFamily: EzTheme.sans,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'View Order',
+                    style: TextStyle(
+                      fontFamily: EzTheme.sans,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.navyBlue,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: AppColors.navyBlue,
+                  ),
+                ],
               ),
             ],
           ),
@@ -1091,40 +1302,40 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         child: CircularProgressIndicator(color: AppColors.navyBlue),
       );
     }
+    final phone = MediaQuery.of(context).size.width < 640;
+    final actions = <Widget>[
+      if (order.canReorder)
+        SecondaryButton(
+          label: 'Reorder',
+          height: 44,
+          onPressed: _busy ? null : _reorder,
+        ),
+      if (order.canCancel)
+        OutlinedButton(
+          onPressed: _busy ? null : _cancel,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            side: const BorderSide(color: AppColors.zinc300),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+            ),
+          ),
+          child: const Text(
+            'Cancel Order',
+            style: TextStyle(
+              fontFamily: EzTheme.sans,
+              fontSize: 14,
+              color: AppColors.red600,
+            ),
+          ),
+        ),
+    ];
     return AccountScaffold(
       title: 'Order #${order.incrementId}',
-      trailing: Wrap(
-        spacing: 10,
-        runSpacing: 8,
-        children: [
-          if (order.canReorder)
-            SecondaryButton(
-              label: 'Reorder',
-              height: 44,
-              onPressed: _busy ? null : _reorder,
-            ),
-          if (order.canCancel)
-            OutlinedButton(
-              onPressed: _busy ? null : _cancel,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                side: const BorderSide(color: AppColors.zinc300),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-                ),
-              ),
-              child: const Text(
-                'Cancel Order',
-                style: TextStyle(
-                  fontFamily: EzTheme.sans,
-                  fontSize: 14,
-                  color: AppColors.red600,
-                ),
-              ),
-            ),
-        ],
-      ),
+      trailing: phone
+          ? null
+          : Wrap(spacing: 10, runSpacing: 8, children: actions),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final narrow = constraints.maxWidth < 720;
@@ -1132,6 +1343,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (phone && actions.isNotEmpty) ...[
+                Wrap(spacing: 10, runSpacing: 8, children: actions),
+                const SizedBox(height: 16),
+              ],
               Row(
                 children: [
                   _statusPill(order.status),
@@ -1948,140 +2163,172 @@ class _WishlistRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = apiUrlRelative(product.imageUrl);
+    final phone = MediaQuery.of(context).size.width < 700;
+
+    final thumb = GestureDetector(
+      onTap: () => context.go('/product/${product.id}'),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+        child: SizedBox(
+          width: phone ? 88 : 104,
+          height: phone ? 96 : 112,
+          child: Container(
+            color: AppColors.zinc100,
+            child: image != null
+                ? Image.network(
+                    image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.image_outlined,
+                      size: 30,
+                      color: AppColors.zinc300,
+                    ),
+                  )
+                : const Icon(
+                    Icons.image_outlined,
+                    size: 30,
+                    color: AppColors.zinc300,
+                  ),
+          ),
+        ),
+      ),
+    );
+
+    final details = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => context.go('/product/${product.id}'),
+            child: Text(
+              product.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: EzTheme.sans,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.gray900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  product.formattedPrice,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: EzTheme.sans,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+              if (product.onSale) ...[
+                const SizedBox(width: 8),
+                Text(
+                  product.formattedRegularPrice,
+                  style: const TextStyle(
+                    fontFamily: EzTheme.sans,
+                    fontSize: 12,
+                    color: AppColors.zinc400,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: product.inStock
+                      ? AppColors.emerald500
+                      : AppColors.red500,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                product.inStock ? 'In Stock' : 'Out of Stock',
+                style: TextStyle(
+                  fontFamily: EzTheme.sans,
+                  fontSize: 12,
+                  color: product.inStock
+                      ? AppColors.emerald600
+                      : AppColors.red600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final moveButton = PrimaryButton(
+      label: 'Move to Cart',
+      height: 44,
+      isLoading: busy,
+      onPressed: busy ? null : onMove,
+    );
+
+    final removeButton = IconButton(
+      tooltip: 'Remove from wishlist',
+      icon: const Icon(
+        Icons.delete_outline,
+        size: 20,
+        color: AppColors.zinc500,
+      ),
+      onPressed: busy ? null : onRemove,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(phone ? 14 : 20),
       decoration: BoxDecoration(
         border: showBorder
             ? const Border(top: BorderSide(color: AppColors.zinc100))
             : null,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () => context.go('/product/${product.id}'),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-              child: SizedBox(
-                width: 104,
-                height: 112,
-                child: Container(
-                  color: AppColors.zinc100,
-                  child: image != null
-                      ? Image.network(
-                          image,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.image_outlined,
-                            size: 30,
-                            color: AppColors.zinc300,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.image_outlined,
-                          size: 30,
-                          color: AppColors.zinc300,
-                        ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: phone
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                GestureDetector(
-                  onTap: () => context.go('/product/${product.id}'),
-                  child: Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: EzTheme.sans,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.formattedPrice,
-                      style: const TextStyle(
-                        fontFamily: EzTheme.sans,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                    if (product.onSale) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        product.formattedRegularPrice,
-                        style: const TextStyle(
-                          fontFamily: EzTheme.sans,
-                          fontSize: 12,
-                          color: AppColors.zinc400,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    ],
+                    thumb,
+                    const SizedBox(width: 14),
+                    details,
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: product.inStock
-                            ? AppColors.emerald500
-                            : AppColors.red500,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      product.inStock ? 'In Stock' : 'Out of Stock',
-                      style: TextStyle(
-                        fontFamily: EzTheme.sans,
-                        fontSize: 12,
-                        color: product.inStock
-                            ? AppColors.emerald600
-                            : AppColors.red600,
-                      ),
-                    ),
+                    Expanded(child: moveButton),
+                    const SizedBox(width: 4),
+                    removeButton,
                   ],
                 ),
               ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                thumb,
+                const SizedBox(width: 20),
+                details,
+                const SizedBox(width: 16),
+                SizedBox(width: 168, child: moveButton),
+                const SizedBox(width: 6),
+                removeButton,
+              ],
             ),
-          ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 168,
-            child: PrimaryButton(
-              label: 'Move to Cart',
-              height: 44,
-              isLoading: busy,
-              onPressed: busy ? null : onMove,
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Remove from wishlist',
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 20,
-              color: AppColors.zinc500,
-            ),
-            onPressed: busy ? null : onRemove,
-          ),
-        ],
-      ),
     );
   }
 }

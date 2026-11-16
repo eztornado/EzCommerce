@@ -174,9 +174,12 @@ class _ProductPageState extends State<ProductPage> {
                           size: 16,
                           color: AppColors.zinc400,
                         ),
-                        Text(
-                          product.name,
-                          style: const TextStyle(color: AppColors.zinc500),
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppColors.zinc500),
+                          ),
                         ),
                       ],
                     ),
@@ -343,18 +346,16 @@ class _ProductPageState extends State<ProductPage> {
                               ),
                               const SizedBox(height: 24),
                               // Qty + Add To Cart
-                              if (isNarrow)
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    QuantityChanger(
-                                      quantity: _quantity,
-                                      onChanged: (value) =>
-                                          setState(() => _quantity = value),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    AddToCartButton(
+                              Row(
+                                children: [
+                                  QuantityChanger(
+                                    quantity: _quantity,
+                                    onChanged: (value) =>
+                                        setState(() => _quantity = value),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: AddToCartButton(
                                       productId:
                                           _matchedVariant?.id ??
                                           product.id ??
@@ -365,32 +366,9 @@ class _ProductPageState extends State<ProductPage> {
                                       ),
                                       label: 'Add To Cart',
                                     ),
-                                  ],
-                                )
-                              else
-                                Row(
-                                  children: [
-                                    QuantityChanger(
-                                      quantity: _quantity,
-                                      onChanged: (value) =>
-                                          setState(() => _quantity = value),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: AddToCartButton(
-                                        productId:
-                                            _matchedVariant?.id ??
-                                            product.id ??
-                                            0,
-                                        quantity: _quantity,
-                                        options: _selectedOptions.map(
-                                          (k, v) => MapEntry(k, v),
-                                        ),
-                                        label: 'Add To Cart',
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 12),
                               PrimaryButton(
                                 label: 'Buy Now',
@@ -398,7 +376,9 @@ class _ProductPageState extends State<ProductPage> {
                                 onPressed: _buyNow,
                               ),
                               const SizedBox(height: 8),
-                              Row(
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 4,
                                 children: [
                                   TextButton.icon(
                                     onPressed: _toggleWishlist,
@@ -417,7 +397,6 @@ class _ProductPageState extends State<ProductPage> {
                                           : 'Add to Wishlist',
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
                                   TextButton.icon(
                                     onPressed: _addToCompare,
                                     icon: const Icon(
@@ -700,10 +679,12 @@ class QuantityChanger extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.remove, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 42, height: 46),
             onPressed: quantity > 1 ? () => onChanged(quantity - 1) : null,
           ),
           SizedBox(
-            width: 40,
+            width: 34,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
@@ -716,6 +697,8 @@ class QuantityChanger extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.add, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 42, height: 46),
             onPressed: () => onChanged(quantity + 1),
           ),
         ],
@@ -760,7 +743,13 @@ class _ProductInfoTabsState extends State<ProductInfoTabs> {
               title: 'Additional Information',
               child: _AdditionalTable(additional),
             ),
-          ReviewsSection(productId: product.id),
+          _Accordion(
+            title: 'Reviews',
+            child: ReviewsSection(
+              productId: product.id,
+              showTitle: false,
+            ),
+          ),
         ],
       );
     }
@@ -937,25 +926,44 @@ class _Accordion extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.zinc200)),
       ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
         ),
-        children: [child],
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 18),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          iconColor: AppColors.navyBlue,
+          collapsedIconColor: AppColors.zinc500,
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          children: [child],
+        ),
       ),
     );
   }
 }
 
 class ReviewsSection extends StatefulWidget {
-  const ReviewsSection({super.key, required this.productId});
+  const ReviewsSection({
+    super.key,
+    required this.productId,
+    this.showTitle = true,
+  });
   final int? productId;
+  final bool showTitle;
 
   @override
   State<ReviewsSection> createState() => _ReviewsSectionState();
@@ -1018,15 +1026,17 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Reviews',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
+        if (widget.showTitle) ...[
+          const Text(
+            'Reviews',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
         if (_loading)
           const Center(
             child: CircularProgressIndicator(color: AppColors.navyBlue),

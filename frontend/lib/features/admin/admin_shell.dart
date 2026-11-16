@@ -213,7 +213,7 @@ class AdminShell extends StatelessWidget {
               children: [
                 Container(
                   height: 72,
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 28),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     border: Border(
@@ -618,15 +618,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         '€${((value as num?) ?? 0).toStringAsFixed(2)}';
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(
+        MediaQuery.of(context).size.width < 640 ? 16 : 24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Dashboard',
             style: TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 24,
+              fontSize: MediaQuery.of(context).size.width < 640 ? 20 : 24,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1099,9 +1101,15 @@ class _EzDataGridState extends State<EzDataGrid> {
     final meta = Map<String, dynamic>.from((_grid?['meta'] ?? const {}) as Map);
     final total = (meta['total'] ?? 0) as int;
     final lastPage = (meta['last_page'] ?? 1) as int;
+    final phone = MediaQuery.of(context).size.width < 640;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(
+        phone ? 16 : 24,
+        phone ? 16 : 24,
+        phone ? 16 : 24,
+        phone ? 88 : 24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1110,9 +1118,9 @@ class _EzDataGridState extends State<EzDataGrid> {
               final narrow = constraints.maxWidth < 720;
               final title = Text(
                 widget.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 24,
+                  fontSize: phone ? 20 : 24,
                   fontWeight: FontWeight.w500,
                 ),
               );
@@ -1190,6 +1198,7 @@ class _EzDataGridState extends State<EzDataGrid> {
                         child: ConstrainedBox(
                           constraints: BoxConstraints(minWidth: box.maxWidth),
                           child: DataTable(
+                            showCheckboxColumn: false,
                             headingRowColor: WidgetStateProperty.all(
                               AppColors.zinc100,
                             ),
@@ -1218,6 +1227,9 @@ class _EzDataGridState extends State<EzDataGrid> {
                                   ..add(const DataColumn(label: Text(''))),
                             rows: records.map((row) {
                               return DataRow(
+                                onSelectChanged: widget.detailBuilder == null
+                                    ? null
+                                    : (_) => _openDetail(row),
                                 cells: [
                                   ...columns
                                       .where(
@@ -1370,6 +1382,7 @@ class _EzDataGridState extends State<EzDataGrid> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: Text('Detail #$id'),
         content: SizedBox(
           width: 560,
@@ -1693,6 +1706,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     final data = widget.order;
     final items = (data['items'] ?? const []) as List;
     final invoices = decodeList(data['invoices']);
+    final total = data['grand_total'];
+    final totalLabel = total is num
+        ? '€${total.toStringAsFixed(2)}'
+        : '${total ?? ''}';
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1704,6 +1721,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.navyBlue,
+                    foregroundColor: Colors.white,
                   ),
                   onPressed: () async {
                     final admin = context.read<AdminProvider>();
@@ -1735,7 +1753,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Status: ${data['status']} · Total: ${data['grand_total']}',
+            'Status: ${data['status']} · Total: $totalLabel',
             style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
           ),
           Text(
@@ -1749,6 +1767,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           const Divider(height: 24),
           ...items.map((item) {
             final row = Map<String, dynamic>.from(item as Map);
+            final itemTotal = row['total'] ?? row['base_total'];
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -1756,7 +1775,11 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   Expanded(
                     child: Text('${row['name']} ×${row['qty_ordered']}'),
                   ),
-                  Text('${row['base_total']}'),
+                  Text(
+                    itemTotal is num
+                        ? '€${itemTotal.toStringAsFixed(2)}'
+                        : '${itemTotal ?? ''}',
+                  ),
                 ],
               ),
             );
@@ -1835,25 +1858,43 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Switch(
-                value: _notify,
-                activeThumbColor:
-                    AppColors.navyBlue,
-                onChanged: (value) => setState(() => _notify = value),
-              ),
-              const Text(
-                'Notify customer',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
-              ),
-              const Spacer(),
-              PrimaryButton(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 380;
+              final notify = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    value: _notify,
+                    activeThumbColor: AppColors.navyBlue,
+                    onChanged: (value) => setState(() => _notify = value),
+                  ),
+                  const Text(
+                    'Notify customer',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                  ),
+                ],
+              );
+              final button = PrimaryButton(
                 label: 'Add comment',
+                height: 44,
                 isLoading: _sending,
                 onPressed: _sending ? null : _addComment,
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [notify, const SizedBox(height: 8), button],
+                );
+              }
+              return Row(
+                children: [
+                  notify,
+                  const Spacer(),
+                  button,
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -2798,16 +2839,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         child: CircularProgressIndicator(color: AppColors.navyBlue),
       );
     }
+    final phone = MediaQuery.of(context).size.width < 640;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(phone ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Settings',
             style: TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 24,
+              fontSize: phone ? 20 : 24,
               fontWeight: FontWeight.w500,
             ),
           ),

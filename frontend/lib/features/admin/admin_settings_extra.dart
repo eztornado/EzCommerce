@@ -435,19 +435,20 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
         child: CircularProgressIndicator(color: AppColors.navyBlue),
       );
     }
+    final phone = MediaQuery.of(context).size.width < 640;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(phone ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Attribute Families',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 24,
+                    fontSize: phone ? 20 : 24,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -455,9 +456,9 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
               TextButton.icon(
                 onPressed: () => _familyDialog(),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text(
-                  'New Family',
-                  style: TextStyle(fontFamily: 'Poppins'),
+                label: Text(
+                  phone ? 'New' : 'New Family',
+                  style: const TextStyle(fontFamily: 'Poppins'),
                 ),
               ),
             ],

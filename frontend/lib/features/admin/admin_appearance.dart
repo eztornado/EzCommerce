@@ -125,20 +125,21 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
         child: CircularProgressIndicator(color: AppColors.navyBlue),
       );
     }
+    final phone = MediaQuery.of(context).size.width < 640;
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(phone ? 16 : 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 860),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Appearance',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 24,
+                    fontSize: phone ? 20 : 24,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -167,12 +168,18 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.arrow_upward, size: 18),
+                              visualDensity: phone
+                                  ? VisualDensity.compact
+                                  : VisualDensity.standard,
                               onPressed: index > 0
                                   ? () => _move(index, -1)
                                   : null,
                             ),
                             IconButton(
                               icon: const Icon(Icons.arrow_downward, size: 18),
+                              visualDensity: phone
+                                  ? VisualDensity.compact
+                                  : VisualDensity.standard,
                               onPressed: index < _sections.length - 1
                                   ? () => _move(index, 1)
                                   : null,
@@ -186,6 +193,8 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
                             children: [
                               Text(
                                 '${section['name'] ?? _typeLabel('${section['type']}')}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 14,
@@ -195,6 +204,8 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
                               const SizedBox(height: 2),
                               Text(
                                 _typeLabel('${section['type']}'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 12,
@@ -204,23 +215,24 @@ class _AdminAppearancePageState extends State<AdminAppearancePage> {
                             ],
                           ),
                         ),
-                        Chip(
-                          label: Text(
-                            (section['status'] ?? 1) == 1
-                                ? 'Published'
-                                : 'Draft',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 11,
-                              color: (section['status'] ?? 1) == 1
-                                  ? Colors.white
-                                  : AppColors.zinc600,
+                        if (!phone)
+                          Chip(
+                            label: Text(
+                              (section['status'] ?? 1) == 1
+                                  ? 'Published'
+                                  : 'Draft',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 11,
+                                color: (section['status'] ?? 1) == 1
+                                    ? Colors.white
+                                    : AppColors.zinc600,
+                              ),
                             ),
+                            backgroundColor: (section['status'] ?? 1) == 1
+                                ? AppColors.navyBlue
+                                : AppColors.zinc200,
                           ),
-                          backgroundColor: (section['status'] ?? 1) == 1
-                              ? AppColors.navyBlue
-                              : AppColors.zinc200,
-                        ),
                         Switch(
                           value: (section['status'] ?? 1) == 1,
                           activeThumbColor: AppColors

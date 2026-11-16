@@ -1151,7 +1151,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 80),
+                    padding: EdgeInsets.symmetric(vertical: width < 640 ? 48 : 80),
                     child: Column(
                       children: [
                         Container(
@@ -1168,12 +1168,12 @@ class CheckoutSuccessPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 26),
-                        const Text(
+                        Text(
                           'Thank you for your order',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: EzTheme.serif,
-                            fontSize: 34,
+                            fontSize: width < 640 ? 28 : 34,
                             height: 1.15,
                             color: AppColors.navyBlue,
                           ),
@@ -1234,21 +1234,39 @@ class CheckoutSuccessPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 30),
-                        Wrap(
-                          spacing: 14,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            PrimaryButton(
-                              label: 'Continue Shopping',
-                              onPressed: () => context.go('/'),
-                            ),
-                            SecondaryButton(
-                              label: 'View My Orders',
-                              onPressed: () => context.go('/account/orders'),
-                            ),
-                          ],
-                        ),
+                        if (width < 640)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              PrimaryButton(
+                                label: 'Continue Shopping',
+                                expand: true,
+                                onPressed: () => context.go('/'),
+                              ),
+                              const SizedBox(height: 12),
+                              SecondaryButton(
+                                label: 'View My Orders',
+                                expand: true,
+                                onPressed: () => context.go('/account/orders'),
+                              ),
+                            ],
+                          )
+                        else
+                          Wrap(
+                            spacing: 14,
+                            runSpacing: 12,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              PrimaryButton(
+                                label: 'Continue Shopping',
+                                onPressed: () => context.go('/'),
+                              ),
+                              SecondaryButton(
+                                label: 'View My Orders',
+                                onPressed: () => context.go('/account/orders'),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),

@@ -500,14 +500,38 @@ class CategoryCarousel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 28),
-            Wrap(
-              spacing: width < 768 ? 22 : 46,
-              runSpacing: 26,
-              children: [
-                for (final category in categories.take(8))
-                  _CategoryTile(category: category, size: size),
-              ],
-            ),
+            if (width < 600)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 16.0;
+                  final cell = (constraints.maxWidth - gap) / 2;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: 28,
+                    children: [
+                      for (final category in categories.take(8))
+                        SizedBox(
+                          width: cell,
+                          child: Center(
+                            child: _CategoryTile(
+                              category: category,
+                              size: size,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              )
+            else
+              Wrap(
+                spacing: width < 768 ? 22 : 46,
+                runSpacing: 26,
+                children: [
+                  for (final category in categories.take(8))
+                    _CategoryTile(category: category, size: size),
+                ],
+              ),
           ],
         ),
       ),

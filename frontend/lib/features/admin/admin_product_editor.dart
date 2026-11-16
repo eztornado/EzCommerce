@@ -635,6 +635,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
       );
     }
     final categoryNodes = _flattenCategories(_categoriesTree, true);
+    final phone = MediaQuery.of(context).size.width < 640;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -645,10 +646,12 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
           onPressed: () => context.go('/admin/products'),
         ),
         title: Text(
-          'Edit product #${widget.productId}',
-          style: const TextStyle(
+          phone
+              ? 'Product #${widget.productId}'
+              : 'Edit product #${widget.productId}',
+          style: TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 18,
+            fontSize: phone ? 16 : 18,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -664,7 +667,9 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
                   DropdownMenuItem(
                     value: '${locale['code']}',
                     child: Text(
-                      'Language: ${locale['name']}',
+                      phone
+                          ? '${locale['code']}'.toUpperCase()
+                          : 'Language: ${locale['name']}',
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 13,
@@ -683,7 +688,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
             ),
           const SizedBox(width: 8),
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: EdgeInsets.only(right: phone ? 8 : 16),
             child: PrimaryButton(
               label: 'Save',
               isLoading: _saving,
@@ -724,8 +729,9 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
   }
 
   Widget _settingsTab(List<Map<String, dynamic>> categoryNodes) {
+    final phone = MediaQuery.of(context).size.width < 640;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(phone ? 16 : 24),
       children: [
         _field('SKU', _sku),
         Row(
@@ -741,19 +747,30 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
           style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _field('Special price', _specialPrice, number: true),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field('From (YYYY-MM-DD)', _specialFrom, number: false),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: _field('To (YYYY-MM-DD)', _specialTo)),
-          ],
-        ),
+        if (phone) ...[
+          _field('Special price', _specialPrice, number: true),
+          const SizedBox(height: 12),
+          _field('From (YYYY-MM-DD)', _specialFrom, number: false),
+          const SizedBox(height: 12),
+          _field('To (YYYY-MM-DD)', _specialTo),
+        ] else
+          Row(
+            children: [
+              Expanded(
+                child: _field('Special price', _specialPrice, number: true),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _field(
+                  'From (YYYY-MM-DD)',
+                  _specialFrom,
+                  number: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: _field('To (YYYY-MM-DD)', _specialTo)),
+            ],
+          ),
         const SizedBox(height: 8),
         const Text(
           'Categories',
@@ -790,9 +807,14 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     );
   }
 
+  EdgeInsets get _pad =>
+      MediaQuery.of(context).size.width < 640
+      ? const EdgeInsets.all(16)
+      : const EdgeInsets.all(24);
+
   Widget _descriptionTab() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         _field('Name', _name),
         const SizedBox(height: 8),
@@ -804,7 +826,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   Widget _imagesTab() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         Wrap(
           spacing: 12,
@@ -871,7 +893,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   Widget _inventoriesTab() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         ..._inventories.map((inventory) {
           final controller =
@@ -933,7 +955,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
       );
     }
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         if (_variants.isEmpty)
           const Text(
@@ -992,7 +1014,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   Widget _linkedTab() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         const Text(
           'Related products appear on the product page; up-sells and '
@@ -1013,7 +1035,7 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   Widget _seoTab() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: _pad,
       children: [
         _field('URL key', _urlKey),
         _field('Meta title', _metaTitle),
