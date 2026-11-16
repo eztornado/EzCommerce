@@ -13,6 +13,7 @@ import AdminLoginPage from './pages/admin/LoginPage';
 import AdminShell from './pages/admin/AdminShell';
 import DashboardPage from './pages/admin/DashboardPage';
 import ProductsPage from './pages/admin/ProductsPage';
+import ProductEditorPage from './pages/admin/ProductEditorPage';
 import { OrdersPage, InvoicesPage, ShipmentsPage, RefundsPage } from './pages/admin/SalesPages';
 import { CategoriesPage, AttributesPage, FamiliesPage } from './pages/admin/CatalogPages';
 import { CustomersPage, GroupsPage, ReviewsPage } from './pages/admin/CustomersPages';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/admin" element={<AdminShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
+          <Route path="products/edit/:id" element={<ProductEditorPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="attributes" element={<AttributesPage />} />
           <Route path="families" element={<FamiliesPage />} />
