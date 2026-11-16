@@ -100,17 +100,23 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     if (contextData is Map && _locales.isEmpty && mounted) {
       final value = contextData['locales'];
       if (value is List) {
-        _locales = value.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _locales = value
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
       }
     }
-    final data = await admin.get('admin/catalog/products/edit/${widget.productId}',
-        query: {'locale': _locale});
+    final data = await admin.get(
+      'admin/catalog/products/edit/${widget.productId}',
+      query: {'locale': _locale},
+    );
     final tree = await admin.get('admin/catalog/categories/tree');
     if (data is Map && mounted) {
       final links = (data['links'] ?? const {}) as Map;
       setState(() {
         _product = Map<String, dynamic>.from(data['product'] as Map);
-        _attributes = Map<String, dynamic>.from((data['attributes'] ?? const {}) as Map);
+        _attributes = Map<String, dynamic>.from(
+          (data['attributes'] ?? const {}) as Map,
+        );
         _inventories = decodeList(data['inventories']);
         _images = decodeList(data['images']);
         _superAttributes = decodeList(data['super_attributes']);
@@ -134,15 +140,18 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
         _name.text = (_attributes['name'] ?? '') as String;
         _price.text = (_attributes['price'] ?? '0').toString();
         _specialPrice.text = (_attributes['special_price'] ?? '').toString();
-        _specialFrom.text = (_attributes['special_price_from'] ?? '').toString();
+        _specialFrom.text = (_attributes['special_price_from'] ?? '')
+            .toString();
         _specialTo.text = (_attributes['special_price_to'] ?? '').toString();
-        _shortDescription.text = (_attributes['short_description'] ?? '') as String;
+        _shortDescription.text =
+            (_attributes['short_description'] ?? '') as String;
         _description.text = (_attributes['description'] ?? '') as String;
         _weight.text = (_attributes['weight'] ?? '0').toString();
         _urlKey.text = (_attributes['url_key'] ?? '') as String;
         _metaTitle.text = (_attributes['meta_title'] ?? '') as String;
         _metaKeywords.text = (_attributes['meta_keywords'] ?? '') as String;
-        _metaDescription.text = (_attributes['meta_description'] ?? '') as String;
+        _metaDescription.text =
+            (_attributes['meta_description'] ?? '') as String;
         _loading = false;
       });
     } else if (mounted) {
@@ -154,47 +163,54 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     setState(() => _saving = true);
     final admin = context.read<AdminProvider>();
     try {
-      await admin.put('admin/catalog/products/edit/${widget.productId}', body: {
-        'locale': _locale,
-        'sku': _sku.text,
-        'attributes': {
-          'name': _name.text,
-          'price': num.tryParse(_price.text) ?? 0,
-          if (_specialPrice.text.trim().isNotEmpty) ...{
-            'special_price': num.tryParse(_specialPrice.text),
-            'special_price_from': _specialFrom.text.trim(),
-            'special_price_to': _specialTo.text.trim(),
-          } else ...{
-            'special_price': null,
-            'special_price_from': null,
-            'special_price_to': null,
+      await admin.put(
+        'admin/catalog/products/edit/${widget.productId}',
+        body: {
+          'locale': _locale,
+          'sku': _sku.text,
+          'attributes': {
+            'name': _name.text,
+            'price': num.tryParse(_price.text) ?? 0,
+            if (_specialPrice.text.trim().isNotEmpty) ...{
+              'special_price': num.tryParse(_specialPrice.text),
+              'special_price_from': _specialFrom.text.trim(),
+              'special_price_to': _specialTo.text.trim(),
+            } else ...{
+              'special_price': null,
+              'special_price_from': null,
+              'special_price_to': null,
+            },
+            'weight': num.tryParse(_weight.text) ?? 0,
+            'short_description': _shortDescription.text,
+            'description': _description.text,
+            'url_key': _urlKey.text.trim(),
+            'meta_title': _metaTitle.text.trim(),
+            'meta_keywords': _metaKeywords.text.trim(),
+            'meta_description': _metaDescription.text.trim(),
+            'status': 1,
+            'visible_individually': 1,
           },
-          'weight': num.tryParse(_weight.text) ?? 0,
-          'short_description': _shortDescription.text,
-          'description': _description.text,
-          'url_key': _urlKey.text.trim(),
-          'meta_title': _metaTitle.text.trim(),
-          'meta_keywords': _metaKeywords.text.trim(),
-          'meta_description': _metaDescription.text.trim(),
-          'status': 1,
-          'visible_individually': 1,
+          'categories': _selectedCategories.toList(),
+          'links': {
+            'related': _related.toList(),
+            'up_sells': _upSells.toList(),
+            'cross_sells': _crossSells.toList(),
+          },
         },
-        'categories': _selectedCategories.toList(),
-        'links': {
-          'related': _related.toList(),
-          'up_sells': _upSells.toList(),
-          'cross_sells': _crossSells.toList(),
-        },
-      });
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('The product has been updated successfully.')));
+          const SnackBar(
+            content: Text('The product has been updated successfully.'),
+          ),
+        );
         context.go('/admin/products');
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -206,27 +222,33 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     if (picked == null || !mounted) return;
     final admin = context.read<AdminProvider>();
     try {
-      final uploaded = await admin.post('admin/upload', body: {
-        'filename': picked.filename,
-        'folder': 'product',
-        'data': base64Encode(picked.bytes),
-      });
+      final uploaded = await admin.post(
+        'admin/upload',
+        body: {
+          'filename': picked.filename,
+          'folder': 'product',
+          'data': base64Encode(picked.bytes),
+        },
+      );
       if (uploaded is! Map) return;
       final path = uploaded['path'] as String;
       final images = _images.map((image) => {'path': image['path']}).toList()
         ..add({'path': path});
-      await admin.put('admin/catalog/products/edit/${widget.productId}', body: {
-        'images': images,
-      });
+      await admin.put(
+        'admin/catalog/products/edit/${widget.productId}',
+        body: {'images': images},
+      );
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('The image has been uploaded.')));
+          const SnackBar(content: Text('The image has been uploaded.')),
+        );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
     }
   }
@@ -235,9 +257,10 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     final admin = context.read<AdminProvider>();
     final images = _images.map((image) => {'path': image['path']}).toList()
       ..removeAt(index);
-    await admin.put('admin/catalog/products/edit/${widget.productId}', body: {
-      'images': images,
-    });
+    await admin.put(
+      'admin/catalog/products/edit/${widget.productId}',
+      body: {'images': images},
+    );
     await _load();
   }
 
@@ -251,19 +274,23 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
         inventories[sourceId] = int.tryParse(controller.text) ?? 0;
       }
     }
-    await admin.put('admin/catalog/products/edit/${widget.productId}', body: {
-      'inventories': inventories,
-    });
+    await admin.put(
+      'admin/catalog/products/edit/${widget.productId}',
+      body: {'inventories': inventories},
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('The inventories have been updated.')));
+        const SnackBar(content: Text('The inventories have been updated.')),
+      );
     }
     await _load();
   }
 
   /// Resumen de la variante: valores de los super attributes (por código).
   String _variantLabel(Map<String, dynamic> variant) {
-    final attributes = Map<String, dynamic>.from((variant['attributes'] ?? const {}) as Map);
+    final attributes = Map<String, dynamic>.from(
+      (variant['attributes'] ?? const {}) as Map,
+    );
     final parts = <String>[];
     for (final superAttribute in _superAttributes) {
       final code = '${superAttribute['code']}';
@@ -309,38 +336,54 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: DropdownButtonFormField<int>(
-                        initialValue: optionSelections['${superAttribute['code']}'],
+                        initialValue:
+                            optionSelections['${superAttribute['code']}'],
                         decoration: InputDecoration(
-                            labelText: '${superAttribute['admin_name'] ?? superAttribute['code']}'),
+                          labelText:
+                              '${superAttribute['admin_name'] ?? superAttribute['code']}',
+                        ),
                         items: decodeList(superAttribute['options'])
-                            .map((option) => DropdownMenuItem(
-                                  value: option['id'] as int,
-                                  child: Text('${option['admin_name']}'),
-                                ))
+                            .map(
+                              (option) => DropdownMenuItem(
+                                value: option['id'] as int,
+                                child: Text('${option['admin_name']}'),
+                              ),
+                            )
                             .toList(),
-                        onChanged: (value) => setDialogState(() =>
-                            optionSelections['${superAttribute['code']}'] = value),
+                        onChanged: (value) => setDialogState(
+                          () => optionSelections['${superAttribute['code']}'] =
+                              value,
+                        ),
                       ),
                     ),
-                  Row(children: [
-                    Expanded(
+                  Row(
+                    children: [
+                      Expanded(
                         child: TextField(
-                            controller: price,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Price'))),
-                    const SizedBox(width: 12),
-                    Expanded(
+                          controller: price,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Price'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: TextField(
-                            controller: qty,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Qty'))),
-                  ]),
+                          controller: qty,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Qty'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
             PrimaryButton(
               label: 'Create',
               onPressed: () {
@@ -359,25 +402,35 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
     final admin = context.read<AdminProvider>();
     try {
-      await admin.post('admin/catalog/products/edit/${widget.productId}/variants', body: {
-        'sku': sku.text.trim(),
-        'attributes': {
-          'name': '${_name.text} ${optionSelections.values.map((v) => v).join(' ')}'.trim(),
-          'price': num.tryParse(price.text) ?? 0,
-          'weight': num.tryParse(_weight.text) ?? 0,
-          for (final entry in optionSelections.entries) entry.key: entry.value,
+      await admin.post(
+        'admin/catalog/products/edit/${widget.productId}/variants',
+        body: {
+          'sku': sku.text.trim(),
+          'attributes': {
+            'name':
+                '${_name.text} ${optionSelections.values.map((v) => v).join(' ')}'
+                    .trim(),
+            'price': num.tryParse(price.text) ?? 0,
+            'weight': num.tryParse(_weight.text) ?? 0,
+            for (final entry in optionSelections.entries)
+              entry.key: entry.value,
+          },
+          'qty': int.tryParse(qty.text) ?? 0,
         },
-        'qty': int.tryParse(qty.text) ?? 0,
-      });
+      );
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('The variant has been created successfully.')));
+          const SnackBar(
+            content: Text('The variant has been created successfully.'),
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
     }
   }
@@ -390,7 +443,9 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   /// Campos del árbol de categorías excluyendo la raíz (id 1).
   List<Map<String, dynamic>> _flattenCategories(
-      List<Map<String, dynamic>> nodes, bool isRoot) {
+    List<Map<String, dynamic>> nodes,
+    bool isRoot,
+  ) {
     final result = <Map<String, dynamic>>[];
     for (final node in nodes) {
       final id = node['id'] as int?;
@@ -408,10 +463,10 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     final picked = Set<int>.from(selected);
     Future<void> doSearch(String query) async {
       final admin = context.read<AdminProvider>();
-      final data = await admin.post('admin/catalog/products', body: {
-        'search': query,
-        'per_page': 20,
-      });
+      final data = await admin.post(
+        'admin/catalog/products',
+        body: {'search': query, 'per_page': 20},
+      );
       results = decodeList(data is Map ? (data['data'] ?? data) : const []);
       if (results.isEmpty && data is Map && data['records'] != null) {
         results = decodeList(data['records']);
@@ -425,59 +480,86 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
           title: Text('Link products (${kind.replaceAll('_', ' ')})'),
           content: SizedBox(
             width: 480,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
-                controller: search,
-                decoration: InputDecoration(
-                  hintText: 'Search by SKU or name...',
-                  isDense: true,
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () async {
-                      await doSearch(search.text);
-                      setDialogState(() {});
-                    },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: search,
+                  decoration: InputDecoration(
+                    hintText: 'Search by SKU or name...',
+                    isDense: true,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () async {
+                        await doSearch(search.text);
+                        setDialogState(() {});
+                      },
+                    ),
                   ),
+                  onSubmitted: (value) async {
+                    await doSearch(value);
+                    setDialogState(() {});
+                  },
                 ),
-                onSubmitted: (value) async {
-                  await doSearch(value);
-                  setDialogState(() {});
-                },
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 320,
-                child: results.isEmpty
-                    ? const Center(
-                        child: Text('Search to find products.',
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 320,
+                  child: results.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Search to find products.',
                             style: TextStyle(
-                                fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)))
-                    : ListView(children: [
-                        for (final product in results)
-                          CheckboxListTile(
-                            dense: true,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: Text('${product['name'] ?? product['sku']}',
-                                style:
-                                    const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-                            subtitle: Text('${product['sku']}',
-                                style: const TextStyle(
-                                    fontFamily: 'Poppins', fontSize: 11, color: AppColors.zinc500)),
-                            value: picked.contains(product['id']),
-                            onChanged: (checked) => setDialogState(() {
-                              final id = product['id'] as int;
-                              checked == true ? picked.add(id) : picked.remove(id);
-                              if (checked == true) {
-                                _linkedNames[id] = '${product['name'] ?? product['sku']}';
-                              }
-                            }),
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              color: AppColors.zinc500,
+                            ),
                           ),
-                      ]),
-              ),
-            ]),
+                        )
+                      : ListView(
+                          children: [
+                            for (final product in results)
+                              CheckboxListTile(
+                                dense: true,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                title: Text(
+                                  '${product['name'] ?? product['sku']}',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${product['sku']}',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 11,
+                                    color: AppColors.zinc500,
+                                  ),
+                                ),
+                                value: picked.contains(product['id']),
+                                onChanged: (checked) => setDialogState(() {
+                                  final id = product['id'] as int;
+                                  checked == true
+                                      ? picked.add(id)
+                                      : picked.remove(id);
+                                  if (checked == true) {
+                                    _linkedNames[id] =
+                                        '${product['name'] ?? product['sku']}';
+                                  }
+                                }),
+                              ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
             PrimaryButton(
               label: 'Link',
               onPressed: () => Navigator.pop(dialogContext, true),
@@ -496,118 +578,148 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
 
   /// Sección de productos enlazados (chips + botón de búsqueda).
   Widget _linkedSection(String title, Set<int> selected, String kind) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(
-          child: Text(title,
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-        ),
-        TextButton.icon(
-          onPressed: () => _pickLinkedProducts(selected, kind),
-          icon: const Icon(Icons.add, size: 16),
-          label: const Text('Add', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-        ),
-      ]),
-      Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          for (final id in selected)
-            InputChip(
-              label: Text(_linkedNames[id] ?? 'Product #$id',
-                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-              onDeleted: () => setState(() => selected.remove(id)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+              ),
             ),
-          if (selected.isEmpty)
-            const Text('None',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-        ],
-      ),
-      const SizedBox(height: 16),
-    ]);
+            TextButton.icon(
+              onPressed: () => _pickLinkedProducts(selected, kind),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text(
+                'Add',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final id in selected)
+              InputChip(
+                label: Text(
+                  _linkedNames[id] ?? 'Product #$id',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
+                ),
+                onDeleted: () => setState(() => selected.remove(id)),
+              ),
+            if (selected.isEmpty)
+              const Text(
+                'None',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: AppColors.zinc500,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
     final categoryNodes = _flattenCategories(_categoriesTree, true);
     return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.zinc600),
-            onPressed: () => context.go('/admin/products'),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.zinc600),
+          onPressed: () => context.go('/admin/products'),
+        ),
+        title: Text(
+          'Edit product #${widget.productId}',
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
           ),
-          title: Text('Edit product #${widget.productId}',
-              style: const TextStyle(
-                  fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w500)),
-          actions: [
-            if (_locales.length > 1)
-              DropdownButton<String>(
-                value: _locales.any((locale) => locale['code'] == _locale)
-                    ? _locale
-                    : 'en',
-                underline: const SizedBox.shrink(),
-                items: [
-                  for (final locale in _locales)
-                    DropdownMenuItem(
-                      value: '${locale['code']}',
-                      child: Text('Language: ${locale['name']}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        ),
+        actions: [
+          if (_locales.length > 1)
+            DropdownButton<String>(
+              value: _locales.any((locale) => locale['code'] == _locale)
+                  ? _locale
+                  : 'en',
+              underline: const SizedBox.shrink(),
+              items: [
+                for (final locale in _locales)
+                  DropdownMenuItem(
+                    value: '${locale['code']}',
+                    child: Text(
+                      'Language: ${locale['name']}',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                      ),
                     ),
-                ],
-                onChanged: (value) {
-                  if (value == null || value == _locale) return;
-                  setState(() {
-                    _locale = value;
-                    _loading = true;
-                  });
-                  _load();
-                },
-              ),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: PrimaryButton(
-                label: 'Save',
-                isLoading: _saving,
-                onPressed: _saving ? null : _save,
-              ),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value == null || value == _locale) return;
+                setState(() {
+                  _locale = value;
+                  _loading = true;
+                });
+                _load();
+              },
             ),
-          ],
-          bottom: TabBar(
-            controller: _tabs,
-            isScrollable: true,
-            labelColor: AppColors.navyBlue,
-            unselectedLabelColor: AppColors.zinc600,
-            indicatorColor: AppColors.navyBlue,
-            tabs: const [
-              Tab(text: 'Settings'),
-              Tab(text: 'Description'),
-              Tab(text: 'Images'),
-              Tab(text: 'Inventories'),
-              Tab(text: 'Variations'),
-              Tab(text: 'Linked products'),
-              Tab(text: 'SEO'),
-            ],
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: PrimaryButton(
+              label: 'Save',
+              isLoading: _saving,
+              onPressed: _saving ? null : _save,
+            ),
           ),
-        ),
-        body: TabBarView(
+        ],
+        bottom: TabBar(
           controller: _tabs,
-          children: [
-            _settingsTab(categoryNodes),
-            _descriptionTab(),
-            _imagesTab(),
-            _inventoriesTab(),
-            _variationsTab(),
-            _linkedTab(),
-            _seoTab(),
+          isScrollable: true,
+          labelColor: AppColors.navyBlue,
+          unselectedLabelColor: AppColors.zinc600,
+          indicatorColor: AppColors.navyBlue,
+          tabs: const [
+            Tab(text: 'Settings'),
+            Tab(text: 'Description'),
+            Tab(text: 'Images'),
+            Tab(text: 'Inventories'),
+            Tab(text: 'Variations'),
+            Tab(text: 'Linked products'),
+            Tab(text: 'SEO'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabs,
+        children: [
+          _settingsTab(categoryNodes),
+          _descriptionTab(),
+          _imagesTab(),
+          _inventoriesTab(),
+          _variationsTab(),
+          _linkedTab(),
+          _seoTab(),
+        ],
+      ),
     );
   }
 
@@ -616,26 +728,37 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
       padding: const EdgeInsets.all(24),
       children: [
         _field('SKU', _sku),
-        Row(children: [
-          Expanded(child: _field('Price', _price, number: true)),
-          const SizedBox(width: 12),
-          Expanded(child: _field('Weight', _weight, number: true)),
-        ]),
+        Row(
+          children: [
+            Expanded(child: _field('Price', _price, number: true)),
+            const SizedBox(width: 12),
+            Expanded(child: _field('Weight', _weight, number: true)),
+          ],
+        ),
         const SizedBox(height: 8),
-        const Text('Special price',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        const Text(
+          'Special price',
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+        ),
         const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: _field('Special price', _specialPrice, number: true)),
-          const SizedBox(width: 12),
-          Expanded(
-              child: _field('From (YYYY-MM-DD)', _specialFrom, number: false)),
-          const SizedBox(width: 12),
-          Expanded(child: _field('To (YYYY-MM-DD)', _specialTo)),
-        ]),
+        Row(
+          children: [
+            Expanded(
+              child: _field('Special price', _specialPrice, number: true),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _field('From (YYYY-MM-DD)', _specialFrom, number: false),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: _field('To (YYYY-MM-DD)', _specialTo)),
+          ],
+        ),
         const SizedBox(height: 8),
-        const Text('Categories',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        const Text(
+          'Categories',
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 16,
@@ -648,8 +771,10 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
-                  title: Text('${category['name'] ?? category['slug']}',
-                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                  title: Text(
+                    '${category['name'] ?? category['slug']}',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                  ),
                   value: _selectedCategories.contains(category['id']),
                   onChanged: (checked) => setState(() {
                     final id = category['id'] as int;
@@ -686,33 +811,42 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
           runSpacing: 12,
           children: [
             for (final (index, image) in _images.indexed)
-              Stack(children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-                    border: Border.all(color: AppColors.zinc200),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(EzTheme.radiusLg - 1),
-                    child: Image.network(
-                      apiUrlRelative('${image['path']}') ?? '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(Icons.image_outlined,
-                          color: AppColors.zinc300, size: 36),
+              Stack(
+                children: [
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                      border: Border.all(color: AppColors.zinc200),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(EzTheme.radiusLg - 1),
+                      child: Image.network(
+                        apiUrlRelative('${image['path']}') ?? '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.image_outlined,
+                          color: AppColors.zinc300,
+                          size: 36,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  right: -8,
-                  top: -8,
-                  child: IconButton(
-                    icon: const Icon(Icons.remove_circle, color: AppColors.red600, size: 22),
-                    onPressed: () => _deleteImage(index),
+                  Positioned(
+                    right: -8,
+                    top: -8,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.remove_circle,
+                        color: AppColors.red600,
+                        size: 22,
+                      ),
+                      onPressed: () => _deleteImage(index),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             GestureDetector(
               onTap: _uploadImage,
               child: Container(
@@ -722,8 +856,11 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
                   borderRadius: BorderRadius.circular(EzTheme.radiusLg),
                   color: AppColors.zinc100,
                 ),
-                child: const Icon(Icons.add_a_photo_outlined,
-                    color: AppColors.zinc500, size: 28),
+                child: const Icon(
+                  Icons.add_a_photo_outlined,
+                  color: AppColors.zinc500,
+                  size: 28,
+                ),
               ),
             ),
           ],
@@ -737,23 +874,32 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
       padding: const EdgeInsets.all(24),
       children: [
         ..._inventories.map((inventory) {
-          final controller = inventory.putIfAbsent(
-              '__controller',
-              () => TextEditingController(
-                  text: '${inventory['qty'] ?? 0}')) as TextEditingController;
+          final controller =
+              inventory.putIfAbsent(
+                    '__controller',
+                    () =>
+                        TextEditingController(text: '${inventory['qty'] ?? 0}'),
+                  )
+                  as TextEditingController;
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
-                Expanded(child: Text('${inventory['name'] ?? 'Source'}',
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 14))),
+                Expanded(
+                  child: Text(
+                    '${inventory['name'] ?? 'Source'}',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                  ),
+                ),
                 SizedBox(
                   width: 120,
                   child: TextField(
                     controller: controller,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                        isDense: true, fillColor: Colors.white),
+                      isDense: true,
+                      fillColor: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -763,8 +909,10 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
         const SizedBox(height: 8),
         OutlinedButton(
           onPressed: _saveInventories,
-          child: const Text('Update inventories',
-              style: TextStyle(fontFamily: 'Poppins')),
+          child: const Text(
+            'Update inventories',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
         ),
       ],
     );
@@ -774,43 +922,69 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     if (!_isConfigurable) {
       return const Padding(
         padding: EdgeInsets.all(24),
-        child: Text('Only configurable products have variations.',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500)),
+        child: Text(
+          'Only configurable products have variations.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            color: AppColors.zinc500,
+          ),
+        ),
       );
     }
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         if (_variants.isEmpty)
-          const Text('No variants yet.',
-              style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500))
+          const Text(
+            'No variants yet.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 13,
+              color: AppColors.zinc500,
+            ),
+          )
         else
-          ..._variants.map((variant) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                          '${_variantLabel(variant)}  ·  ${variant['sku']}  ·  '
-                          '${(Map<String, dynamic>.from((variant['attributes'] ?? const {}) as Map))['price'] ?? 0}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          ..._variants.map(
+            (variant) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${_variantLabel(variant)}  ·  ${variant['sku']}  ·  '
+                      '${(Map<String, dynamic>.from((variant['attributes'] ?? const {}) as Map))['price'] ?? 0}',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                      ),
                     ),
-                    Text('Qty: ${variant['qty'] ?? 0}',
-                        style: const TextStyle(
-                            fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      tooltip: 'Delete variant',
-                      onPressed: () => _deleteVariant(variant['id'] as int),
+                  ),
+                  Text(
+                    'Qty: ${variant['qty'] ?? 0}',
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12,
+                      color: AppColors.zinc500,
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: 'Delete variant',
+                    onPressed: () => _deleteVariant(variant['id'] as int),
+                  ),
+                ],
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: _createVariant,
           icon: const Icon(Icons.add),
-          label: const Text('New variant', style: TextStyle(fontFamily: 'Poppins')),
+          label: const Text(
+            'New variant',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
         ),
       ],
     );
@@ -820,9 +994,15 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text('Related products appear on the product page; up-sells and '
-            'cross-sells drive cart recommendations.',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+        const Text(
+          'Related products appear on the product page; up-sells and '
+          'cross-sells drive cart recommendations.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12,
+            color: AppColors.zinc500,
+          ),
+        ),
         const SizedBox(height: 16),
         _linkedSection('Related products', _related, 'related'),
         _linkedSection('Up-sells', _upSells, 'up_sells'),
@@ -843,21 +1023,31 @@ class _AdminProductEditorPageState extends State<AdminProductEditorPage>
     );
   }
 
-  Widget _field(String label, TextEditingController controller,
-      {bool multiline = false, int lines = 2, bool number = false}) {
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    bool multiline = false,
+    int lines = 2,
+    bool number = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          Text(
+            label,
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+          ),
           const SizedBox(height: 4),
           TextField(
             controller: controller,
             maxLines: multiline ? lines : 1,
             keyboardType: number ? TextInputType.number : null,
             decoration: const InputDecoration(
-                fillColor: Colors.white, border: OutlineInputBorder()),
+              fillColor: Colors.white,
+              border: OutlineInputBorder(),
+            ),
           ),
         ],
       ),

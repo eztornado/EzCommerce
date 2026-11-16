@@ -14,13 +14,15 @@ class ProductCard extends StatefulWidget {
   const ProductCard({
     super.key,
     required this.product,
-    this.width = 291,
+    this.width,
     this.showActions = true,
+    this.showCartButton = true,
   });
 
   final Product product;
-  final double width;
+  final double? width;
   final bool showActions;
+  final bool showCartButton;
 
   @override
   State<ProductCard> createState() => _ProductCardState();
@@ -38,43 +40,61 @@ class _ProductCardState extends State<ProductCard> {
       return;
     }
     setState(() => _adding = true);
-    final error = await context.read<CartProvider>().addProduct(product.id ?? 0);
+    final error = await context.read<CartProvider>().addProduct(
+      product.id ?? 0,
+    );
     if (!mounted) return;
     setState(() => _adding = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error ?? 'The item has been added to your cart successfully.'),
-      backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ?? 'The item has been added to your cart successfully.',
+        ),
+        backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
+      ),
+    );
   }
 
   Future<void> _wishlist() async {
     try {
-      await ApiClient.instance.post('customer/wishlist', body: {'product_id': product.id});
+      await ApiClient.instance.post(
+        'customer/wishlist',
+        body: {'product_id': product.id},
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('The product has been added to your wishlist.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The product has been added to your wishlist.'),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please sign in to save products to your wishlist.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in to save products to your wishlist.'),
+        ),
+      );
       context.push('/login');
     }
   }
 
   Future<void> _compare() async {
     try {
-      await ApiClient.instance.post('customer/compare-items', body: {'product_id': product.id});
+      await ApiClient.instance.post(
+        'customer/compare-items',
+        body: {'product_id': product.id},
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('The product has been added to the compare list.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The product has been added to the compare list.'),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please sign in to compare products.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to compare products.')),
+      );
       context.push('/login');
     }
   }
@@ -94,7 +114,7 @@ class _ProductCardState extends State<ProductCard> {
         onTap: () => context.go('/product/${product.id}'),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          width: widget.width,
+          width: widget.width ?? double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(EzTheme.radiusLg),
@@ -128,9 +148,12 @@ class _ProductCardState extends State<ProductCard> {
                                   image,
                                   fit: BoxFit.cover,
                                   filterQuality: FilterQuality.medium,
-                                  errorBuilder: (_, _, _) => const _ImageFallback(),
+                                  errorBuilder: (_, _, _) =>
+                                      const _ImageFallback(),
                                   loadingBuilder: (context, child, progress) =>
-                                      progress == null ? child : const _ImageSkeleton(),
+                                      progress == null
+                                      ? child
+                                      : const _ImageSkeleton(),
                                 )
                               : const _ImageFallback(),
                         ),
@@ -142,9 +165,14 @@ class _ProductCardState extends State<ProductCard> {
                         top: 10,
                         left: 10,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: product.onSale ? AppColors.red600 : AppColors.navyBlue,
+                            color: product.onSale
+                                ? AppColors.red600
+                                : AppColors.navyBlue,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -164,10 +192,15 @@ class _ProductCardState extends State<ProductCard> {
                         left: 10,
                         bottom: 10,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: .9),
-                            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                            borderRadius: BorderRadius.circular(
+                              EzTheme.radiusLg,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -175,10 +208,16 @@ class _ProductCardState extends State<ProductCard> {
                               Text(
                                 product.ratingAverage.toStringAsFixed(1),
                                 style: const TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w600),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               const SizedBox(width: 3),
-                              const Icon(Icons.star, size: 12, color: AppColors.amber500),
+                              const Icon(
+                                Icons.star,
+                                size: 12,
+                                color: AppColors.amber500,
+                              ),
                             ],
                           ),
                         ),
@@ -255,7 +294,7 @@ class _ProductCardState extends State<ProductCard> {
                         ],
                       ],
                     ),
-                    if (showActions) ...[
+                    if (showActions && widget.showCartButton) ...[
                       const SizedBox(height: 10),
                       AnimatedOpacity(
                         opacity: active ? 1 : 0,
@@ -270,7 +309,9 @@ class _ProductCardState extends State<ProductCard> {
                               foregroundColor: AppColors.navyBlue,
                               side: const BorderSide(color: AppColors.navyBlue),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                                borderRadius: BorderRadius.circular(
+                                  EzTheme.radiusLg,
+                                ),
                               ),
                             ),
                             child: _adding
@@ -278,7 +319,9 @@ class _ProductCardState extends State<ProductCard> {
                                     width: 14,
                                     height: 14,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: AppColors.navyBlue),
+                                      strokeWidth: 2,
+                                      color: AppColors.navyBlue,
+                                    ),
                                   )
                                 : Text(
                                     product.type == 'configurable'
@@ -306,7 +349,11 @@ class _ProductCardState extends State<ProductCard> {
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.tooltip, required this.onTap});
+  const _QuickAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String tooltip;
@@ -385,16 +432,20 @@ class _AddToCartButtonState extends State<AddToCartButton> {
   Future<void> _add() async {
     setState(() => _loading = true);
     final error = await context.read<CartProvider>().addProduct(
-          widget.productId,
-          quantity: widget.quantity,
-          options: widget.options,
-        );
+      widget.productId,
+      quantity: widget.quantity,
+      options: widget.options,
+    );
     if (!mounted) return;
     setState(() => _loading = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error ?? 'The item has been added to your cart successfully.'),
-      backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ?? 'The item has been added to your cart successfully.',
+        ),
+        backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
+      ),
+    );
   }
 
   @override

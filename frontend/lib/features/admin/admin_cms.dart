@@ -23,14 +23,17 @@ class AdminCmsPage extends StatelessWidget {
               tooltip: 'Edit',
               onPressed: () async {
                 final admin = context.read<AdminProvider>();
-                final data = await admin.get('admin/cms/pages/view/${row['id']}');
+                final data = await admin.get(
+                  'admin/cms/pages/view/${row['id']}',
+                );
                 if (data is Map && context.mounted) {
                   showDialog(
                     context: context,
                     builder: (context) => CmsPageEditorDialog(
                       pageId: row['id'] as int?,
-                      translation:
-                          Map<String, dynamic>.from((data['translation'] ?? const {}) as Map),
+                      translation: Map<String, dynamic>.from(
+                        (data['translation'] ?? const {}) as Map,
+                      ),
                     ),
                   );
                 }
@@ -58,7 +61,11 @@ class AdminCmsPage extends StatelessWidget {
 }
 
 class CmsPageEditorDialog extends StatefulWidget {
-  const CmsPageEditorDialog({super.key, this.pageId, this.translation = const {}});
+  const CmsPageEditorDialog({
+    super.key,
+    this.pageId,
+    this.translation = const {},
+  });
   final int? pageId;
   final Map<String, dynamic> translation;
 
@@ -77,11 +84,21 @@ class _CmsPageEditorDialogState extends State<CmsPageEditorDialog> {
   @override
   void initState() {
     super.initState();
-    _title = TextEditingController(text: '${widget.translation['page_title'] ?? ''}');
-    _urlKey = TextEditingController(text: '${widget.translation['url_key'] ?? ''}');
-    _html = TextEditingController(text: '${widget.translation['html_content'] ?? ''}');
-    _metaTitle = TextEditingController(text: '${widget.translation['meta_title'] ?? ''}');
-    _metaDescription = TextEditingController(text: '${widget.translation['meta_description'] ?? ''}');
+    _title = TextEditingController(
+      text: '${widget.translation['page_title'] ?? ''}',
+    );
+    _urlKey = TextEditingController(
+      text: '${widget.translation['url_key'] ?? ''}',
+    );
+    _html = TextEditingController(
+      text: '${widget.translation['html_content'] ?? ''}',
+    );
+    _metaTitle = TextEditingController(
+      text: '${widget.translation['meta_title'] ?? ''}',
+    );
+    _metaDescription = TextEditingController(
+      text: '${widget.translation['meta_description'] ?? ''}',
+    );
   }
 
   Future<void> _save() async {
@@ -104,7 +121,8 @@ class _CmsPageEditorDialogState extends State<CmsPageEditorDialog> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
       setState(() => _saving = false);
     }
@@ -128,16 +146,19 @@ class _CmsPageEditorDialogState extends State<CmsPageEditorDialog> {
               TextField(
                 controller: _urlKey,
                 decoration: const InputDecoration(
-                    labelText: 'URL Key', helperText: 'Se sirve en /api/cms/page/{url_key}'),
+                  labelText: 'URL Key',
+                  helperText: 'Se sirve en /api/cms/page/{url_key}',
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _html,
                 maxLines: 8,
                 decoration: const InputDecoration(
-                    labelText: 'HTML Content',
-                    alignLabelWithHint: true,
-                    border: OutlineInputBorder()),
+                  labelText: 'HTML Content',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -148,15 +169,24 @@ class _CmsPageEditorDialogState extends State<CmsPageEditorDialog> {
               TextField(
                 controller: _metaDescription,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Meta Description'),
+                decoration: const InputDecoration(
+                  labelText: 'Meta Description',
+                ),
               ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        PrimaryButton(label: 'Save', isLoading: _saving, onPressed: _saving ? null : _save),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        PrimaryButton(
+          label: 'Save',
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
+        ),
       ],
     );
   }

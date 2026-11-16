@@ -32,9 +32,14 @@ class _AdminSearchSeoPageState extends State<AdminSearchSeoPage>
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text('Search SEO',
-            style: TextStyle(
-                fontFamily: 'Poppins', fontSize: 22, fontWeight: FontWeight.w500)),
+        title: const Text(
+          'Search SEO',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 22,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         bottom: TabBar(
           controller: _tabs,
           isScrollable: true,
@@ -87,7 +92,9 @@ class _UrlRewritesTabState extends State<UrlRewritesTab> {
     if (mounted) {
       setState(() {
         final payload = data is Map ? (data['data'] ?? data) : data;
-        _rows = decodeList(payload is Map ? payload['records'] ?? payload : payload);
+        _rows = decodeList(
+          payload is Map ? payload['records'] ?? payload : payload,
+        );
         _loading = false;
       });
     }
@@ -96,37 +103,52 @@ class _UrlRewritesTabState extends State<UrlRewritesTab> {
   void _showError(Object error) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+    );
   }
 
   Future<void> _dialog([Map<String, dynamic>? rewrite]) async {
-    final request = TextEditingController(text: '${rewrite?['request_path'] ?? ''}');
-    final target = TextEditingController(text: '${rewrite?['target_path'] ?? ''}');
+    final request = TextEditingController(
+      text: '${rewrite?['request_path'] ?? ''}',
+    );
+    final target = TextEditingController(
+      text: '${rewrite?['target_path'] ?? ''}',
+    );
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(rewrite == null ? 'New URL rewrite' : 'Edit URL rewrite'),
         content: SizedBox(
           width: 460,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: request,
-              decoration: const InputDecoration(
-                  labelText: 'Request path (e.g. /outlet)', helperText: 'La tienda resuelve este slug'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: target,
-              decoration: const InputDecoration(
-                  labelText: 'Target path (e.g. /product/leather-tote-bag)'),
-            ),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: request,
+                decoration: const InputDecoration(
+                  labelText: 'Request path (e.g. /outlet)',
+                  helperText: 'La tienda resuelve este slug',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: target,
+                decoration: const InputDecoration(
+                  labelText: 'Target path (e.g. /product/leather-tote-bag)',
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           PrimaryButton(
             label: 'Save',
-            onPressed: () => (request.text.trim().isEmpty || target.text.trim().isEmpty)
+            onPressed: () =>
+                (request.text.trim().isEmpty || target.text.trim().isEmpty)
                 ? null
                 : Navigator.pop(context, true),
           ),
@@ -137,14 +159,20 @@ class _UrlRewritesTabState extends State<UrlRewritesTab> {
     final admin = context.read<AdminProvider>();
     try {
       rewrite == null
-          ? await admin.post('admin/seo/url-rewrites/store', body: {
-              'request_path': request.text.trim(),
-              'target_path': target.text.trim(),
-            })
-          : await admin.put('admin/seo/url-rewrites/edit/${rewrite['id']}', body: {
-              'request_path': request.text.trim(),
-              'target_path': target.text.trim(),
-            });
+          ? await admin.post(
+              'admin/seo/url-rewrites/store',
+              body: {
+                'request_path': request.text.trim(),
+                'target_path': target.text.trim(),
+              },
+            )
+          : await admin.put(
+              'admin/seo/url-rewrites/edit/${rewrite['id']}',
+              body: {
+                'request_path': request.text.trim(),
+                'target_path': target.text.trim(),
+              },
+            );
       await _load();
     } catch (error) {
       _showError(error);
@@ -154,37 +182,56 @@ class _UrlRewritesTabState extends State<UrlRewritesTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      Row(children: [
-        const Spacer(),
-        TextButton.icon(
-          onPressed: () => _dialog(),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New rewrite', style: TextStyle(fontFamily: 'Poppins')),
-        ),
-      ]),
-      for (final row in _rows)
-        ListTile(
-          title: Text('${row['request_path']} → ${row['target_path']}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              onPressed: () => _dialog(row),
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Row(
+          children: [
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _dialog(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text(
+                'New rewrite',
+                style: TextStyle(fontFamily: 'Poppins'),
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
-              onPressed: () async {
-                final admin = context.read<AdminProvider>();
-                await admin.delete('admin/seo/url-rewrites/${row['id']}');
-                await _load();
-              },
-            ),
-          ]),
+          ],
         ),
-    ]);
+        for (final row in _rows)
+          ListTile(
+            title: Text(
+              '${row['request_path']} → ${row['target_path']}',
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: () => _dialog(row),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: AppColors.red600,
+                  ),
+                  onPressed: () async {
+                    final admin = context.read<AdminProvider>();
+                    await admin.delete('admin/seo/url-rewrites/${row['id']}');
+                    await _load();
+                  },
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -211,7 +258,9 @@ class _SearchTermsTabState extends State<SearchTermsTab> {
     if (mounted) {
       setState(() {
         final payload = data is Map ? (data['data'] ?? data) : data;
-        _rows = decodeList(payload is Map ? payload['records'] ?? payload : payload);
+        _rows = decodeList(
+          payload is Map ? payload['records'] ?? payload : payload,
+        );
         _loading = false;
       });
     }
@@ -220,28 +269,51 @@ class _SearchTermsTabState extends State<SearchTermsTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('Terms visitors searched for, with results and usage.',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-      const SizedBox(height: 16),
-      for (final row in _rows)
-        ListTile(
-          title: Text('${row['term']}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-          subtitle: Text('results: ${row['results']} · uses: ${row['uses']}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
-            onPressed: () async {
-              final admin = context.read<AdminProvider>();
-              await admin.delete('admin/seo/search-terms/${row['id']}');
-              await _load();
-            },
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text(
+          'Terms visitors searched for, with results and usage.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12,
+            color: AppColors.zinc500,
           ),
         ),
-    ]);
+        const SizedBox(height: 16),
+        for (final row in _rows)
+          ListTile(
+            title: Text(
+              '${row['term']}',
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+            ),
+            subtitle: Text(
+              'results: ${row['results']} · uses: ${row['uses']}',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: AppColors.zinc500,
+              ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.red600,
+              ),
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                await admin.delete('admin/seo/search-terms/${row['id']}');
+                await _load();
+              },
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -268,7 +340,9 @@ class _SynonymsTabState extends State<SynonymsTab> {
     if (mounted) {
       setState(() {
         final payload = data is Map ? (data['data'] ?? data) : data;
-        _rows = decodeList(payload is Map ? payload['records'] ?? payload : payload);
+        _rows = decodeList(
+          payload is Map ? payload['records'] ?? payload : payload,
+        );
         _loading = false;
       });
     }
@@ -277,7 +351,8 @@ class _SynonymsTabState extends State<SynonymsTab> {
   void _showError(Object error) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+    );
   }
 
   Future<void> _dialog([Map<String, dynamic>? synonym]) async {
@@ -289,26 +364,36 @@ class _SynonymsTabState extends State<SynonymsTab> {
         title: Text(synonym == null ? 'New synonym' : 'Edit synonym'),
         content: SizedBox(
           width: 460,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(
-                  labelText: 'Term', helperText: 'El término que busca la gente'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: terms,
-              decoration: const InputDecoration(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(
+                  labelText: 'Term',
+                  helperText: 'El término que busca la gente',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: terms,
+                decoration: const InputDecoration(
                   labelText: 'Synonyms (comma separated)',
-                  helperText: 'Se incluyen en la búsqueda con OR'),
-            ),
-          ]),
+                  helperText: 'Se incluyen en la búsqueda con OR',
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           PrimaryButton(
             label: 'Save',
-            onPressed: () => (name.text.trim().isEmpty || terms.text.trim().isEmpty)
+            onPressed: () =>
+                (name.text.trim().isEmpty || terms.text.trim().isEmpty)
                 ? null
                 : Navigator.pop(context, true),
           ),
@@ -319,14 +404,14 @@ class _SynonymsTabState extends State<SynonymsTab> {
     final admin = context.read<AdminProvider>();
     try {
       synonym == null
-          ? await admin.post('admin/seo/search-synonyms/store', body: {
-              'name': name.text.trim(),
-              'terms': terms.text.trim(),
-            })
-          : await admin.put('admin/seo/search-synonyms/edit/${synonym['id']}', body: {
-              'name': name.text.trim(),
-              'terms': terms.text.trim(),
-            });
+          ? await admin.post(
+              'admin/seo/search-synonyms/store',
+              body: {'name': name.text.trim(), 'terms': terms.text.trim()},
+            )
+          : await admin.put(
+              'admin/seo/search-synonyms/edit/${synonym['id']}',
+              body: {'name': name.text.trim(), 'terms': terms.text.trim()},
+            );
       await _load();
     } catch (error) {
       _showError(error);
@@ -336,37 +421,58 @@ class _SynonymsTabState extends State<SynonymsTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      Row(children: [
-        const Spacer(),
-        TextButton.icon(
-          onPressed: () => _dialog(),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New synonym', style: TextStyle(fontFamily: 'Poppins')),
-        ),
-      ]),
-      for (final row in _rows)
-        ListTile(
-          title: Text('${row['name']} → ${row['terms']}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              onPressed: () => _dialog(row),
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Row(
+          children: [
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _dialog(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text(
+                'New synonym',
+                style: TextStyle(fontFamily: 'Poppins'),
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
-              onPressed: () async {
-                final admin = context.read<AdminProvider>();
-                await admin.delete('admin/seo/search-synonyms/${row['id']}');
-                await _load();
-              },
-            ),
-          ]),
+          ],
         ),
-    ]);
+        for (final row in _rows)
+          ListTile(
+            title: Text(
+              '${row['name']} → ${row['terms']}',
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: () => _dialog(row),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: AppColors.red600,
+                  ),
+                  onPressed: () async {
+                    final admin = context.read<AdminProvider>();
+                    await admin.delete(
+                      'admin/seo/search-synonyms/${row['id']}',
+                    );
+                    await _load();
+                  },
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -401,29 +507,57 @@ class _SubscribersTabState extends State<SubscribersTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('Newsletter subscribers (destinatarios de las campañas).',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-      const SizedBox(height: 16),
-      for (final row in _rows)
-        ListTile(
-          title: Text('${row['email']}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-          subtitle: Text('${row['first_name'] ?? ''} ${row['last_name'] ?? ''}'.trim(),
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-          trailing: TextButton(
-            onPressed: () async {
-              final admin = context.read<AdminProvider>();
-              await admin.put('admin/seo/subscribers/${row['id']}', body: {'subscribed': 0});
-              await _load();
-            },
-            child: const Text('Unsubscribe',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.red600)),
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text(
+          'Newsletter subscribers (destinatarios de las campañas).',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12,
+            color: AppColors.zinc500,
           ),
         ),
-    ]);
+        const SizedBox(height: 16),
+        for (final row in _rows)
+          ListTile(
+            title: Text(
+              '${row['email']}',
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+            ),
+            subtitle: Text(
+              '${row['first_name'] ?? ''} ${row['last_name'] ?? ''}'.trim(),
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: AppColors.zinc500,
+              ),
+            ),
+            trailing: TextButton(
+              onPressed: () async {
+                final admin = context.read<AdminProvider>();
+                await admin.put(
+                  'admin/seo/subscribers/${row['id']}',
+                  body: {'subscribed': 0},
+                );
+                await _load();
+              },
+              child: const Text(
+                'Unsubscribe',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: AppColors.red600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -432,15 +566,25 @@ class SitemapTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('Sitemap',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
-      const SizedBox(height: 12),
-      const Text(
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text(
+          'Sitemap',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
           'El sitemap se genera dinámicamente en /api/seo/sitemap.xml '
           '(productos visibles y categorías activas). Añádelo a Search Console '
           'apuntando a https://tu-dominio/api/seo/sitemap.xml',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-    ]);
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+        ),
+      ],
+    );
   }
 }

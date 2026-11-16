@@ -27,19 +27,24 @@ class ConditionRow {
   final String operator;
   final dynamic value;
 
-  Map<String, dynamic> toPayload() => {'attribute': attribute, 'operator': operator, 'value': value};
+  Map<String, dynamic> toPayload() => {
+    'attribute': attribute,
+    'operator': operator,
+    'value': value,
+  };
 
-  static ConditionRow fromCondition(Map<String, dynamic> payload) => ConditionRow(
+  static ConditionRow fromCondition(Map<String, dynamic> payload) =>
+      ConditionRow(
         attribute: '${payload['attribute'] ?? ''}',
         operator: '${payload['operator'] ?? '=='}',
         value: payload['value'],
       );
 
   static ConditionRow fromPayload(Map<String, dynamic> payload) => ConditionRow(
-        attribute: '${payload['attribute'] ?? ''}',
-        operator: '${payload['operator'] ?? '=='}',
-        value: payload['value'],
-      );
+    attribute: '${payload['attribute'] ?? ''}',
+    operator: '${payload['operator'] ?? '=='}',
+    value: payload['value'],
+  );
 }
 
 /// Editor visual de condiciones de reglas de carrito: filas
@@ -55,7 +60,8 @@ class CartConditionsEditor extends StatefulWidget {
 
   final int conditionType;
   final List<Map<String, dynamic>> conditions;
-  final void Function(int conditionType, List<Map<String, dynamic>> conditions) onChanged;
+  final void Function(int conditionType, List<Map<String, dynamic>> conditions)
+  onChanged;
 
   @override
   State<CartConditionsEditor> createState() => _CartConditionsEditorState();
@@ -82,7 +88,8 @@ class _CartConditionsEditorState extends State<CartConditionsEditor> {
     setState(() {
       _attributes = decodeList(data);
       _rows = [
-        for (final condition in widget.conditions) _EditableRow.fromCondition(condition),
+        for (final condition in widget.conditions)
+          _EditableRow.fromCondition(condition),
       ];
       _loading = false;
     });
@@ -94,10 +101,14 @@ class _CartConditionsEditorState extends State<CartConditionsEditor> {
 
   Future<void> _loadOptions(String attribute) async {
     if (_optionsCache.containsKey(attribute)) return;
-    final match = _attributes.where((entry) => 'product::${entry['code']}' == attribute).firstOrNull;
+    final match = _attributes
+        .where((entry) => 'product::${entry['code']}' == attribute)
+        .firstOrNull;
     if (match == null) return;
     final admin = context.read<AdminProvider>();
-    final data = await admin.get('admin/catalog/attributes/edit/${match['id']}');
+    final data = await admin.get(
+      'admin/catalog/attributes/edit/${match['id']}',
+    );
     if (data is Map && mounted) {
       setState(() => _optionsCache[attribute] = decodeList(data['options']));
     }
@@ -115,10 +126,10 @@ class _CartConditionsEditorState extends State<CartConditionsEditor> {
             value: row.kind == 'guest'
                 ? 0
                 : row.kind == 'select'
-                    ? row.optionValue
-                    : row.kind == 'number'
-                        ? (num.tryParse(row.valueController.text) ?? 0)
-                        : row.valueController.text,
+                ? row.optionValue
+                : row.kind == 'number'
+                ? (num.tryParse(row.valueController.text) ?? 0)
+                : row.valueController.text,
           ).toPayload(),
       ],
     ];
@@ -129,54 +140,88 @@ class _CartConditionsEditorState extends State<CartConditionsEditor> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(
-          child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(color: AppColors.navyBlue, strokeWidth: 2)));
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            color: AppColors.navyBlue,
+            strokeWidth: 2,
+          ),
+        ),
+      );
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        const Text('Conditions match',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('ALL', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-          selected: widget.conditionType == 1,
-          selectedColor: AppColors.navyBlue,
-          labelStyle: TextStyle(
-              fontFamily: 'Poppins', color: widget.conditionType == 1 ? Colors.white : AppColors.zinc600),
-          onSelected: (_) {
-            widget.onChanged(1, _conditions);
-          },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Conditions match',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+            ),
+            const SizedBox(width: 12),
+            ChoiceChip(
+              label: const Text(
+                'ALL',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+              selected: widget.conditionType == 1,
+              selectedColor: AppColors.navyBlue,
+              labelStyle: TextStyle(
+                fontFamily: 'Poppins',
+                color: widget.conditionType == 1
+                    ? Colors.white
+                    : AppColors.zinc600,
+              ),
+              onSelected: (_) {
+                widget.onChanged(1, _conditions);
+              },
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text(
+                'ANY',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+              selected: widget.conditionType == 2,
+              selectedColor: AppColors.navyBlue,
+              labelStyle: TextStyle(
+                fontFamily: 'Poppins',
+                color: widget.conditionType == 2
+                    ? Colors.white
+                    : AppColors.zinc600,
+              ),
+              onSelected: (_) {
+                widget.onChanged(2, _conditions);
+              },
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        ChoiceChip(
-          label: const Text('ANY', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-          selected: widget.conditionType == 2,
-          selectedColor: AppColors.navyBlue,
-          labelStyle: TextStyle(
-              fontFamily: 'Poppins', color: widget.conditionType == 2 ? Colors.white : AppColors.zinc600),
-          onSelected: (_) {
-            widget.onChanged(2, _conditions);
-          },
+        const SizedBox(height: 12),
+        if (_rows.isEmpty)
+          const Text(
+            'No conditions: the rule applies to everything.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              color: AppColors.zinc500,
+            ),
+          )
+        else
+          for (final (index, row) in _rows.indexed) _rowTile(index, row),
+        const SizedBox(height: 4),
+        TextButton.icon(
+          onPressed: () => setState(() {
+            _rows.add(_EditableRow());
+          }),
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text(
+            'Add condition',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+          ),
         ),
-      ]),
-      const SizedBox(height: 12),
-      if (_rows.isEmpty)
-        const Text('No conditions: the rule applies to everything.',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500))
-      else
-        for (final (index, row) in _rows.indexed)
-          _rowTile(index, row),
-      const SizedBox(height: 4),
-      TextButton.icon(
-        onPressed: () => setState(() {
-          _rows.add(_EditableRow());
-        }),
-        icon: const Icon(Icons.add, size: 16),
-        label: const Text('Add condition', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-      ),
-    ]);
+      ],
+    );
   }
 
   Widget _rowTile(int index, _EditableRow row) {
@@ -195,101 +240,168 @@ class _CartConditionsEditorState extends State<CartConditionsEditor> {
         borderRadius: BorderRadius.circular(10),
         color: Colors.white,
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              isDense: true,
-              initialValue: row.attribute.isEmpty ? null : row.attribute,
-              decoration: const InputDecoration(
-                  isDense: true, labelText: 'Attribute', border: OutlineInputBorder()),
-              items: [
-                for (final (attribute, label, _) in _builtinAttributes)
-                  DropdownMenuItem(value: attribute, child: Text(label,
-                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))),
-                for (final attribute in _attributes)
-                  DropdownMenuItem(
-                      value: 'product::${attribute['code']}',
-                      child: Text('Product: ${attribute['admin_name'] ?? attribute['code']}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  row.attribute = value ?? '';
-                  row.operator = '==';
-                  row.optionValue = null;
-                  row.valueController.clear();
-                  if (row.kind == 'select') _loadOptions(row.attribute);
-                });
-                _emit();
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (row.kind != 'guest')
-            SizedBox(
-              width: 86,
-              child: DropdownButtonFormField<String>(
-                isDense: true,
-                initialValue: operators.contains(row.operator) ? row.operator : operators.firstOrNull,
-                decoration: const InputDecoration(
-                    isDense: true, labelText: 'Op', border: OutlineInputBorder()),
-                items: operators
-                    .map((operator) => DropdownMenuItem(
-                        value: operator,
-                        child: Text(operator, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => row.operator = value ?? '==');
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isDense: true,
+                  initialValue: row.attribute.isEmpty ? null : row.attribute,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'Attribute',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final (attribute, label, _) in _builtinAttributes)
+                      DropdownMenuItem(
+                        value: attribute,
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    for (final attribute in _attributes)
+                      DropdownMenuItem(
+                        value: 'product::${attribute['code']}',
+                        child: Text(
+                          'Product: ${attribute['admin_name'] ?? attribute['code']}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      row.attribute = value ?? '';
+                      row.operator = '==';
+                      row.optionValue = null;
+                      row.valueController.clear();
+                      if (row.kind == 'select') _loadOptions(row.attribute);
+                    });
+                    _emit();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (row.kind != 'guest')
+                SizedBox(
+                  width: 86,
+                  child: DropdownButtonFormField<String>(
+                    isDense: true,
+                    initialValue: operators.contains(row.operator)
+                        ? row.operator
+                        : operators.firstOrNull,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      labelText: 'Op',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: operators
+                        .map(
+                          (operator) => DropdownMenuItem(
+                            value: operator,
+                            child: Text(
+                              operator,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => row.operator = value ?? '==');
+                      _emit();
+                    },
+                  ),
+                ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(
+                  Icons.remove_circle_outline,
+                  size: 18,
+                  color: AppColors.red600,
+                ),
+                onPressed: () {
+                  setState(() => _rows.removeAt(index));
                   _emit();
                 },
               ),
-            ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline, size: 18, color: AppColors.red600),
-            onPressed: () {
-              setState(() => _rows.removeAt(index));
-              _emit();
-            },
+            ],
           ),
-        ]),
-        const SizedBox(height: 8),
-        if (row.kind == 'guest')
-          Text('Guest customers only (customer_id = 0).',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500))
-        else if (row.kind == 'select')
-          DropdownButtonFormField<int>(
-            isDense: true,
-            initialValue: row.optionValue,
-            decoration: const InputDecoration(
-                isDense: true, labelText: 'Value', border: OutlineInputBorder()),
-            items: (_optionsCache[row.attribute] ?? const [])
-                .map((option) => DropdownMenuItem(
-                    value: option['id'] as int?,
-                    child: Text('${option['admin_name']}',
-                        style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))))
-                .toList(),
-            onChanged: (value) {
-              setState(() => row.optionValue = value);
-              _emit();
-            },
-          )
-        else if (row.kind != 'unknown')
-          TextField(
-            controller: row.valueController,
-            keyboardType:
-                row.kind == 'number' ? TextInputType.number : TextInputType.text,
-            decoration: InputDecoration(
+          const SizedBox(height: 8),
+          if (row.kind == 'guest')
+            Text(
+              'Guest customers only (customer_id = 0).',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: AppColors.zinc500,
+              ),
+            )
+          else if (row.kind == 'select')
+            DropdownButtonFormField<int>(
+              isDense: true,
+              initialValue: row.optionValue,
+              decoration: const InputDecoration(
                 isDense: true,
-                labelText: row.kind == 'number' ? 'Value' : 'Value (contains supported)',
-                border: const OutlineInputBorder()),
-            onChanged: (_) => _emit(),
-          )
-        else
-          Text('Unrecognised condition: kept as-is when saving.',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-      ]),
+                labelText: 'Value',
+                border: OutlineInputBorder(),
+              ),
+              items: (_optionsCache[row.attribute] ?? const [])
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option['id'] as int?,
+                      child: Text(
+                        '${option['admin_name']}',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() => row.optionValue = value);
+                _emit();
+              },
+            )
+          else if (row.kind != 'unknown')
+            TextField(
+              controller: row.valueController,
+              keyboardType: row.kind == 'number'
+                  ? TextInputType.number
+                  : TextInputType.text,
+              decoration: InputDecoration(
+                isDense: true,
+                labelText: row.kind == 'number'
+                    ? 'Value'
+                    : 'Value (contains supported)',
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) => _emit(),
+            )
+          else
+            Text(
+              'Unrecognised condition: kept as-is when saving.',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: AppColors.zinc500,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -304,7 +416,9 @@ class _EditableRow {
   ConditionRow? unknownCondition;
 
   String get kind {
-    final builtin = _builtinAttributes.where((entry) => entry.$1 == attribute).firstOrNull;
+    final builtin = _builtinAttributes
+        .where((entry) => entry.$1 == attribute)
+        .firstOrNull;
     if (builtin != null) return builtin.$3;
     return '';
   }

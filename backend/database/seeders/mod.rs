@@ -104,6 +104,7 @@ pub async fn run() -> Result<(), AppError> {
         seed_demo_catalog().await?;
         seed_demo_home().await?;
         seed_demo_media().await?;
+        seed_demo_attributes().await?;
         seed_demo_cart_rules().await?;
         seed_demo_catalog_rule().await?;
         seed_demo_customers_orders().await?;
@@ -672,7 +673,14 @@ async fn set_attr(product_id: i64, code: &str, value: Value) {
         "date" => row["date_value"] = value,
         "datetime" => row["datetime_value"] = value,
         "multiselect" | "checkbox" => row["json_value"] = value,
-        _ => row["text_value"] = value,
+        // Text columns hold strings: coerce numbers so `json!(1)` is not lost.
+        _ => {
+            row["text_value"] = match &value {
+                Value::String(text) => json!(text),
+                Value::Null => Value::Null,
+                other => json!(other.to_string()),
+            }
+        }
     }
 
     let existing: Option<(i64,)> = sqlx::query_as(
@@ -1189,6 +1197,47 @@ async fn seed_demo_media() -> Result<(), AppError> {
     .bind(slides.to_string())
     .execute(pool)
     .await;
+
+    Ok(())
+}
+
+/// Atributos demo (idempotente): peso, medidas, color, talla y marca de los
+/// productos demo para que la pestaña "Additional Information" tenga contenido.
+async fn seed_demo_attributes() -> Result<(), AppError> {
+    // (sku, peso kg, largo, ancho, alto, color, talla, marca)
+    // Los ids de opción salen de `attribute_options` (color 1-5, talla 6-9,
+    // marca 10-11).
+    let rows: &[(&str, f64, i64, i64, i64, Option<i64>, Option<i64>, i64)] = &[
+        ("EZ-WATCH-01", 0.25, 8, 8, 6, Some(4), None, 10),
+        ("EZ-HEAD-01", 0.35, 20, 18, 8, Some(4), None, 10),
+        ("EZ-TEE-01", 0.20, 30, 25, 3, Some(5), Some(7), 10),
+        ("EZ-JEAN-01", 0.65, 32, 28, 5, Some(3), Some(7), 10),
+        ("EZ-DRESS-01", 0.40, 34, 28, 4, Some(1), Some(6), 10),
+        ("EZ-BAG-01", 0.85, 40, 15, 30, Some(4), None, 10),
+        ("EZ-MUG-01", 0.45, 12, 9, 10, Some(5), None, 11),
+        ("EZ-LAMP-01", 1.60, 30, 30, 45, Some(4), None, 11),
+        ("EZ-SNEAKER-01", 0.90, 32, 22, 12, None, None, 10),
+        ("EZ-SNEAKER-01-GREEN", 0.90, 32, 22, 12, Some(2), None, 10),
+        ("EZ-SNEAKER-01-BLUE", 0.90, 32, 22, 12, Some(3), None, 10),
+        ("EZ-SNEAKER-01-RED", 0.90, 32, 22, 12, Some(1), None, 10),
+    ];
+
+    for (sku, weight, length, width, height, color, size, brand) in rows {
+        let Some(product_id) = demo_product_id(sku).await? else {
+            continue;
+        };
+        set_attr(product_id, "weight", json!(weight)).await;
+        set_attr(product_id, "length", json!(length)).await;
+        set_attr(product_id, "width", json!(width)).await;
+        set_attr(product_id, "height", json!(height)).await;
+        set_attr(product_id, "brand", json!(brand)).await;
+        if let Some(color) = color {
+            set_attr(product_id, "color", json!(color)).await;
+        }
+        if let Some(size) = size {
+            set_attr(product_id, "size", json!(size)).await;
+        }
+    }
 
     Ok(())
 }

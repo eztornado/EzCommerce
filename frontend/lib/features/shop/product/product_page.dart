@@ -8,6 +8,7 @@ import '../../../core/models/models.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
 import '../catalog/product_card.dart';
+import '../shell/shop_shell.dart';
 
 /// Página de producto: galería (desktop thumbnails / móvil carrusel),
 /// precio con tachado, opciones configurables, qty, tabs/accordions,
@@ -60,8 +61,9 @@ class _ProductPageState extends State<ProductPage> {
   void _matchVariant() {
     if (_product == null) return;
     for (final variant in _product!.variants) {
-      final matches = _selectedOptions.entries
-          .every((entry) => variant.attributes[entry.key] == entry.value);
+      final matches = _selectedOptions.entries.every(
+        (entry) => variant.attributes[entry.key] == entry.value,
+      );
       if (matches && variant.attributes.length == _selectedOptions.length) {
         _matchedVariant = variant;
         return;
@@ -75,15 +77,19 @@ class _ProductPageState extends State<ProductPage> {
     final options = <String, dynamic>{};
     _selectedOptions.forEach((code, value) => options[code] = value);
     final error = await context.read<CartProvider>().addProduct(
-          _matchedVariant?.id ?? product.id ?? 0,
-          quantity: _quantity,
-          options: options.isNotEmpty ? options : null,
-        );
+      _matchedVariant?.id ?? product.id ?? 0,
+      quantity: _quantity,
+      options: options.isNotEmpty ? options : null,
+    );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error ?? 'The item has been added to your cart successfully.'),
-      backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ?? 'The item has been added to your cart successfully.',
+        ),
+        backgroundColor: error != null ? AppColors.red600 : AppColors.navyBlue,
+      ),
+    );
   }
 
   Future<void> _buyNow() async {
@@ -99,17 +105,43 @@ class _ProductPageState extends State<ProductPage> {
       if (mounted) setState(() => _inWishlist = !_inWishlist);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Please sign in to add products to your wishlist.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please sign in to add products to your wishlist.'),
+          ),
+        );
         context.push('/login');
       }
+    }
+  }
+
+  Future<void> _addToCompare() async {
+    try {
+      await apiPost(
+        'customer/compare-items',
+        body: {'product_id': _product!.id},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The product has been added to the compare list.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to compare products.')),
+      );
+      context.push('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
     final product = _product;
     if (product == null) {
@@ -117,146 +149,306 @@ class _ProductPageState extends State<ProductPage> {
     }
     final isNarrow = MediaQuery.of(context).size.width <= 1180;
     return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 16 : 60, vertical: 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => context.go('/'),
-                child: const Text('Home'),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.zinc400),
-              Text(product.name, style: const TextStyle(color: AppColors.zinc500)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Flex(
-            direction: isNarrow ? Axis.vertical : Axis.horizontal,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Galería
-              Container(
-                constraints: isNarrow
-                    ? const BoxConstraints()
-                    : const BoxConstraints(maxWidth: 520),
-                child: ProductGallery(imageUrls: product.imageUrls, isNarrow: isNarrow),
-              ),
-              const SizedBox(width: 36, height: 24),
-              // Detalles
-              Expanded(
-                flex: isNarrow ? 0 : 1,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1440),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isNarrow ? 16 : 60,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => context.go('/'),
+                          child: const Text('Home'),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: AppColors.zinc400,
+                        ),
+                        Text(
+                          product.name,
+                          style: const TextStyle(color: AppColors.zinc500),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Flex(
+                      direction: isNarrow ? Axis.vertical : Axis.horizontal,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: const TextStyle(
-                                fontFamily: 'Poppins', fontSize: 28, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _inWishlist ? Icons.favorite : Icons.favorite_border,
-                            color: _inWishlist ? AppColors.red600 : AppColors.gray900,
-                          ),
-                          onPressed: _toggleWishlist,
-                        ),
-                      ],
-                    ),
-                    if (product.ratingsTotal > 0)
-                      Row(
-                        children: [
-                          Text(product.ratingAverage.toStringAsFixed(1),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.star, size: 16, color: AppColors.amber500),
-                          const SizedBox(width: 8),
-                          Text('(${product.ratingsTotal} reviews)',
-                              style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                        ],
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Text(
-                          _matchedVariant != null
-                              ? (_matchedVariant!.price ?? product.price).toStringAsFixed(2)
-                              : product.formattedPrice,
-                          style: const TextStyle(
-                              fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.w600),
-                        ),
-                        if (product.onSale) ...[
-                          const SizedBox(width: 10),
-                          Text(
-                            product.formattedRegularPrice,
-                            style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 16,
-                                color: AppColors.zinc500,
-                                decoration: TextDecoration.lineThrough),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (product.shortDescription != null)
-                      Text(
-                        product.shortDescription!,
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: AppColors.zinc500),
-                      ),
-                    const SizedBox(height: 24),
-                    // Opciones configurables
-                    ...product.superAttributes.map(
-                      (attribute) => SuperAttributeSelector(
-                        attribute: attribute,
-                        selected: _selectedOptions[attribute.code],
-                        swatchType: attribute.swatchType,
-                        onChanged: (value) => _onOptionChanged(attribute.code, value),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Qty + Add To Cart
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 12,
-                      children: [
-                        QuantityChanger(
-                          quantity: _quantity,
-                          onChanged: (value) => setState(() => _quantity = value),
-                        ),
+                        // Galería
                         SizedBox(
-                          width: isNarrow ? double.infinity : 260,
-                          child: AddToCartButton(
-                            productId: _matchedVariant?.id ?? product.id ?? 0,
-                            quantity: _quantity,
-                            options: _selectedOptions.map((k, v) => MapEntry(k, v)),
-                            label: 'Add To Cart',
+                          width: isNarrow ? double.infinity : 660,
+                          child: ProductGallery(
+                            imageUrls: product.imageUrls,
+                            isNarrow: isNarrow,
+                          ),
+                        ),
+                        const SizedBox(width: 44, height: 24),
+                        // Detalles
+                        Expanded(
+                          flex: isNarrow ? 0 : 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      product.name,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      _inWishlist
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: _inWishlist
+                                          ? AppColors.red600
+                                          : AppColors.gray900,
+                                    ),
+                                    onPressed: _toggleWishlist,
+                                  ),
+                                ],
+                              ),
+                              if (product.ratingsTotal > 0)
+                                Row(
+                                  children: [
+                                    Text(
+                                      product.ratingAverage.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.star,
+                                      size: 16,
+                                      color: AppColors.amber500,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '(${product.ratingsTotal} ${product.ratingsTotal == 1 ? 'review' : 'reviews'})',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 12,
+                                        color: AppColors.zinc500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: product.inStock
+                                          ? AppColors.emerald500
+                                          : AppColors.red500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    product.inStock
+                                        ? 'In Stock'
+                                        : 'Out of Stock',
+                                    style: TextStyle(
+                                      fontFamily: EzTheme.sans,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: product.inStock
+                                          ? AppColors.emerald600
+                                          : AppColors.red600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    'SKU: ${product.sku}',
+                                    style: const TextStyle(
+                                      fontFamily: EzTheme.sans,
+                                      fontSize: 13,
+                                      color: AppColors.zinc500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Text(
+                                    _matchedVariant != null
+                                        ? (_matchedVariant!.price ??
+                                                  product.price)
+                                              .toStringAsFixed(2)
+                                        : product.formattedPrice,
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (product.onSale) ...[
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      product.formattedRegularPrice,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 16,
+                                        color: AppColors.zinc500,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              if (product.shortDescription != null)
+                                Text(
+                                  product.shortDescription!,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 16,
+                                    color: AppColors.zinc500,
+                                  ),
+                                ),
+                              const SizedBox(height: 24),
+                              // Opciones configurables
+                              ...product.superAttributes.map(
+                                (attribute) => SuperAttributeSelector(
+                                  attribute: attribute,
+                                  selected: _selectedOptions[attribute.code],
+                                  swatchType: attribute.swatchType,
+                                  onChanged: (value) =>
+                                      _onOptionChanged(attribute.code, value),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              // Qty + Add To Cart
+                              if (isNarrow)
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    QuantityChanger(
+                                      quantity: _quantity,
+                                      onChanged: (value) =>
+                                          setState(() => _quantity = value),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    AddToCartButton(
+                                      productId:
+                                          _matchedVariant?.id ??
+                                          product.id ??
+                                          0,
+                                      quantity: _quantity,
+                                      options: _selectedOptions.map(
+                                        (k, v) => MapEntry(k, v),
+                                      ),
+                                      label: 'Add To Cart',
+                                    ),
+                                  ],
+                                )
+                              else
+                                Row(
+                                  children: [
+                                    QuantityChanger(
+                                      quantity: _quantity,
+                                      onChanged: (value) =>
+                                          setState(() => _quantity = value),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: AddToCartButton(
+                                        productId:
+                                            _matchedVariant?.id ??
+                                            product.id ??
+                                            0,
+                                        quantity: _quantity,
+                                        options: _selectedOptions.map(
+                                          (k, v) => MapEntry(k, v),
+                                        ),
+                                        label: 'Add To Cart',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 12),
+                              PrimaryButton(
+                                label: 'Buy Now',
+                                expand: true,
+                                onPressed: _buyNow,
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: _toggleWishlist,
+                                    icon: Icon(
+                                      _inWishlist
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      size: 18,
+                                      color: _inWishlist
+                                          ? AppColors.red600
+                                          : AppColors.navyBlue,
+                                    ),
+                                    label: Text(
+                                      _inWishlist
+                                          ? 'In Wishlist'
+                                          : 'Add to Wishlist',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  TextButton.icon(
+                                    onPressed: _addToCompare,
+                                    icon: const Icon(
+                                      Icons.compare_arrows,
+                                      size: 18,
+                                      color: AppColors.navyBlue,
+                                    ),
+                                    label: const Text('Add to Compare'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: isNarrow ? double.infinity : 300,
-                      child: PrimaryButton(label: 'Buy Now', onPressed: _buyNow),
+                    const SizedBox(height: 48),
+                    // Tabs / accordions
+                    ProductInfoTabs(product: product),
+                    // Related
+                    ProductAssociations(
+                      productId: product.id,
+                      kind: 'related',
+                      title: 'Related Products',
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 48),
-          // Tabs / accordions
-          ProductInfoTabs(product: product),
-          const SizedBox(height: 48),
-          // Related
-          ProductAssociations(productId: product.id, kind: 'related', title: 'Related Products'),
+          const ShopFooterSections(),
         ],
       ),
     );
@@ -268,7 +460,11 @@ class _ProductPageState extends State<ProductPage> {
 // ---------------------------------------------------------------------------
 
 class ProductGallery extends StatefulWidget {
-  const ProductGallery({super.key, required this.imageUrls, required this.isNarrow});
+  const ProductGallery({
+    super.key,
+    required this.imageUrls,
+    required this.isNarrow,
+  });
   final List<String> imageUrls;
   final bool isNarrow;
 
@@ -290,7 +486,11 @@ class _ProductGalleryState extends State<ProductGallery> {
             color: AppColors.zinc100,
             borderRadius: BorderRadius.circular(EzTheme.radiusXl),
           ),
-          child: const Icon(Icons.image_outlined, size: 64, color: AppColors.zinc300),
+          child: const Icon(
+            Icons.image_outlined,
+            size: 64,
+            color: AppColors.zinc300,
+          ),
         ),
       );
     }
@@ -307,7 +507,12 @@ class _ProductGalleryState extends State<ProductGallery> {
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-                child: Image.network(url ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
+                child: Image.network(
+                  url ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      Container(color: AppColors.zinc100),
+                ),
               ),
             );
           },
@@ -319,26 +524,33 @@ class _ProductGalleryState extends State<ProductGallery> {
       children: [
         // Thumbnails
         SizedBox(
-          width: 76,
+          width: 88,
           child: Column(
             children: List.generate(urls.length, (index) {
               final url = apiUrlRelative(urls[index]);
               return GestureDetector(
                 onTap: () => setState(() => _index = index),
                 child: Container(
-                  width: 76,
-                  height: 76,
+                  width: 88,
+                  height: 88,
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(EzTheme.radiusXl),
                     border: Border.all(
-                      color: index == _index ? AppColors.navyBlue : Colors.white,
+                      color: index == _index
+                          ? AppColors.navyBlue
+                          : Colors.white,
                       width: 2,
                     ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(url ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
+                    child: Image.network(
+                      url ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          Container(color: AppColors.zinc100),
+                    ),
                   ),
                 ),
               );
@@ -351,7 +563,11 @@ class _ProductGalleryState extends State<ProductGallery> {
             aspectRatio: 0.95,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-              child: Image.network(main ?? '', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: AppColors.zinc100)),
+              child: Image.network(
+                main ?? '',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(color: AppColors.zinc100),
+              ),
             ),
           ),
         ),
@@ -385,8 +601,14 @@ class SuperAttributeSelector extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(attribute.label,
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w500)),
+          Text(
+            attribute.label,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -395,26 +617,41 @@ class SuperAttributeSelector extends StatelessWidget {
               final isSelected = selected == option.id;
               return GestureDetector(
                 onTap: () => onChanged(option.id ?? 0),
-                child: swatchType == 'color' && (option.swatchValue ?? '').isNotEmpty
+                child:
+                    swatchType == 'color' &&
+                        (option.swatchValue ?? '').isNotEmpty
                     ? Container(
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
                           color: Color(
-                              int.parse((option.swatchValue ?? '#000000').replaceFirst('#', '0xFF'))),
+                            int.parse(
+                              (option.swatchValue ?? '#000000').replaceFirst(
+                                '#',
+                                '0xFF',
+                              ),
+                            ),
+                          ),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? AppColors.gray900 : AppColors.zinc200,
+                            color: isSelected
+                                ? AppColors.gray900
+                                : AppColors.zinc200,
                             width: isSelected ? 2 : 1,
                           ),
                         ),
                       )
                     : Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(EzTheme.radiusLg),
                           border: Border.all(
-                            color: isSelected ? AppColors.navyBlue : AppColors.zinc200,
+                            color: isSelected
+                                ? AppColors.navyBlue
+                                : AppColors.zinc200,
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -423,7 +660,9 @@ class SuperAttributeSelector extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 14,
-                            color: isSelected ? AppColors.navyBlue : AppColors.gray900,
+                            color: isSelected
+                                ? AppColors.navyBlue
+                                : AppColors.gray900,
                           ),
                         ),
                       ),
@@ -441,7 +680,11 @@ class SuperAttributeSelector extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class QuantityChanger extends StatelessWidget {
-  const QuantityChanger({super.key, required this.quantity, required this.onChanged});
+  const QuantityChanger({
+    super.key,
+    required this.quantity,
+    required this.onChanged,
+  });
   final int quantity;
   final ValueChanged<int> onChanged;
 
@@ -464,7 +707,11 @@ class QuantityChanger extends StatelessWidget {
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           IconButton(
@@ -481,56 +728,78 @@ class QuantityChanger extends StatelessWidget {
 // Tabs (desktop) / accordions (móvil): Description | Additional | Reviews
 // ---------------------------------------------------------------------------
 
-class ProductInfoTabs extends StatelessWidget {
+class ProductInfoTabs extends StatefulWidget {
   const ProductInfoTabs({super.key, required this.product});
   final Product product;
 
   @override
+  State<ProductInfoTabs> createState() => _ProductInfoTabsState();
+}
+
+class _ProductInfoTabsState extends State<ProductInfoTabs> {
+  int _index = 0;
+
+  @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.of(context).size.width <= 1180;
+    final product = widget.product;
     final description = _stripHtml(product.description ?? '');
     final additional = product.additionalInformation;
+
+    final hasAdditional = additional.isNotEmpty;
 
     if (isNarrow) {
       return Column(
         children: [
-          _Accordion(title: 'Description', child: _DescriptionText(description)),
-          _Accordion(title: 'Additional Information', child: _AdditionalTable(additional)),
+          _Accordion(
+            title: 'Description',
+            child: _DescriptionText(description),
+          ),
+          if (hasAdditional)
+            _Accordion(
+              title: 'Additional Information',
+              child: _AdditionalTable(additional),
+            ),
           ReviewsSection(productId: product.id),
         ],
       );
     }
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          Container(
-            color: AppColors.zinc100,
-            child: const TabBar(
-              indicatorColor: AppColors.navyBlue,
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelColor: Colors.black,
-              unselectedLabelColor: AppColors.zinc600,
-              labelStyle: TextStyle(fontFamily: 'Poppins', fontSize: 17, fontWeight: FontWeight.w500),
-              tabs: [
-                Tab(text: 'Description'),
-                Tab(text: 'Additional Information'),
-                Tab(text: 'Reviews'),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 260,
-            child: TabBarView(
-              children: [
-                SingleChildScrollView(child: _DescriptionText(description)),
-                SingleChildScrollView(child: _AdditionalTable(additional)),
-                const ReviewsInline(),
-              ],
-            ),
-          ),
-        ],
+
+    final tabs = <String>[
+      'Description',
+      if (hasAdditional) 'Additional Information',
+      'Reviews',
+    ];
+    final contents = <Widget>[
+      _DescriptionText(description),
+      if (hasAdditional) _AdditionalTable(additional),
+      Padding(
+        padding: const EdgeInsets.only(top: 20),
+        child: ReviewsSection(productId: product.id),
       ),
+    ];
+    final index = _index.clamp(0, contents.length - 1);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.zinc200)),
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < tabs.length; i++)
+                _InfoTab(
+                  label: tabs[i],
+                  selected: i == index,
+                  onTap: () => setState(() => _index = i),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(width: double.infinity, child: contents[index]),
+      ],
     );
   }
 
@@ -542,6 +811,45 @@ class ProductInfoTabs extends StatelessWidget {
   }
 }
 
+class _InfoTab extends StatelessWidget {
+  const _InfoTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 18),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? AppColors.navyBlue : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: EzTheme.sans,
+            fontSize: 16,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppColors.navyBlue : AppColors.zinc600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DescriptionText extends StatelessWidget {
   const _DescriptionText(this.text);
   final String text;
@@ -549,10 +857,15 @@ class _DescriptionText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 22, right: 24, bottom: 8),
       child: Text(
         text.isEmpty ? 'No description available.' : text,
-        style: TextStyle(fontFamily: 'Poppins', fontSize: 15, height: 1.6, color: AppColors.zinc600),
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 15,
+          height: 1.6,
+          color: AppColors.zinc600,
+        ),
       ),
     );
   }
@@ -576,17 +889,29 @@ class _AdditionalTable extends StatelessWidget {
         columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(3)},
         children: rows.map((row) {
           return TableRow(
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.zinc200))),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.zinc200)),
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text('${row['label'] ?? row['code']}',
-                    style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
+                child: Text(
+                  '${row['label'] ?? row['code']}',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text(_value(row['value']),
-                    style: TextStyle(fontFamily: 'Poppins', color: AppColors.zinc500)),
+                child: Text(
+                  _value(row['value']),
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    color: AppColors.zinc500,
+                  ),
+                ),
               ),
             ],
           );
@@ -609,23 +934,22 @@ class _Accordion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.zinc200))),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.zinc200)),
+      ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-        title: Text(title,
-            style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         children: [child],
       ),
     );
-  }
-}
-
-class ReviewsInline extends StatelessWidget {
-  const ReviewsInline({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('See reviews below.'));
   }
 }
 
@@ -668,17 +992,23 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     try {
-      await apiPost('product/${widget.productId ?? 0}/review', body: {
-        'title': _titleController.text,
-        'comment': _commentController.text,
-        'rating': _rating,
-      });
+      await apiPost(
+        'product/${widget.productId ?? 0}/review',
+        body: {
+          'title': _titleController.text,
+          'comment': _commentController.text,
+          'rating': _rating,
+        },
+      );
       _titleController.clear();
       _commentController.clear();
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Your review has been submitted successfully.')));
+          const SnackBar(
+            content: Text('Your review has been submitted successfully.'),
+          ),
+        );
       }
     } catch (_) {}
   }
@@ -688,43 +1018,80 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Reviews',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.w500)),
+        const Text(
+          'Reviews',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 16),
         if (_loading)
-          const Center(child: CircularProgressIndicator(color: AppColors.navyBlue))
+          const Center(
+            child: CircularProgressIndicator(color: AppColors.navyBlue),
+          )
         else if (_reviews.isEmpty)
-          Text('No reviews yet. Be the first to review this product.',
-              style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: AppColors.zinc500))
+          Text(
+            'No reviews yet. Be the first to review this product.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              color: AppColors.zinc500,
+            ),
+          )
         else
-          ..._reviews.map((review) => Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-                  border: Border.all(color: AppColors.zinc200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: List.generate(
-                        (review['rating'] ?? 0) as int,
-                        (_) => const Icon(Icons.star, size: 16, color: AppColors.amber500),
+          ..._reviews.map(
+            (review) => Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                border: Border.all(color: AppColors.zinc200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: List.generate(
+                      (review['rating'] ?? 0) as int,
+                      (_) => const Icon(
+                        Icons.star,
+                        size: 16,
+                        color: AppColors.amber500,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text('${review['title'] ?? ''}',
-                        style: const TextStyle(
-                            fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600)),
-                    Text('${review['comment'] ?? ''}',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc500)),
-                    const SizedBox(height: 6),
-                    Text('${review['name'] ?? ''}',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc400)),
-                  ],
-                ),
-              )),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${review['title'] ?? ''}',
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${review['comment'] ?? ''}',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      color: AppColors.zinc500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${review['name'] ?? ''}',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12,
+                      color: AppColors.zinc400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         const Divider(height: 32),
         // Formulario
         Form(
@@ -732,8 +1099,14 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Write a review',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
+              const Text(
+                'Write a review',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: List.generate(5, (index) {
@@ -749,16 +1122,18 @@ class _ReviewsSectionState extends State<ReviewsSection> {
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(hintText: 'Title'),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'The title field is required.' : null,
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'The title field is required.'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _commentController,
                 maxLines: 4,
                 decoration: const InputDecoration(hintText: 'Your review'),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'The comment field is required.' : null,
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'The comment field is required.'
+                    : null,
               ),
               const SizedBox(height: 12),
               PrimaryButton(label: 'Submit Review', onPressed: _submit),
@@ -819,20 +1194,35 @@ class _ProductAssociationsState extends State<ProductAssociations> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.title,
-            style: const TextStyle(
-                fontFamily: 'DM Serif Display', fontSize: 26, color: AppColors.gray900)),
+        const SizedBox(height: 48),
+        Text(
+          widget.title,
+          style: const TextStyle(
+            fontFamily: 'DM Serif Display',
+            fontSize: 26,
+            color: AppColors.gray900,
+          ),
+        ),
         const SizedBox(height: 20),
         SizedBox(
-          height: 360,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _products.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 24),
-            itemBuilder: (context, index) => SizedBox(
-              width: 260,
-              child: ProductCard(product: _products[index]),
-            ),
+          height: 470,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = constraints.maxWidth >= 1200 ? 291.0 : 260.0;
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: _products.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 28),
+                itemBuilder: (context, index) => SizedBox(
+                  width: cardWidth,
+                  child: ProductCard(
+                    product: _products[index],
+                    width: cardWidth,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

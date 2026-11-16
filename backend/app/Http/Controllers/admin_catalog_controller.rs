@@ -58,7 +58,7 @@ pub fn products_grid() -> datagrid::DataGrid {
             ])) },
         ],
         joins: vec![
-            "LEFT JOIN `product_flat` `pf` ON `pf`.`product_id` = `p`.`id`".into(),
+            "LEFT JOIN `product_flat` `pf` ON `pf`.`product_id` = `p`.`id` AND `pf`.`locale` = 'en'".into(),
             "LEFT JOIN `product_inventory_indices` `pfi` ON `pfi`.`product_id` = `p`.`id`".into(),
         ],
         where_clauses: vec![("`p`.`parent_id` IS NULL".to_string(), Vec::new())],
@@ -1216,6 +1216,8 @@ fn categories_tree_from(
                 "id": id,
                 "name": child["name"],
                 "slug": child["slug"],
+                "status": child["status"],
+                "position": child["position"],
                 "children": categories_tree_from(id, locale).await,
             }));
         }

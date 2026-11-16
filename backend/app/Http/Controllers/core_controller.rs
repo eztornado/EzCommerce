@@ -121,6 +121,10 @@ impl CoreController {
                     larust_support::axum::http::header::CACHE_CONTROL,
                     "public, max-age=86400".to_string(),
                 ),
+                (
+                    larust_support::axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                    "*".to_string(),
+                ),
             ],
             bytes,
         )

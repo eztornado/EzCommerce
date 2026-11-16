@@ -195,7 +195,7 @@ impl CategoryController {
         };
         let channel_id = channel["id"].as_i64().unwrap_or(1);
         let max = db::scalar_i64(
-            "SELECT COALESCE(CEIL(MAX(`ppi`.`min_price`)), 0) FROM `product_price_indices` `ppi` \
+            "SELECT COALESCE(CAST(MAX(`ppi`.`min_price`) + 0.999 AS INTEGER), 0) FROM `product_price_indices` `ppi` \
              INNER JOIN `product_categories` `pc` ON `pc`.`product_id` = `ppi`.`product_id` \
              WHERE `pc`.`category_id` IN (SELECT `id` FROM `categories` WHERE `id` = ? OR `parent_id` = ?) \
              AND `ppi`.`customer_group_id` = (SELECT `id` FROM `customer_groups` WHERE `code` = 'guest' LIMIT 1)",

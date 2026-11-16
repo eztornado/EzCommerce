@@ -34,10 +34,7 @@ class AdminShipmentsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EzDataGrid(
-      gridPath: 'admin/sales/shipments',
-      title: 'Shipments',
-    );
+    return EzDataGrid(gridPath: 'admin/sales/shipments', title: 'Shipments');
   }
 }
 
@@ -46,9 +43,6 @@ class AdminRefundsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EzDataGrid(
-      gridPath: 'admin/sales/refunds',
-      title: 'Refunds',
-    );
+    return EzDataGrid(gridPath: 'admin/sales/refunds', title: 'Refunds');
   }
 }

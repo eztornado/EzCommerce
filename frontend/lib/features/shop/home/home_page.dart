@@ -9,6 +9,7 @@ import '../../../core/models/models.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/theme/ez_theme.dart';
 import '../catalog/product_card.dart';
+import '../shell/shop_shell.dart';
 
 /// Home por secciones (`theme_sections`): image_carousel, category_carousel,
 /// product_carousel y static_content.
@@ -56,7 +57,10 @@ class _HomePageState extends State<HomePage> {
               child: Text(
                 'Welcome to EzCommerce',
                 style: TextStyle(
-                    fontFamily: EzTheme.serif, fontSize: 36, color: AppColors.navyBlue),
+                  fontFamily: EzTheme.serif,
+                  fontSize: 36,
+                  color: AppColors.navyBlue,
+                ),
               ),
             ),
           ],
@@ -69,7 +73,10 @@ class _HomePageState extends State<HomePage> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: _sections.map((section) => _SectionRenderer(section: section)).toList(),
+          children: [
+            ..._sections.map((section) => _SectionRenderer(section: section)),
+            const ShopFooterSections(),
+          ],
         ),
       ),
     );
@@ -84,13 +91,19 @@ class _SectionRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (section.type) {
       case 'image_carousel':
-        return HeroCarousel(slides: (section.options['slides'] as List?) ?? const []);
+        return HeroCarousel(
+          slides: (section.options['slides'] as List?) ?? const [],
+        );
       case 'static_content':
         return OfferBanner(options: section.options);
       case 'category_carousel':
-        return CategoryCarousel(title: section.options['title'] ?? section.name);
+        return CategoryCarousel(
+          title: section.options['title'] ?? section.name,
+        );
       case 'product_carousel':
-        return ProductsCarousel(title: section.options['title'] ?? section.name);
+        return ProductsCarousel(
+          title: section.options['title'] ?? section.name,
+        );
       case 'services_content':
       case 'footer_links':
         return const SizedBox.shrink();
@@ -171,7 +184,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
     final width = MediaQuery.of(context).size.width;
     final height = width >= 1200
         ? (width / 2.65).clamp(420.0, 660.0)
-        : (width >= 768 ? 470.0 : 500.0);
+        : (width >= 768 ? 470.0 : 470.0);
 
     return SizedBox(
       height: height,
@@ -182,9 +195,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
             controller: _controller,
             itemCount: list.length,
             onPageChanged: (index) => setState(() => _index = index),
-            itemBuilder: (context, index) => _HeroSlide(slide: list[index], height: height),
+            itemBuilder: (context, index) =>
+                _HeroSlide(slide: list[index], height: height),
           ),
-          if (list.length > 1) ...[
+          if (list.length > 1 && width >= 768) ...[
             Positioned(
               left: 20,
               top: 0,
@@ -193,7 +207,9 @@ class _HeroCarouselState extends State<HeroCarousel> {
                 child: _HeroArrow(
                   icon: Icons.arrow_back_ios_new,
                   onTap: () => _controller.previousPage(
-                      duration: const Duration(milliseconds: 550), curve: Curves.easeOutCubic),
+                    duration: const Duration(milliseconds: 550),
+                    curve: Curves.easeOutCubic,
+                  ),
                 ),
               ),
             ),
@@ -205,7 +221,9 @@ class _HeroCarouselState extends State<HeroCarousel> {
                 child: _HeroArrow(
                   icon: Icons.arrow_forward_ios,
                   onTap: () => _controller.nextPage(
-                      duration: const Duration(milliseconds: 550), curve: Curves.easeOutCubic),
+                    duration: const Duration(milliseconds: 550),
+                    curve: Curves.easeOutCubic,
+                  ),
                 ),
               ),
             ),
@@ -218,16 +236,20 @@ class _HeroCarouselState extends State<HeroCarousel> {
                 children: List.generate(list.length, (index) {
                   final active = index == _index;
                   return GestureDetector(
-                    onTap: () => _controller.animateToPage(index,
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeOutCubic),
+                    onTap: () => _controller.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                    ),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
                       width: active ? 26 : 8,
                       height: 8,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: active ? Colors.white : Colors.white.withValues(alpha: .45),
+                        color: active
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: .45),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -253,7 +275,9 @@ class _HeroSlide extends StatelessWidget {
     final image = apiUrlRelative((slide['image'] ?? '') as String?);
     final title = (slide['title'] ?? '') as String;
     final subtitle = (slide['subtitle'] ?? '') as String;
-    final button = slide['button'] is Map ? Map<String, dynamic>.from(slide['button'] as Map) : null;
+    final button = slide['button'] is Map
+        ? Map<String, dynamic>.from(slide['button'] as Map)
+        : null;
     final link = (button?['link'] ?? slide['link'] ?? '/search') as String;
     final buttonTitle = (button?['title'] ?? 'Shop now') as String;
     final isMobile = width < 768;
@@ -347,9 +371,13 @@ class _HeroSlide extends StatelessWidget {
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: AppColors.navyBlue,
-                              padding: const EdgeInsets.symmetric(horizontal: 28),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                                borderRadius: BorderRadius.circular(
+                                  EzTheme.radiusXl,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -457,8 +485,13 @@ class CategoryCarousel extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('View all',
-                          style: TextStyle(fontFamily: EzTheme.sans, fontSize: 13)),
+                      Text(
+                        'View all',
+                        style: TextStyle(
+                          fontFamily: EzTheme.sans,
+                          fontSize: 13,
+                        ),
+                      ),
                       SizedBox(width: 6),
                       Icon(Icons.arrow_forward, size: 15),
                     ],
@@ -522,9 +555,10 @@ class _CategoryTileState extends State<_CategoryTile> {
                   boxShadow: _hovering
                       ? const [
                           BoxShadow(
-                              color: Color(0x1A000000),
-                              blurRadius: 16,
-                              offset: Offset(0, 7)),
+                            color: Color(0x1A000000),
+                            blurRadius: 16,
+                            offset: Offset(0, 7),
+                          ),
                         ]
                       : null,
                 ),
@@ -536,10 +570,15 @@ class _CategoryTileState extends State<_CategoryTile> {
                         ? Image.network(
                             image,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                const ColoredBox(color: AppColors.zinc100, child: _CategoryIcon()),
+                            errorBuilder: (_, _, _) => const ColoredBox(
+                              color: AppColors.zinc100,
+                              child: _CategoryIcon(),
+                            ),
                           )
-                        : const ColoredBox(color: AppColors.zinc100, child: _CategoryIcon()),
+                        : const ColoredBox(
+                            color: AppColors.zinc100,
+                            child: _CategoryIcon(),
+                          ),
                   ),
                 ),
               ),
@@ -616,9 +655,15 @@ class _ProductsCarouselState extends State<ProductsCarousel> {
 
   void _scrollBy(double delta) {
     if (!_scroll.hasClients) return;
-    final target = (_scroll.offset + delta).clamp(0.0, _scroll.position.maxScrollExtent);
-    _scroll.animateTo(target,
-        duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic);
+    final target = (_scroll.offset + delta).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -653,17 +698,28 @@ class _ProductsCarouselState extends State<ProductsCarousel> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('View all',
-                            style: TextStyle(fontFamily: EzTheme.sans, fontSize: 13)),
+                        Text(
+                          'View all',
+                          style: TextStyle(
+                            fontFamily: EzTheme.sans,
+                            fontSize: 13,
+                          ),
+                        ),
                         SizedBox(width: 6),
                         Icon(Icons.arrow_forward, size: 15),
                       ],
                     ),
                   ),
                   const SizedBox(width: 24),
-                  _RoundArrow(icon: Icons.arrow_back, onTap: () => _scrollBy(-323)),
+                  _RoundArrow(
+                    icon: Icons.arrow_back,
+                    onTap: () => _scrollBy(-323),
+                  ),
                   const SizedBox(width: 10),
-                  _RoundArrow(icon: Icons.arrow_forward, onTap: () => _scrollBy(323)),
+                  _RoundArrow(
+                    icon: Icons.arrow_forward,
+                    onTap: () => _scrollBy(323),
+                  ),
                 ],
               ],
             ),
@@ -691,6 +747,7 @@ class _ProductsCarouselState extends State<ProductsCarousel> {
                   itemBuilder: (context, index) => ProductCard(
                     product: _products[index],
                     width: cardWidth,
+                    showCartButton: false,
                   ),
                 ),
               ),
@@ -755,32 +812,34 @@ class _CardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      return Container(
-        width: 291,
-        decoration: BoxDecoration(
-          color: AppColors.zinc50,
-          borderRadius: BorderRadius.circular(EzTheme.radiusLg),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.zinc100,
-                  borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: 291,
+          decoration: BoxDecoration(
+            color: AppColors.zinc50,
+            borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.zinc100,
+                    borderRadius: BorderRadius.circular(EzTheme.radiusLg),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(height: 14, width: 220, color: AppColors.zinc100),
-            const SizedBox(height: 10),
-            Container(height: 14, width: 90, color: AppColors.zinc100),
-            const SizedBox(height: 22),
-          ],
-        ),
-      );
-    });
+              const SizedBox(height: 12),
+              Container(height: 14, width: 220, color: AppColors.zinc100),
+              const SizedBox(height: 10),
+              Container(height: 14, width: 90, color: AppColors.zinc100),
+              const SizedBox(height: 22),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -796,8 +855,9 @@ class OfferBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final narrow = width < 768;
-    final button =
-        options['button'] is Map ? Map<String, dynamic>.from(options['button'] as Map) : null;
+    final button = options['button'] is Map
+        ? Map<String, dynamic>.from(options['button'] as Map)
+        : null;
     final title = (options['title'] ?? '') as String;
     final subtitle = (options['subtitle'] ?? '') as String;
     if (title.isEmpty && subtitle.isEmpty) return const SizedBox.shrink();
@@ -816,7 +876,8 @@ class OfferBanner extends StatelessWidget {
                   '${apiUrlRelative('/storage/categories/women.jpg')}',
                   fit: BoxFit.cover,
                   alignment: const Alignment(.65, -.1),
-                  errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.navyBlue),
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: AppColors.navyBlue),
                 ),
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -878,13 +939,19 @@ class OfferBanner extends StatelessWidget {
                             SizedBox(
                               height: 48,
                               child: TextButton(
-                                onPressed: () => context.go((button['link'] ?? '/search') as String),
+                                onPressed: () => context.go(
+                                  (button['link'] ?? '/search') as String,
+                                ),
                                 style: TextButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: AppColors.navyBlue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 28,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                                    borderRadius: BorderRadius.circular(
+                                      EzTheme.radiusXl,
+                                    ),
                                   ),
                                 ),
                                 child: Text(
@@ -953,7 +1020,10 @@ class _CircleSkeleton extends StatelessWidget {
     return Container(
       width: 120,
       height: 120,
-      decoration: const BoxDecoration(color: AppColors.zinc100, shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: AppColors.zinc100,
+        shape: BoxShape.circle,
+      ),
     );
   }
 }

@@ -732,9 +732,18 @@ pub async fn collect_shipping_rates(
         })));
     }
 
-    // Replace previous rates for this cart.
+    // Replace previous rates for this cart (evita duplicados al reenviar la
+    // dirección) y conserva la selección si el método sigue disponible.
+    let previous = db::select_one(
+        "SELECT `method` FROM `cart_shipping_rates` WHERE `cart_id` = ? AND `is_selected` = 1 LIMIT 1",
+        &[Value::from(cart_id)],
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|row| row["method"].as_str().map(str::to_string));
     db::execute(
-        "DELETE FROM `cart_shipping_rates` WHERE `cart_id` = ? AND `is_selected` = 0",
+        "DELETE FROM `cart_shipping_rates` WHERE `cart_id` = ?",
         &[Value::from(cart_id)],
     )
     .await?;
@@ -745,6 +754,13 @@ pub async fn collect_shipping_rates(
         row.insert("created_at".into(), json!(now()));
         row.insert("updated_at".into(), json!(now()));
         db::insert("cart_shipping_rates", &row).await?;
+    }
+    if let Some(method) = previous {
+        let _ = db::execute(
+            "UPDATE `cart_shipping_rates` SET `is_selected` = 1 WHERE `cart_id` = ? AND `method` = ?",
+            &[Value::from(cart_id), Value::String(method)],
+        )
+        .await;
     }
     let stored = db::select(
         "SELECT * FROM `cart_shipping_rates` WHERE `cart_id` = ? ORDER BY `id`",

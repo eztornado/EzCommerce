@@ -183,10 +183,16 @@ pub async fn detail_in(
     let attributes = cart::attribute_map_in(product_id, locale).await.ok()?;
     let product_type = product["type"].as_str().unwrap_or("simple").to_string();
 
-    // Attribute pairs shown in "Additional Information".
+    // Attribute pairs shown in "Additional Information". Bagisto only lists the
+    // family's custom attributes, so the system ones (name, descriptions,
+    // prices, flags) are excluded here.
     let visible = db::select(
         "SELECT `a`.`code`, `a`.`admin_name`, `a`.`type` FROM `attributes` `a` \
-         WHERE `a`.`is_visible_on_front` = 1 AND `a`.`code` NOT IN ('sku', 'name', 'status', 'visible_individually') \
+         WHERE `a`.`is_visible_on_front` = 1 AND `a`.`code` NOT IN ( \
+           'sku', 'name', 'status', 'visible_individually', 'url_key', \
+           'short_description', 'description', 'price', 'special_price', \
+           'cost', 'tax_category_id' \
+         ) \
          ORDER BY `a`.`position`",
         &[],
     )

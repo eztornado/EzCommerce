@@ -33,7 +33,6 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/',
   routes: [
     ShellRoute(
       builder: (context, state, child) => ShopShell(child: child),

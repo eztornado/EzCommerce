@@ -7,19 +7,24 @@ class Product {
   final Map<String, dynamic> json;
 
   int? get id => json['id'] as int?;
+  int? get wishlistId => json['wishlist_id'] as int?;
   String get name => (json['name'] ?? '') as String;
   String get sku => (json['sku'] ?? '') as String;
   String get type => (json['type'] ?? 'simple') as String;
   String get urlKey => (json['url_key'] ?? '') as String;
   num get price => (json['price'] ?? 0) as num;
   String get formattedPrice => (json['formatted_price'] ?? '') as String;
-  String get formattedRegularPrice => (json['formatted_regular_price'] ?? '') as String;
+  String get formattedRegularPrice =>
+      (json['formatted_regular_price'] ?? '') as String;
   bool get onSale => (json['on_sale'] ?? false) as bool;
   bool get isNew => (json['is_new'] ?? false) as bool;
   bool get isSaleable => (json['is_saleable'] ?? true) as bool;
+  bool get inStock => (json['in_stock'] ?? true) as bool;
+  int? get quantity => json['quantity'] as int?;
   String? get shortDescription => json['short_description'] as String?;
   String? get description => json['description'] as String?;
-  double get ratingAverage => ((json['ratings'] ?? const {})['average'] ?? 0).toDouble();
+  double get ratingAverage =>
+      ((json['ratings'] ?? const {})['average'] ?? 0).toDouble();
   int get ratingsTotal => ((json['ratings'] ?? const {})['total'] ?? 0) as int;
 
   String? get imageUrl {
@@ -35,7 +40,10 @@ class Product {
   List<String> get imageUrls {
     final images = json['images'];
     if (images is! List) return [];
-    return images.map((e) => (e as Map)['url'] as String? ?? '').where((u) => u.isNotEmpty).toList();
+    return images
+        .map((e) => (e as Map)['url'] as String? ?? '')
+        .where((u) => u.isNotEmpty)
+        .toList();
   }
 
   List<SuperAttribute> get superAttributes =>
@@ -52,9 +60,10 @@ class Product {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
-  List<GroupedEntry> get groupedProducts => ((json['grouped_products'] ?? const []) as List)
-      .map((e) => GroupedEntry(Map<String, dynamic>.from(e as Map)))
-      .toList();
+  List<GroupedEntry> get groupedProducts =>
+      ((json['grouped_products'] ?? const []) as List)
+          .map((e) => GroupedEntry(Map<String, dynamic>.from(e as Map)))
+          .toList();
 }
 
 class SuperAttribute {
@@ -95,7 +104,8 @@ class GroupedEntry {
   final Map<String, dynamic> json;
 
   num? get qty => json['qty'] as num?;
-  Product get product => Product(Map<String, dynamic>.from((json['product'] ?? const {}) as Map));
+  Product get product =>
+      Product(Map<String, dynamic>.from((json['product'] ?? const {}) as Map));
 }
 
 class ShopCategory {
@@ -107,6 +117,8 @@ class ShopCategory {
   String get slug => (json['slug'] ?? '') as String;
   String? get description => json['description'] as String?;
   String? get bannerUrl => json['banner_url'] as String?;
+  bool get isActive => (json['status'] ?? 1) == 1;
+  int get position => (json['position'] as num?)?.toInt() ?? 0;
   List<ShopCategory> get children => ((json['children'] ?? const []) as List)
       .map((e) => ShopCategory(Map<String, dynamic>.from(e as Map)))
       .toList();
@@ -128,8 +140,10 @@ class CartItem {
     if (base is Map && base['url'] != null) return base['url'] as String;
     return null;
   }
-  Map<String, dynamic>? get additional =>
-      json['additional'] is Map ? Map<String, dynamic>.from(json['additional'] as Map) : null;
+
+  Map<String, dynamic>? get additional => json['additional'] is Map
+      ? Map<String, dynamic>.from(json['additional'] as Map)
+      : null;
 }
 
 class Cart {
@@ -141,9 +155,17 @@ class Cart {
   num get itemsQty => (json['items_qty'] ?? 0) as num;
   String get formattedSubTotal => (json['formatted_sub_total'] ?? '') as String;
   String get formattedTaxTotal => (json['formatted_tax_total'] ?? '') as String;
-  String get formattedDiscount => (json['formatted_discount_amount'] ?? '') as String;
-  String get formattedShipping => (json['formatted_shipping_amount'] ?? '') as String;
-  String get formattedGrandTotal => (json['formatted_grand_total'] ?? '') as String;
+  String get formattedDiscount =>
+      (json['formatted_discount_amount'] ?? '') as String;
+  String get formattedShipping =>
+      (json['formatted_shipping_amount'] ?? '') as String;
+  String get formattedGrandTotal =>
+      (json['formatted_grand_total'] ?? '') as String;
+  num get grandTotal => (json['grand_total'] ?? 0) as num;
+  num get subTotal => (json['sub_total'] ?? 0) as num;
+  num get taxTotal => (json['tax_total'] ?? 0) as num;
+  num get discountAmount => (json['discount_amount'] ?? 0) as num;
+  num get shippingAmount => (json['shipping_amount'] ?? 0) as num;
   String? get couponCode => json['coupon_code'] as String?;
   String? get shippingMethod => json['shipping_method'] as String?;
   String? get paymentMethod => json['payment_method'] as String?;
@@ -182,7 +204,19 @@ class Order {
   String get incrementId => (json['increment_id'] ?? '') as String;
   String get status => (json['status'] ?? '') as String;
   String get createdAt => (json['created_at'] ?? '') as String;
-  String get formattedTotal => (json['grand_total'] ?? '').toString();
+  String get formattedTotal =>
+      (json['formatted_grand_total'] ?? json['grand_total'] ?? '').toString();
+  String get formattedSubTotal =>
+      (json['formatted_sub_total'] ?? json['sub_total'] ?? '').toString();
+  String get formattedShipping =>
+      (json['formatted_shipping'] ?? json['shipping_amount'] ?? '').toString();
+  String get formattedTax =>
+      (json['formatted_tax'] ?? json['tax_amount'] ?? '').toString();
+  String get formattedDiscount =>
+      (json['formatted_discount'] ?? json['discount_amount'] ?? '').toString();
+  String get shippingTitle => (json['shipping_title'] ?? '') as String;
+  String get shippingDescription =>
+      (json['shipping_description'] ?? '') as String;
   int? get totalItemCount => json['total_item_count'] as int?;
 
   bool get canCancel => (json['can_cancel'] ?? false) as bool;
@@ -195,13 +229,19 @@ class Order {
       .map((e) => OrderItem(Map<String, dynamic>.from(e as Map)))
       .toList();
 
-  Map<String, dynamic>? get billingAddress =>
-      json['billing_address'] is Map ? Map<String, dynamic>.from(json['billing_address'] as Map) : null;
-  Map<String, dynamic>? get payment =>
-      json['payment'] is Map ? Map<String, dynamic>.from(json['payment'] as Map) : null;
-  List<Map<String, dynamic>> get comments => ((json['comments'] ?? const []) as List)
-      .map((e) => Map<String, dynamic>.from(e as Map))
-      .toList();
+  Map<String, dynamic>? get billingAddress => json['billing_address'] is Map
+      ? Map<String, dynamic>.from(json['billing_address'] as Map)
+      : null;
+  Map<String, dynamic>? get shippingAddress => json['shipping_address'] is Map
+      ? Map<String, dynamic>.from(json['shipping_address'] as Map)
+      : null;
+  Map<String, dynamic>? get payment => json['payment'] is Map
+      ? Map<String, dynamic>.from(json['payment'] as Map)
+      : null;
+  List<Map<String, dynamic>> get comments =>
+      ((json['comments'] ?? const []) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 }
 
 class OrderItem {
@@ -213,6 +253,12 @@ class OrderItem {
   num get qtyOrdered => (json['qty_ordered'] ?? 0) as num;
   num get price => (json['price'] ?? 0) as num;
   num get total => (json['total'] ?? 0) as num;
+  String? get image => json['image'] as String?;
+  int? get productId => json['product_id'] as int?;
+  String get formattedPrice =>
+      (json['formatted_price'] ?? price.toStringAsFixed(2)).toString();
+  String get formattedTotal =>
+      (json['formatted_total'] ?? total.toStringAsFixed(2)).toString();
 }
 
 class Address {

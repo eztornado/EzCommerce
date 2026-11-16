@@ -40,7 +40,9 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
   }
 
   Future<void> _loadConfigurableAttributes() async {
-    final data = await context.read<AdminProvider>().get('admin/catalog/attributes/configurable');
+    final data = await context.read<AdminProvider>().get(
+      'admin/catalog/attributes/configurable',
+    );
     if (data is Map && mounted) {
       setState(() => _configurableAttributes = decodeList(data['data']));
     }
@@ -52,50 +54,68 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
         .trim()
         .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
-    return slug.isEmpty ? 'product-${DateTime.now().millisecondsSinceEpoch}' : slug;
+    return slug.isEmpty
+        ? 'product-${DateTime.now().millisecondsSinceEpoch}'
+        : slug;
   }
 
   Future<void> _save() async {
     if (_sku.text.trim().isEmpty || _name.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: const Text('SKU and Name are required.'),
-          backgroundColor: AppColors.red600));
+          backgroundColor: AppColors.red600,
+        ),
+      );
       return;
     }
     if (_type == 'configurable' && _selectedSuperAttributes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: const Text('Select at least one configurable attribute.'),
-          backgroundColor: AppColors.red600));
+          backgroundColor: AppColors.red600,
+        ),
+      );
       return;
     }
     setState(() => _saving = true);
     final admin = context.read<AdminProvider>();
     try {
-      final created = await admin.post('admin/catalog/products/create', body: {
-        'sku': _sku.text.trim(),
-        'type': _type,
-        if (_type == 'configurable') 'super_attributes': _selectedSuperAttributes.toList(),
-      });
-      final productId = created is Map ? (created['data']?['id'] as int?) : null;
+      final created = await admin.post(
+        'admin/catalog/products/create',
+        body: {
+          'sku': _sku.text.trim(),
+          'type': _type,
+          if (_type == 'configurable')
+            'super_attributes': _selectedSuperAttributes.toList(),
+        },
+      );
+      final productId = created is Map
+          ? (created['data']?['id'] as int?)
+          : null;
       if (productId == null) {
         throw Exception('Unexpected response from the API.');
       }
-      await admin.put('admin/catalog/products/edit/$productId', body: {
-        'attributes': {
-          'name': _name.text.trim(),
-          'price': num.tryParse(_price.text) ?? 0,
-          'weight': 0,
-          'status': 1,
-          'visible_individually': 1,
-          'manage_stock': 1,
-          'url_key': _urlKey(_name.text.trim()),
+      await admin.put(
+        'admin/catalog/products/edit/$productId',
+        body: {
+          'attributes': {
+            'name': _name.text.trim(),
+            'price': num.tryParse(_price.text) ?? 0,
+            'weight': 0,
+            'status': 1,
+            'visible_individually': 1,
+            'manage_stock': 1,
+            'url_key': _urlKey(_name.text.trim()),
+          },
         },
-      });
+      );
       if (mounted) context.go('/admin/products/edit/$productId');
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
         setState(() => _saving = false);
       }
     }
@@ -117,20 +137,29 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go('/admin/products'),
-                ),
-                const Expanded(
-                  child: Text('New product',
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.go('/admin/products'),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'New product',
                       style: TextStyle(
-                          fontFamily: 'Poppins', fontSize: 22, fontWeight: FontWeight.w500)),
-                ),
-              ]),
+                        fontFamily: 'Poppins',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
-              const Text('Product type',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+              const Text(
+                'Product type',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 12,
@@ -138,20 +167,28 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
                 children: [
                   for (final (value, label) in _productTypes)
                     ChoiceChip(
-                      label: Text(label, style: const TextStyle(fontFamily: 'Poppins')),
+                      label: Text(
+                        label,
+                        style: const TextStyle(fontFamily: 'Poppins'),
+                      ),
                       selected: _type == value,
                       selectedColor: AppColors.navyBlue,
                       labelStyle: TextStyle(
-                          fontFamily: 'Poppins',
-                          color: _type == value ? Colors.white : AppColors.zinc600),
+                        fontFamily: 'Poppins',
+                        color: _type == value
+                            ? Colors.white
+                            : AppColors.zinc600,
+                      ),
                       onSelected: (_) => setState(() => _type = value),
                     ),
                 ],
               ),
               const SizedBox(height: 20),
               if (_type == 'configurable') ...[
-                const Text('Configurable attributes',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                const Text(
+                  'Configurable attributes',
+                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 12,
@@ -159,16 +196,22 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
                   children: [
                     for (final attribute in _configurableAttributes)
                       FilterChip(
-                        label: Text('${attribute['admin_name'] ?? attribute['code']}',
-                            style: const TextStyle(fontFamily: 'Poppins')),
-                        selected: _selectedSuperAttributes.contains(attribute['id']),
+                        label: Text(
+                          '${attribute['admin_name'] ?? attribute['code']}',
+                          style: const TextStyle(fontFamily: 'Poppins'),
+                        ),
+                        selected: _selectedSuperAttributes.contains(
+                          attribute['id'],
+                        ),
                         selectedColor: AppColors.navyBlue,
                         checkmarkColor: Colors.white,
                         labelStyle: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: _selectedSuperAttributes.contains(attribute['id'])
-                                ? Colors.white
-                                : AppColors.zinc600),
+                          fontFamily: 'Poppins',
+                          color:
+                              _selectedSuperAttributes.contains(attribute['id'])
+                              ? Colors.white
+                              : AppColors.zinc600,
+                        ),
                         onSelected: (selected) => setState(() {
                           final id = attribute['id'] as int;
                           selected
@@ -196,20 +239,28 @@ class _AdminProductCreatePageState extends State<AdminProductCreatePage> {
     );
   }
 
-  Widget _field(String label, TextEditingController controller,
-      {bool number = false}) {
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    bool number = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          Text(
+            label,
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+          ),
           const SizedBox(height: 4),
           TextField(
             controller: controller,
             keyboardType: number ? TextInputType.number : null,
             decoration: const InputDecoration(
-                fillColor: Colors.white, border: OutlineInputBorder()),
+              fillColor: Colors.white,
+              border: OutlineInputBorder(),
+            ),
           ),
         ],
       ),

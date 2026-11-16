@@ -64,6 +64,19 @@ pub async fn create_order_from_cart(cart_id: i64) -> ApiResult<Value> {
     let next_id: i64 = db::scalar_i64("SELECT COALESCE(MAX(`id`), 0) + 1 FROM `orders`", &[]).await?;
     let increment_id = format!("{next_id:08}");
 
+    // Guest checkouts have no cart customer: fall back to the billing email so
+    // the order still carries a contact (Bagisto shows it in the grid).
+    let customer_email = if cart["customer_email"].is_null() {
+        cart_addresses
+            .iter()
+            .find(|address| address["address_type"].as_str() == Some("cart_billing"))
+            .and_then(|address| address["email"].clone().as_str().map(str::to_string))
+            .map(Value::String)
+            .unwrap_or(Value::Null)
+    } else {
+        cart["customer_email"].clone()
+    };
+
     let order_id = db::insert(
         "orders",
         &json!({
@@ -73,7 +86,7 @@ pub async fn create_order_from_cart(cart_id: i64) -> ApiResult<Value> {
             "channel_id": cart["channel_id"].clone(),
             "is_guest": cart["is_guest"].clone(),
             "customer_id": cart["customer_id"].clone(),
-            "customer_email": cart["customer_email"].clone(),
+            "customer_email": customer_email,
             "customer_first_name": cart["customer_first_name"].clone(),
             "customer_last_name": cart["customer_last_name"].clone(),
             "shipping_method": cart["shipping_method"].clone(),

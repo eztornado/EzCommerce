@@ -25,10 +25,16 @@ class AdminCartRulesPage extends StatelessWidget {
               tooltip: 'Edit',
               onPressed: () async {
                 final admin = context.read<AdminProvider>();
-                final data = await admin.get('admin/marketing/cart-rules/view/${row['id']}');
+                final data = await admin.get(
+                  'admin/marketing/cart-rules/view/${row['id']}',
+                );
                 if (data is! Map || !context.mounted) return;
-                final payload = Map<String, dynamic>.from((data['data'] ?? const {}) as Map);
-                final rule = Map<String, dynamic>.from((payload['rule'] ?? const {}) as Map);
+                final payload = Map<String, dynamic>.from(
+                  (data['data'] ?? const {}) as Map,
+                );
+                final rule = Map<String, dynamic>.from(
+                  (payload['rule'] ?? const {}) as Map,
+                );
                 if ((rule['coupon_type'] ?? 1) == 2) {
                   final primary = decodeList(payload['coupons'])
                       .where((coupon) => (coupon['is_primary'] ?? 0) == 1)
@@ -44,7 +50,11 @@ class AdminCartRulesPage extends StatelessWidget {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.red600,
+              ),
               tooltip: 'Delete',
               onPressed: () async {
                 final admin = context.read<AdminProvider>();
@@ -53,8 +63,14 @@ class AdminCartRulesPage extends StatelessWidget {
                   builder: (context) => AlertDialog(
                     title: const Text('Delete rule?'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Delete'),
+                      ),
                     ],
                   ),
                 );
@@ -118,9 +134,15 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
     _name = TextEditingController(text: '${rule['name'] ?? ''}');
     _description = TextEditingController(text: '${rule['description'] ?? ''}');
     _couponCode = TextEditingController(text: '${rule['coupon_code'] ?? ''}');
-    _discountAmount = TextEditingController(text: '${rule['discount_amount'] ?? 10}');
-    _usagePerCustomer = TextEditingController(text: '${rule['usage_per_customer'] ?? 0}');
-    _usesPerCoupon = TextEditingController(text: '${rule['uses_per_coupon'] ?? 0}');
+    _discountAmount = TextEditingController(
+      text: '${rule['discount_amount'] ?? 10}',
+    );
+    _usagePerCustomer = TextEditingController(
+      text: '${rule['usage_per_customer'] ?? 0}',
+    );
+    _usesPerCoupon = TextEditingController(
+      text: '${rule['uses_per_coupon'] ?? 0}',
+    );
     _actionType = '${rule['action_type'] ?? 'by_percent'}';
     _couponType = (rule['coupon_type'] ?? 1) as int;
     _applyToShipping = (rule['apply_to_shipping'] ?? 0) == 1;
@@ -153,13 +175,17 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
       if (widget.rule == null) {
         await admin.post('admin/marketing/cart-rules/store', body: body);
       } else {
-        await admin.put('admin/marketing/cart-rules/edit/${widget.rule!['id']}', body: body);
+        await admin.put(
+          'admin/marketing/cart-rules/edit/${widget.rule!['id']}',
+          body: body,
+        );
       }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
       setState(() => _saving = false);
     }
@@ -187,88 +213,130 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
                 decoration: const InputDecoration(labelText: 'Description'),
               ),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _actionType,
-                    decoration: const InputDecoration(labelText: 'Action'),
-                    items: const [
-                      DropdownMenuItem(value: 'by_percent', child: Text('Percentage discount')),
-                      DropdownMenuItem(value: 'by_fixed', child: Text('Fixed amount per item')),
-                      DropdownMenuItem(value: 'cart_fixed', child: Text('Fixed amount for the cart')),
-                      DropdownMenuItem(value: 'buy_x_get_y', child: Text('Buy X get Y free')),
-                    ],
-                    onChanged: (value) => setState(() => _actionType = value ?? 'by_percent'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _discountAmount,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Discount amount'),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 12),
-              Row(children: [
-                Switch(
-                  value: _applyToShipping,
-                  activeColor: AppColors.navyBlue, // ignore: deprecated_member_use
-                  onChanged: (value) => setState(() => _applyToShipping = value),
-                ),
-                const Text('Apply to shipping',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-                const SizedBox(width: 16),
-                Switch(
-                  value: _freeShipping,
-                  activeColor: AppColors.navyBlue, // ignore: deprecated_member_use
-                  onChanged: (value) => setState(() => _freeShipping = value),
-                ),
-                const Text('Free shipping',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-              ]),
-              const Divider(height: 24),
-              Row(children: [
-                Switch(
-                  value: _couponType == 2,
-                  activeColor: AppColors.navyBlue, // ignore: deprecated_member_use
-                  onChanged: (value) => setState(() => _couponType = value ? 2 : 1),
-                ),
-                const Text('Requires coupon',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-              ]),
-              if (_couponType == 2) ...[
-                TextField(
-                  controller: _couponCode,
-                  decoration: const InputDecoration(
-                      labelText: 'Coupon code (e.g. WELCOME10)'),
-                ),
-                const SizedBox(height: 12),
-                Row(children: [
+              Row(
+                children: [
                   Expanded(
-                    child: TextField(
-                      controller: _usagePerCustomer,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                          labelText: 'Uses per customer (0 = unlimited)'),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _actionType,
+                      decoration: const InputDecoration(labelText: 'Action'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'by_percent',
+                          child: Text('Percentage discount'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'by_fixed',
+                          child: Text('Fixed amount per item'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'cart_fixed',
+                          child: Text('Fixed amount for the cart'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'buy_x_get_y',
+                          child: Text('Buy X get Y free'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _actionType = value ?? 'by_percent'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
-                      controller: _usesPerCoupon,
+                      controller: _discountAmount,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                          labelText: 'Total usage limit (0 = unlimited)'),
+                        labelText: 'Discount amount',
+                      ),
                     ),
                   ),
-                ]),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Switch(
+                    value: _applyToShipping,
+                    activeColor:
+                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    onChanged: (value) =>
+                        setState(() => _applyToShipping = value),
+                  ),
+                  const Text(
+                    'Apply to shipping',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                  ),
+                  const SizedBox(width: 16),
+                  Switch(
+                    value: _freeShipping,
+                    activeColor:
+                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    onChanged: (value) => setState(() => _freeShipping = value),
+                  ),
+                  const Text(
+                    'Free shipping',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Switch(
+                    value: _couponType == 2,
+                    activeColor:
+                        AppColors.navyBlue, // ignore: deprecated_member_use
+                    onChanged: (value) =>
+                        setState(() => _couponType = value ? 2 : 1),
+                  ),
+                  const Text(
+                    'Requires coupon',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                  ),
+                ],
+              ),
+              if (_couponType == 2) ...[
+                TextField(
+                  controller: _couponCode,
+                  decoration: const InputDecoration(
+                    labelText: 'Coupon code (e.g. WELCOME10)',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _usagePerCustomer,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Uses per customer (0 = unlimited)',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _usesPerCoupon,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Total usage limit (0 = unlimited)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
               const Divider(height: 24),
-              Text('Conditions',
-                  style: const TextStyle(
-                      fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w500)),
+              Text(
+                'Conditions',
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 12),
               CartConditionsEditor(
                 conditionType: _conditionType,
@@ -285,8 +353,15 @@ class _CartRuleEditorDialogState extends State<CartRuleEditorDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        PrimaryButton(label: 'Save', isLoading: _saving, onPressed: _saving ? null : _save),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        PrimaryButton(
+          label: 'Save',
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
+        ),
       ],
     );
   }

@@ -23,9 +23,13 @@ class AdminCatalogRulesPage extends StatelessWidget {
               tooltip: 'Edit',
               onPressed: () async {
                 final admin = context.read<AdminProvider>();
-                final data = await admin.get('admin/marketing/catalog-rules/view/${row['id']}');
+                final data = await admin.get(
+                  'admin/marketing/catalog-rules/view/${row['id']}',
+                );
                 if (data is! Map || !context.mounted) return;
-                final rule = Map<String, dynamic>.from((data['data'] ?? const {}) as Map);
+                final rule = Map<String, dynamic>.from(
+                  (data['data'] ?? const {}) as Map,
+                );
                 if (context.mounted) {
                   showDialog(
                     context: context,
@@ -35,7 +39,11 @@ class AdminCatalogRulesPage extends StatelessWidget {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.red600,
+              ),
               tooltip: 'Delete',
               onPressed: () async {
                 final admin = context.read<AdminProvider>();
@@ -44,13 +52,21 @@ class AdminCatalogRulesPage extends StatelessWidget {
                   builder: (context) => AlertDialog(
                     title: const Text('Delete rule?'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Delete'),
+                      ),
                     ],
                   ),
                 );
                 if (confirmed == true && context.mounted) {
-                  await admin.delete('admin/marketing/catalog-rules/${row['id']}');
+                  await admin.delete(
+                    'admin/marketing/catalog-rules/${row['id']}',
+                  );
                 }
               },
             ),
@@ -80,7 +96,8 @@ class CatalogRuleEditorDialog extends StatefulWidget {
   final Map<String, dynamic>? rule;
 
   @override
-  State<CatalogRuleEditorDialog> createState() => _CatalogRuleEditorDialogState();
+  State<CatalogRuleEditorDialog> createState() =>
+      _CatalogRuleEditorDialogState();
 }
 
 class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
@@ -98,14 +115,14 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
     final rule = widget.rule ?? const {};
     _name = TextEditingController(text: '${rule['name'] ?? ''}');
     _description = TextEditingController(text: '${rule['description'] ?? ''}');
-    _discountAmount = TextEditingController(text: '${rule['discount_amount'] ?? 15}');
+    _discountAmount = TextEditingController(
+      text: '${rule['discount_amount'] ?? 15}',
+    );
     _actionType = '${rule['action_type'] ?? 'by_percent'}';
     // Condición existente product::categories -> categorías seleccionadas.
     for (final condition in decodeList(rule['conditions'])) {
       if (condition['attribute'] == 'product::categories') {
-        _selectedCategories = {
-          ...decodeIds(condition['value']),
-        };
+        _selectedCategories = {...decodeIds(condition['value'])};
       }
     }
     _loadCategories();
@@ -122,7 +139,9 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
   }
 
   List<Map<String, dynamic>> _flattenCategories(
-      List<Map<String, dynamic>> nodes, bool isRoot) {
+    List<Map<String, dynamic>> nodes,
+    bool isRoot,
+  ) {
     final result = <Map<String, dynamic>>[];
     for (final node in nodes) {
       final id = node['id'] as int?;
@@ -145,7 +164,10 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
       'conditions': _selectedCategories.isEmpty
           ? []
           : [
-              {'attribute': 'product::categories', 'value': _selectedCategories.toList()},
+              {
+                'attribute': 'product::categories',
+                'value': _selectedCategories.toList(),
+              },
             ],
       'sort': 0,
     };
@@ -153,13 +175,17 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
       if (widget.rule == null) {
         await admin.post('admin/marketing/catalog-rules/store', body: body);
       } else {
-        await admin.put('admin/marketing/catalog-rules/edit/${widget.rule!['id']}', body: body);
+        await admin.put(
+          'admin/marketing/catalog-rules/edit/${widget.rule!['id']}',
+          body: body,
+        );
       }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
       setState(() => _saving = false);
     }
@@ -169,7 +195,9 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
   Widget build(BuildContext context) {
     final categoryNodes = _flattenCategories(_categoriesTree, true);
     return AlertDialog(
-      title: Text(widget.rule == null ? 'New Catalog Rule' : 'Edit Catalog Rule'),
+      title: Text(
+        widget.rule == null ? 'New Catalog Rule' : 'Edit Catalog Rule',
+      ),
       content: SingleChildScrollView(
         child: SizedBox(
           width: 440,
@@ -188,32 +216,49 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
                 decoration: const InputDecoration(labelText: 'Description'),
               ),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _actionType,
-                    decoration: const InputDecoration(labelText: 'Action'),
-                    items: const [
-                      DropdownMenuItem(value: 'by_percent', child: Text('- Percentage')),
-                      DropdownMenuItem(value: 'to_percent', child: Text('Set to % of price')),
-                      DropdownMenuItem(value: 'by_fixed', child: Text('- Fixed amount')),
-                      DropdownMenuItem(value: 'to_fixed', child: Text('Set to fixed price')),
-                    ],
-                    onChanged: (value) => setState(() => _actionType = value ?? 'by_percent'),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _actionType,
+                      decoration: const InputDecoration(labelText: 'Action'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'by_percent',
+                          child: Text('- Percentage'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'to_percent',
+                          child: Text('Set to % of price'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'by_fixed',
+                          child: Text('- Fixed amount'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'to_fixed',
+                          child: Text('Set to fixed price'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _actionType = value ?? 'by_percent'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _discountAmount,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Amount'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _discountAmount,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Amount'),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
               const SizedBox(height: 16),
-              const Text('Limit to categories',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+              const Text(
+                'Limit to categories',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+              ),
               const SizedBox(height: 4),
               Wrap(
                 spacing: 8,
@@ -221,8 +266,13 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
                 children: [
                   for (final category in categoryNodes)
                     FilterChip(
-                      label: Text('${category['name'] ?? category['slug']}',
-                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                      label: Text(
+                        '${category['name'] ?? category['slug']}',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                        ),
+                      ),
                       selected: _selectedCategories.contains(category['id']),
                       onSelected: (selected) => setState(() {
                         final id = category['id'] as int;
@@ -234,15 +284,28 @@ class _CatalogRuleEditorDialogState extends State<CatalogRuleEditorDialog> {
                 ],
               ),
               if (categoryNodes.isEmpty)
-                const Text('No categories yet.',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
+                const Text(
+                  'No categories yet.',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: AppColors.zinc500,
+                  ),
+                ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        PrimaryButton(label: 'Save', isLoading: _saving, onPressed: _saving ? null : _save),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        PrimaryButton(
+          label: 'Save',
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
+        ),
       ],
     );
   }

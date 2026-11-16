@@ -60,23 +60,30 @@ class _AdminConfigurationPageState extends State<AdminConfigurationPage> {
     setState(() => _saving = true);
     final admin = context.read<AdminProvider>();
     try {
-      await admin.post('admin/configuration', body: {
-        'values': {
-          'general.content.header_offer': _offer.text.trim(),
-          'sales.carriers.flatrate.active': _flatRateActive ? '1' : '0',
-          'sales.carriers.flatrate.default_rate': _flatRate.text.trim(),
-          'sales.carriers.flatrate.type': _flatRateType.text.trim(),
-          'sales.carriers.free.active': _freeShipping ? '1' : '0',
-        }
-      });
+      await admin.post(
+        'admin/configuration',
+        body: {
+          'values': {
+            'general.content.header_offer': _offer.text.trim(),
+            'sales.carriers.flatrate.active': _flatRateActive ? '1' : '0',
+            'sales.carriers.flatrate.default_rate': _flatRate.text.trim(),
+            'sales.carriers.flatrate.type': _flatRateType.text.trim(),
+            'sales.carriers.free.active': _freeShipping ? '1' : '0',
+          },
+        },
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('The configuration has been saved successfully.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('The configuration has been saved successfully.'),
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -86,54 +93,72 @@ class _AdminConfigurationPageState extends State<AdminConfigurationPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text('Configuration',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.w500)),
+        const Text(
+          'Configuration',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 24),
         _section('General', [
           TextField(
             controller: _offer,
             decoration: const InputDecoration(
-                labelText: 'Header offer (topbar de la tienda)',
-                helperText: 'Se muestra en la barra superior de la tienda'),
+              labelText: 'Header offer (topbar de la tienda)',
+              helperText: 'Se muestra en la barra superior de la tienda',
+            ),
           ),
         ]),
         _section('Shipping', [
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text('Flat rate shipping',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+            title: const Text(
+              'Flat rate shipping',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+            ),
             value: _flatRateActive,
             onChanged: (value) => setState(() => _flatRateActive = value),
           ),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: _flatRate,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Flat rate price (EUR)'),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _flatRate,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Flat rate price (EUR)',
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _flatRateType,
-                decoration: const InputDecoration(
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _flatRateType,
+                  decoration: const InputDecoration(
                     labelText: 'Type (per_unit / order)',
-                    helperText: 'per_unit multiplica por unidades'),
+                    helperText: 'per_unit multiplica por unidades',
+                  ),
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text('Free shipping available',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+            title: const Text(
+              'Free shipping available',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+            ),
             value: _freeShipping,
             onChanged: (value) => setState(() => _freeShipping = value),
           ),
@@ -157,13 +182,21 @@ class _AdminConfigurationPageState extends State<AdminConfigurationPage> {
         borderRadius: BorderRadius.circular(EzTheme.radiusXl),
         border: Border.all(color: AppColors.zinc200),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
             style: const TextStyle(
-                fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 12),
-        ...children,
-      ]),
+              fontFamily: 'Poppins',
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
     );
   }
 }
@@ -172,7 +205,11 @@ class _AdminConfigurationPageState extends State<AdminConfigurationPage> {
 class AdminDataTransferPage extends StatelessWidget {
   const AdminDataTransferPage({super.key});
 
-  Future<void> _download(BuildContext context, String path, String filename) async {
+  Future<void> _download(
+    BuildContext context,
+    String path,
+    String filename,
+  ) async {
     final token = ApiClient.instance.adminToken;
     if (token == null) return;
     final response = await http.get(
@@ -181,8 +218,9 @@ class AdminDataTransferPage extends StatelessWidget {
     );
     if (response.statusCode != 200 || !context.mounted) return;
     downloadFile(filename, response.bodyBytes);
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$filename downloaded.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$filename downloaded.')));
   }
 
   @override
@@ -190,24 +228,65 @@ class AdminDataTransferPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text('Data Transfer',
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.w500)),
+        const Text(
+          'Data Transfer',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 24),
-        _card(context, 'Export products (CSV)', () => _download(context, 'admin/data-transfer/products/export', 'products.csv')),
-        _card(context, 'Export customers (CSV)', () => _download(context, 'admin/data-transfer/export-customers', 'customers.csv')),
-        _card(context, 'Export orders (CSV)', () => _download(context, 'admin/data-transfer/export-orders', 'orders.csv')),
+        _card(
+          context,
+          'Export products (CSV)',
+          () => _download(
+            context,
+            'admin/data-transfer/products/export',
+            'products.csv',
+          ),
+        ),
+        _card(
+          context,
+          'Export customers (CSV)',
+          () => _download(
+            context,
+            'admin/data-transfer/export-customers',
+            'customers.csv',
+          ),
+        ),
+        _card(
+          context,
+          'Export orders (CSV)',
+          () => _download(
+            context,
+            'admin/data-transfer/export-orders',
+            'orders.csv',
+          ),
+        ),
         _card(context, 'Import products (CSV file)', () async {
           final admin = context.read<AdminProvider>();
           try {
-            final result = await admin.post('admin/data-transfer/products/import');
+            final result = await admin.post(
+              'admin/data-transfer/products/import',
+            );
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('${result is Map ? result['message'] ?? '' : ''}')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${result is Map ? result['message'] ?? '' : ''}',
+                  ),
+                ),
+              );
             }
           } catch (error) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+                SnackBar(
+                  content: Text('$error'),
+                  backgroundColor: AppColors.red600,
+                ),
+              );
             }
           }
         }),
@@ -224,10 +303,17 @@ class AdminDataTransferPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(EzTheme.radiusXl),
         border: Border.all(color: AppColors.zinc200),
       ),
-      child: Row(children: [
-        Expanded(child: Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14))),
-        OutlinedButton(onPressed: action, child: const Text('Run')),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+            ),
+          ),
+          OutlinedButton(onPressed: action, child: const Text('Run')),
+        ],
+      ),
     );
   }
 }
@@ -264,7 +350,8 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
   void _showError(Object error) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+      SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+    );
   }
 
   Future<void> _familyDialog([Map<String, dynamic>? family]) async {
@@ -273,24 +360,36 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(family == null ? 'New attribute family' : 'Edit attribute family'),
+        title: Text(
+          family == null ? 'New attribute family' : 'Edit attribute family',
+        ),
         content: SizedBox(
           width: 420,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: code,
-              enabled: family == null,
-              decoration: const InputDecoration(labelText: 'Code'),
-            ),
-            const SizedBox(height: 12),
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: code,
+                enabled: family == null,
+                decoration: const InputDecoration(labelText: 'Code'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           PrimaryButton(
             label: 'Save',
-            onPressed: () => (code.text.trim().isEmpty || name.text.trim().isEmpty)
+            onPressed: () =>
+                (code.text.trim().isEmpty || name.text.trim().isEmpty)
                 ? null
                 : Navigator.pop(context, true),
           ),
@@ -301,13 +400,14 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
     final admin = context.read<AdminProvider>();
     try {
       family == null
-          ? await admin.post('admin/catalog/families/store', body: {
-              'code': code.text.trim(),
-              'name': name.text.trim(),
-            })
-          : await admin.put('admin/catalog/families/edit/${family['id']}', body: {
-              'name': name.text.trim(),
-            });
+          ? await admin.post(
+              'admin/catalog/families/store',
+              body: {'code': code.text.trim(), 'name': name.text.trim()},
+            )
+          : await admin.put(
+              'admin/catalog/families/edit/${family['id']}',
+              body: {'name': name.text.trim()},
+            );
       await _load();
     } catch (error) {
       _showError(error);
@@ -322,7 +422,8 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$error'), backgroundColor: AppColors.red600));
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.red600),
+        );
       }
     }
   }
@@ -330,59 +431,93 @@ class _AdminFamiliesPageState extends State<AdminFamiliesPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.navyBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.navyBlue),
+      );
     }
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Expanded(
-            child: Text('Attribute Families',
-                style: TextStyle(
-                    fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.w500)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Attribute Families',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _familyDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(
+                  'New Family',
+                  style: TextStyle(fontFamily: 'Poppins'),
+                ),
+              ),
+            ],
           ),
-          TextButton.icon(
-            onPressed: () => _familyDialog(),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('New Family', style: TextStyle(fontFamily: 'Poppins')),
-          ),
-        ]),
-        const SizedBox(height: 24),
-        for (final family in _families)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(EzTheme.radiusXl),
-              border: Border.all(color: AppColors.zinc200),
+          const SizedBox(height: 24),
+          for (final family in _families)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(EzTheme.radiusXl),
+                border: Border.all(color: AppColors.zinc200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${family['name']}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'code: ${family['code']}',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            color: AppColors.zinc500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: (family['is_user_defined'] ?? 1) == 1
+                        ? () => _familyDialog(family)
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: AppColors.red600,
+                    ),
+                    onPressed: (family['is_user_defined'] ?? 1) == 1
+                        ? () => _delete(family)
+                        : null,
+                  ),
+                ],
+              ),
             ),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${family['name']}',
-                      style: const TextStyle(
-                          fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
-                  Text('code: ${family['code']}',
-                      style: TextStyle(
-                          fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500)),
-                ]),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                onPressed: (family['is_user_defined'] ?? 1) == 1
-                    ? () => _familyDialog(family)
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red600),
-                onPressed: (family['is_user_defined'] ?? 1) == 1
-                    ? () => _delete(family)
-                    : null,
-              ),
-            ]),
-          ),
-      ]),
+        ],
+      ),
     );
   }
 }

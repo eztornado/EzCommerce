@@ -9,7 +9,12 @@ import '../../../core/theme/ez_theme.dart';
 
 /// Molde de auth: logo centrado + tarjeta max-width + copyright.
 class AuthCard extends StatelessWidget {
-  const AuthCard({super.key, required this.title, required this.subtitle, required this.child});
+  const AuthCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
   final String title;
   final String subtitle;
   final Widget child;
@@ -28,12 +33,27 @@ class AuthCard extends StatelessWidget {
                   onTap: () => context.go('/'),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: const [
-                      Icon(Icons.storefront, color: AppColors.navyBlue, size: 30),
-                      SizedBox(width: 8),
-                      Text('EzCommerce',
-                          style: TextStyle(
-                              fontFamily: 'DM Serif Display', fontSize: 26, color: AppColors.navyBlue)),
+                      Text(
+                        'EzCommerce',
+                        style: TextStyle(
+                          fontFamily: 'DM Serif Display',
+                          fontSize: 32,
+                          height: 1,
+                          color: AppColors.navyBlue,
+                        ),
+                      ),
+                      Text(
+                        '.',
+                        style: TextStyle(
+                          fontFamily: 'DM Serif Display',
+                          fontSize: 32,
+                          height: 1,
+                          color: AppColors.darkPink,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -47,12 +67,23 @@ class AuthCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontFamily: 'DM Serif Display', fontSize: 32, color: AppColors.gray900)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'DM Serif Display',
+                          fontSize: 32,
+                          color: AppColors.gray900,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(subtitle,
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: AppColors.zinc500)),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          color: AppColors.zinc500,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       child,
                     ],
@@ -61,7 +92,11 @@ class AuthCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   '© Copyright ${DateTime.now().year}, EzCommerce.',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: AppColors.zinc500),
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: AppColors.zinc500,
+                  ),
                 ),
               ],
             ),
@@ -96,18 +131,35 @@ class _SignInPageState extends State<SignInPage> {
           if (auth.error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(auth.error!, style: const TextStyle(color: AppColors.red600, fontSize: 13)),
+              child: Text(
+                auth.error!,
+                style: const TextStyle(color: AppColors.red600, fontSize: 13),
+              ),
             ),
-          const Text('Email', style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress),
+          const Text(
+            'Email',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+          ),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+          ),
           const SizedBox(height: 16),
-          const Text('Password', style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+          const Text(
+            'Password',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+          ),
           TextField(
             controller: _password,
             obscureText: _obscure,
             decoration: InputDecoration(
               suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 18,
+                ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
@@ -116,8 +168,14 @@ class _SignInPageState extends State<SignInPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => context.go('/forgot-password'),
-              child: const Text('Forgot Password?',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.navyBlue)),
+              child: const Text(
+                'Forgot Password?',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  color: AppColors.navyBlue,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -135,12 +193,20 @@ class _SignInPageState extends State<SignInPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('New Customer?',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                const Text(
+                  'New Customer?',
+                  style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                ),
                 TextButton(
                   onPressed: () => context.go('/register'),
-                  child: const Text('Create Your Account',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: AppColors.navyBlue)),
+                  child: const Text(
+                    'Create Your Account',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      color: AppColors.navyBlue,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -180,13 +246,18 @@ class _SignUpPageState extends State<SignUpPage> {
             if (auth.error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(auth.error!, style: const TextStyle(color: AppColors.red600, fontSize: 13)),
+                child: Text(
+                  auth.error!,
+                  style: const TextStyle(color: AppColors.red600, fontSize: 13),
+                ),
               ),
-            Row(children: [
-              Expanded(child: _field('First name', _firstName)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('Last name', _lastName)),
-            ]),
+            Row(
+              children: [
+                Expanded(child: _field('First name', _firstName)),
+                const SizedBox(width: 12),
+                Expanded(child: _field('Last name', _lastName)),
+              ],
+            ),
             const SizedBox(height: 12),
             _field('Email', _email, email: true),
             const SizedBox(height: 12),
@@ -215,12 +286,20 @@ class _SignUpPageState extends State<SignUpPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Already have an account?',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+                  const Text(
+                    'Already have an account?',
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                  ),
                   TextButton(
                     onPressed: () => context.go('/login'),
-                    child: const Text('Sign In',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: AppColors.navyBlue)),
+                    child: const Text(
+                      'Sign In',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        color: AppColors.navyBlue,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -231,18 +310,29 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _field(String label, TextEditingController controller,
-      {bool obscure = false, bool email = false}) {
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    bool obscure = false,
+    bool email = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+        ),
         TextFormField(
           controller: controller,
           obscureText: obscure,
           keyboardType: email ? TextInputType.emailAddress : null,
-          decoration: const InputDecoration(fillColor: Colors.white, border: OutlineInputBorder()),
-          validator: (value) => (value ?? '').trim().isEmpty ? 'This field is required.' : null,
+          decoration: const InputDecoration(
+            fillColor: Colors.white,
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) =>
+              (value ?? '').trim().isEmpty ? 'This field is required.' : null,
         ),
       ],
     );
@@ -268,16 +358,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+          ),
           const SizedBox(height: 16),
           PrimaryButton(
             label: 'Reset Password',
             expand: true,
             onPressed: () async {
               try {
-                await apiPost('customer/forgot-password', body: {'email': _email.text});
+                await apiPost(
+                  'customer/forgot-password',
+                  body: {'email': _email.text},
+                );
                 if (mounted) {
-                  setState(() => _message = 'If your account exists, you will receive an email shortly.');
+                  setState(
+                    () => _message =
+                        'If your account exists, you will receive an email shortly.',
+                  );
                 }
               } catch (error) {
                 if (mounted) setState(() => _message = '$error');
@@ -287,8 +386,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           if (_message != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_message!,
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.zinc600)),
+              child: Text(
+                _message!,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  color: AppColors.zinc600,
+                ),
+              ),
             ),
         ],
       ),

@@ -73,21 +73,21 @@ abstract final class EzTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.zinc100,
+        fillColor: Colors.white,
         hintStyle: const TextStyle(
             fontFamily: sans, fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.zinc400),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.zinc200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.zinc200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: const BorderSide(color: AppColors.zinc400),
+          borderSide: const BorderSide(color: AppColors.navyBlue, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusLg),

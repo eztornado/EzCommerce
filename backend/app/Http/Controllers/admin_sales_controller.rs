@@ -22,13 +22,61 @@ fn now() -> String {
     db::now_db()
 }
 
+/// Etiqueta capitalizada para las pills de estado del grid.
+fn status_label(row: &db::RowMap) -> Value {
+    // Orders use `status`; invoices use `state`.
+    let status = row
+        .get("status")
+        .or_else(|| row.get("state"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let mut chars = status.chars();
+    let label = match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    };
+    json!(label)
+}
+
+/// Importe con la moneda base (`€88.49`).
+fn money_label(row: &db::RowMap) -> Value {
+    let amount = row
+        .get("base_grand_total")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.0);
+    json!(format!("€{amount:.2}"))
+}
+
+/// `2026-11-14 09:14:11` -> `14 Nov 2026`.
+fn date_label(row: &db::RowMap) -> Value {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let raw = row.get("created_at").and_then(Value::as_str).unwrap_or("");
+    let date = raw.split_whitespace().next().unwrap_or(raw);
+    let parts: Vec<&str> = date.split('-').collect();
+    let label = if parts.len() == 3 {
+        let month = parts[1].parse::<usize>().unwrap_or(0);
+        let day = parts[2].trim_start_matches('0');
+        format!(
+            "{day} {} {}",
+            MONTHS.get(month.saturating_sub(1)).copied().unwrap_or(""),
+            parts[0]
+        )
+        .trim()
+        .to_string()
+    } else {
+        raw.to_string()
+    };
+    json!(label)
+}
+
 pub fn orders_grid() -> datagrid::DataGrid {
     datagrid::DataGrid {
         table: "orders",
         alias: "o",
         primary: "o.id",
         columns: vec![
-            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("o.id"), options: None },
             datagrid::Column { index: "increment_id", label: "Order ID", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.increment_id"), options: None },
             datagrid::Column { index: "status", label: "Status", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.status"), options: Some(json!([
                 {"label": "Pending", "value": "pending"}, {"label": "Processing", "value": "processing"},
@@ -45,7 +93,11 @@ pub fn orders_grid() -> datagrid::DataGrid {
             {"title": "View", "method": "GET", "url": "/admin/sales/orders/view/{id}"},
         ]),
         mass_actions: Value::Null,
-        formatters: Vec::new(),
+        formatters: vec![
+            ("status", status_label as fn(&db::RowMap) -> Value),
+            ("base_grand_total", money_label as fn(&db::RowMap) -> Value),
+            ("created_at", date_label as fn(&db::RowMap) -> Value),
+        ],
     }
 }
 
@@ -55,7 +107,6 @@ fn invoices_grid() -> datagrid::DataGrid {
         alias: "inv",
         primary: "inv.id",
         columns: vec![
-            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("inv.id"), options: None },
             datagrid::Column { index: "increment_id", label: "Invoice", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("inv.increment_id"), options: None },
             datagrid::Column { index: "state", label: "State", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("inv.state"), options: Some(json!([
                 {"label": "Paid", "value": "paid"}, {"label": "Pending", "value": "pending"},
@@ -63,7 +114,7 @@ fn invoices_grid() -> datagrid::DataGrid {
             ])) },
             datagrid::Column { index: "base_grand_total", label: "Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("inv.base_grand_total"), options: None },
             datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
-            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("inv.order_id"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.increment_id"), options: None },
             datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("inv.created_at"), options: None },
         ],
         joins: vec![
@@ -74,7 +125,11 @@ fn invoices_grid() -> datagrid::DataGrid {
             {"title": "Print", "method": "GET", "url": "/api/admin/sales/invoices/print/{id}"},
         ]),
         mass_actions: Value::Null,
-        formatters: Vec::new(),
+        formatters: vec![
+            ("state", status_label as fn(&db::RowMap) -> Value),
+            ("base_grand_total", money_label as fn(&db::RowMap) -> Value),
+            ("created_at", date_label as fn(&db::RowMap) -> Value),
+        ],
     }
 }
 
@@ -84,12 +139,12 @@ fn shipments_grid() -> datagrid::DataGrid {
         alias: "sh",
         primary: "sh.id",
         columns: vec![
-            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("sh.id"), options: None },
             datagrid::Column { index: "carrier_title", label: "Carrier", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("sh.carrier_title"), options: None },
             datagrid::Column { index: "track_number", label: "Track number", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("sh.track_number"), options: None },
             datagrid::Column { index: "inventory_source_name", label: "Source", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("sh.inventory_source_name"), options: None },
             datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
-            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("sh.order_id"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.increment_id"), options: None },
+            datagrid::Column { index: "total_qty", label: "Qty", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("sh.total_qty"), options: None },
             datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("sh.created_at"), options: None },
         ],
         joins: vec![
@@ -98,7 +153,7 @@ fn shipments_grid() -> datagrid::DataGrid {
         where_clauses: Vec::new(),
         actions: Value::Null,
         mass_actions: Value::Null,
-        formatters: Vec::new(),
+        formatters: vec![("created_at", date_label as fn(&db::RowMap) -> Value)],
     }
 }
 
@@ -108,11 +163,10 @@ fn refunds_grid() -> datagrid::DataGrid {
         alias: "rf",
         primary: "rf.id",
         columns: vec![
-            datagrid::Column { index: "id", label: "ID", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("rf.id"), options: None },
             datagrid::Column { index: "increment_id", label: "Refund", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("rf.increment_id"), options: None },
             datagrid::Column { index: "base_grand_total", label: "Total", kind: "decimal", searchable: false, filterable: true, sortable: true, source: Some("rf.base_grand_total"), options: None },
             datagrid::Column { index: "customer_email", label: "Customer", kind: "string", searchable: true, filterable: false, sortable: true, source: Some("o.customer_email"), options: None },
-            datagrid::Column { index: "order_id", label: "Order", kind: "integer", searchable: false, filterable: true, sortable: true, source: Some("rf.order_id"), options: None },
+            datagrid::Column { index: "order_id", label: "Order", kind: "string", searchable: false, filterable: true, sortable: true, source: Some("o.increment_id"), options: None },
             datagrid::Column { index: "created_at", label: "Date", kind: "date", searchable: false, filterable: true, sortable: true, source: Some("rf.created_at"), options: None },
         ],
         joins: vec![
@@ -121,7 +175,10 @@ fn refunds_grid() -> datagrid::DataGrid {
         where_clauses: Vec::new(),
         actions: Value::Null,
         mass_actions: Value::Null,
-        formatters: Vec::new(),
+        formatters: vec![
+            ("base_grand_total", money_label as fn(&db::RowMap) -> Value),
+            ("created_at", date_label as fn(&db::RowMap) -> Value),
+        ],
     }
 }
 

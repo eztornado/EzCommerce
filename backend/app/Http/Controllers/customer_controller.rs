@@ -129,6 +129,9 @@ impl CustomerController {
 
     /// `GET /api/customer/wishlist` - paginated product cards.
     pub async fn wishlist(customer: auth::Customer, Query(query): Query<HashMap<String, String>>) -> Response {
+        // Sin moneda explícita, formatea con la moneda base para que los
+        // precios incluyan el símbolo (p. ej. `€76.49`), como el resto del shop.
+        let currency = core::base_currency_code().await;
         let page = query.get("page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(1).max(1);
         let per_page = query.get("per_page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(12).clamp(1, 100);
         let total = db::scalar_i64(
@@ -139,7 +142,7 @@ impl CustomerController {
         .unwrap_or(0);
         let offset = (page - 1) * per_page;
         let rows = db::select(
-            "SELECT `product_id` FROM `wishlist_items` WHERE `customer_id` = ? ORDER BY `id` DESC LIMIT ? OFFSET ?",
+            "SELECT `id`, `product_id` FROM `wishlist_items` WHERE `customer_id` = ? ORDER BY `id` DESC LIMIT ? OFFSET ?",
             &[Value::from(customer.id), Value::from(per_page), Value::from(offset)],
         )
         .await
@@ -147,7 +150,14 @@ impl CustomerController {
         let mut cards = Vec::new();
         for row in rows {
             if let Some(product_id) = row["product_id"].as_i64() {
-                if let Some(card) = products::card(product_id).await {
+                if let Some(mut card) =
+                    products::card_in(product_id, None, currency.as_deref()).await
+                {
+                    // El cliente necesita el id de la fila de wishlist para
+                    // mover/eliminar el artículo (no el id del producto).
+                    if let Some(object) = card.as_object_mut() {
+                        object.insert("wishlist_id".into(), row["id"].clone());
+                    }
                     cards.push(card);
                 }
             }
@@ -311,6 +321,7 @@ impl CustomerController {
 
     /// `GET /api/customer/compare-items`.
     pub async fn compare_items(customer: auth::Customer) -> Response {
+        let currency = core::base_currency_code().await;
         let rows = db::select(
             "SELECT `product_id` FROM `compare_items` WHERE `customer_id` = ? ORDER BY `id` DESC",
             &[Value::from(customer.id)],
@@ -320,7 +331,9 @@ impl CustomerController {
         let mut cards = Vec::new();
         for row in rows {
             if let Some(product_id) = row["product_id"].as_i64() {
-                if let Some(card) = products::card(product_id).await {
+                if let Some(card) =
+                    products::card_in(product_id, None, currency.as_deref()).await
+                {
                     cards.push(card);
                 }
             }
@@ -394,12 +407,36 @@ impl CustomerController {
         .await
         .unwrap_or(0);
         let offset = (page - 1) * per_page;
-        let rows = db::select(
+        let mut rows = db::select(
             "SELECT * FROM `orders` WHERE `customer_id` = ? ORDER BY `id` DESC LIMIT ? OFFSET ?",
             &[Value::from(customer.id), Value::from(per_page), Value::from(offset)],
         )
         .await
         .unwrap_or_default();
+        // Importes formateados para el listado del área de cliente.
+        let currency = db::select_one(
+            "SELECT * FROM `currencies` WHERE `id` =              (SELECT `base_currency_id` FROM `channels` ORDER BY `id` LIMIT 1) LIMIT 1",
+            &[],
+        )
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+        for row in rows.iter_mut() {
+            for (source, formatted) in [
+                ("grand_total", "formatted_grand_total"),
+                ("sub_total", "formatted_sub_total"),
+                ("shipping_amount", "formatted_shipping"),
+                ("tax_amount", "formatted_tax"),
+                ("discount_amount", "formatted_discount"),
+            ] {
+                let amount = row.get(source).and_then(Value::as_f64).unwrap_or(0.0);
+                row.insert(
+                    formatted.to_string(),
+                    json!(core::format_price(amount, &currency)),
+                );
+            }
+        }
         resource(
             json!({
                 "data": rows,
@@ -427,7 +464,56 @@ impl CustomerController {
             return message(StatusCode::NOT_FOUND, "Order not found.");
         }
         match crate::support::sales::order_resource(id).await {
-            Ok(order) => resource(order, Value::Null),
+            Ok(mut order) => {
+                // Importes formateados y miniatura por línea, para que el
+                // detalle del pedido muestre precios con moneda e imágenes.
+                let currency = match core::base_currency_code().await {
+                    Some(code) => core::resolve_currency_by_code(&code).await,
+                    None => None,
+                }
+                .unwrap_or_default();
+                let money = |amount: f64| core::format_price(amount, &currency);
+                if let Some(object) = order.as_object_mut() {
+                    for (source, formatted) in [
+                        ("grand_total", "formatted_grand_total"),
+                        ("sub_total", "formatted_sub_total"),
+                        ("shipping_amount", "formatted_shipping"),
+                        ("tax_amount", "formatted_tax"),
+                        ("discount_amount", "formatted_discount"),
+                    ] {
+                        let amount = object.get(source).and_then(Value::as_f64).unwrap_or(0.0);
+                        object.insert(formatted.to_string(), json!(money(amount)));
+                    }
+                    if let Some(items) = object.get_mut("items").and_then(Value::as_array_mut) {
+                        for item in items.iter_mut() {
+                            let Some(item_object) = item.as_object_mut() else { continue };
+                            let total = item_object.get("total").and_then(Value::as_f64).unwrap_or(0.0);
+                            let price = item_object.get("price").and_then(Value::as_f64).unwrap_or(0.0);
+                            item_object.insert("formatted_total".into(), json!(money(total)));
+                            item_object.insert("formatted_price".into(), json!(money(price)));
+                            if let Some(product_id) = item_object.get("product_id").and_then(Value::as_i64) {
+                                let image = db::select_one(
+                                    "SELECT `path` FROM `product_images` WHERE `product_id` = ? ORDER BY `position`, `id` LIMIT 1",
+                                    &[Value::from(product_id)],
+                                )
+                                .await
+                                .ok()
+                                .flatten()
+                                .and_then(|row| row["path"].as_str().map(str::to_string));
+                                if let Some(path) = image {
+                                    let url = if path.starts_with('/') {
+                                        path
+                                    } else {
+                                        format!("/storage/{path}")
+                                    };
+                                    item_object.insert("image".into(), json!(url));
+                                }
+                            }
+                        }
+                    }
+                }
+                resource(order, Value::Null)
+            }
             Err(error) => error.into(),
         }
     }

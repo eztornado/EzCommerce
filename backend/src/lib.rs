@@ -124,6 +124,7 @@ fn cors_layer() -> CorsLayer {
             larust_support::axum::http::header::AUTHORIZATION,
             larust_support::axum::http::header::ACCEPT,
             larust_support::axum::http::HeaderName::from_static("x-requested-with"),
+            larust_support::axum::http::header::HeaderName::from_static("x-cart-token"),
         ])
         .max_age(std::time::Duration::from_secs(86400))
 }

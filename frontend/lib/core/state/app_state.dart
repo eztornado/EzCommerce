@@ -245,6 +245,8 @@ class CatalogProvider extends ChangeNotifier {
       categoryId: _lastCategoryId,
       query: _lastQuery,
       page: 1,
+      perPage: _perPage,
+      sort: _lastSort,
       filters: _lastFilters,
     );
   }
@@ -259,19 +261,24 @@ class CatalogProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  int _perPage = 12;
+  int get perPage => _perPage;
+
   Future<void> loadProducts({
     int? categoryId,
     String? query,
     String sort = 'newest',
     int page = 1,
+    int perPage = 12,
     Map<String, String> filters = const {},
   }) async {
     _loading = true;
     notifyListeners();
     try {
+      _perPage = perPage;
       final queryParams = <String, String>{
         'page': '$page',
-        'per_page': '12',
+        'per_page': '$perPage',
         'sort': sort,
         ...filters,
       };
@@ -290,6 +297,7 @@ class CatalogProvider extends ChangeNotifier {
         _lastFilters = filters;
         _lastQuery = query;
         _lastCategoryId = categoryId;
+        _lastSort = sort;
       }
       _products = page == 1 ? records : [..._products, ...records];
     } catch (_) {}
@@ -298,6 +306,7 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   Map<String, String> _lastFilters = const {};
+  String _lastSort = 'newest';
   String? _lastQuery;
   int? _lastCategoryId;
 
@@ -305,6 +314,7 @@ class CatalogProvider extends ChangeNotifier {
     int? categoryId,
     String? query,
     String sort = 'newest',
+    int? perPage,
     Map<String, String> filters = const {},
   }) async {
     if (!hasMore || _loading) return;
@@ -313,6 +323,7 @@ class CatalogProvider extends ChangeNotifier {
       query: query,
       sort: sort,
       page: _currentPage + 1,
+      perPage: perPage ?? _perPage,
       filters: filters.isNotEmpty ? filters : _lastFilters,
     );
   }
@@ -456,8 +467,10 @@ List<int> decodeIds(dynamic data) {
   return [];
 }
 
+/// Los medios se sirven a través del prefijo de la API para que las
+/// peticiones del build web reciban las cabeceras CORS.
 String? apiUrlRelative(String? path) =>
-    path == null || path.isEmpty ? null : '${ApiClient.baseUrl}$path';
+    path == null || path.isEmpty ? null : '${ApiClient.baseUrl}/api$path';
 
 Future<dynamic> jsonRequest(Future<http.Response> Function() request) async {
   final response = await request();
