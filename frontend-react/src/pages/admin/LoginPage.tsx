@@ -1,38 +1,99 @@
 import { useState } from 'react';
-import { Container, Title, TextInput, PasswordInput, Button, Stack, Paper, Alert, Center } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../api/client';
+import { IconLock, IconMail, IconShoppingBag } from '@tabler/icons-react';
 import { useAdminAuth } from '../../store';
 
 export default function AdminLoginPage() {
+  const login = useAdminAuth((state) => state.login);
   const navigate = useNavigate();
-  const login = useAdminAuth((s) => s.login);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('admin123');
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const doLogin = async () => {
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
+    setBusy(true);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       navigate('/admin');
-    } catch (err: any) { setError(err.message); }
+    } catch (requestError: any) {
+      setError(requestError?.message ?? 'The provided credentials are incorrect.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Center mih="100vh">
-      <Container size={420}>
-        <Paper withBorder shadow="sm" p="xl" radius="md">
-          <Title order={2} ta="center" mb="md">EzCommerce Admin</Title>
-          {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">{error}</Alert>}
-          <Stack>
-            <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-            <PasswordInput label="Password" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
-            <Button onClick={doLogin}>Sign in</Button>
-          </Stack>
-        </Paper>
-      </Container>
-    </Center>
+    <div className="admin-login-page">
+      <div className="admin-login-card">
+        <div className="admin-login-brand">
+          <span className="admin-logo-mark" style={{ width: 40, height: 40, fontSize: 22 }}>
+            E
+          </span>
+          <div>
+            <strong>EzCommerce</strong>
+            <span>Administration panel</span>
+          </div>
+        </div>
+
+        <h1 className="admin-login-title">Sign in to your account</h1>
+        <p className="admin-login-subtitle">Use your administrator credentials to access the dashboard.</p>
+
+        <form onSubmit={submit}>
+          <label className="admin-field-label" htmlFor="admin-email">
+            Email address
+          </label>
+          <div className="input-icon">
+            <IconMail size={16} />
+            <input
+              id="admin-email"
+              type="email"
+              className="form-input"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="admin@example.com"
+              required
+            />
+          </div>
+
+          <label className="admin-field-label" htmlFor="admin-password">
+            Password
+          </label>
+          <div className="input-icon">
+            <IconLock size={16} />
+            <input
+              id="admin-password"
+              type="password"
+              className="form-input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <label className="checkout-check" style={{ marginTop: 4 }}>
+            <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+            Remember me
+          </label>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <button type="submit" className="admin-button primary full" style={{ marginTop: 16 }} disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+
+        <div className="admin-login-demo">
+          <IconShoppingBag size={15} />
+          <span>
+            Demo credentials: <strong>admin@example.com</strong> / <strong>admin123</strong>
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

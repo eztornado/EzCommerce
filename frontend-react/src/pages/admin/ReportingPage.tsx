@@ -1,82 +1,329 @@
-import { useEffect, useState } from 'react';
-import { Container, Title, SegmentedControl, Table, Stack, SimpleGrid, Card, Button, Text, Group } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import {
+  IconChartBar,
+  IconDownload,
+  IconTrendingUp,
+  IconShoppingBag,
+  IconReceipt,
+  IconTruck,
+  IconArrowBackUp,
+  IconTicket,
+} from '@tabler/icons-react';
 import { api } from '../../api/client';
+import { AdminPageHeader } from '../../components/admin/ui';
+import { money } from '../../lib/format';
+
+type Module = 'sales' | 'products' | 'customers';
+
+const TABS: { key: Module; label: string }[] = [
+  { key: 'sales', label: 'Sales' },
+  { key: 'products', label: 'Products' },
+  { key: 'customers', label: 'Customers' },
+];
+
+const RANGES = [
+  { key: '7', label: 'Last 7 days', days: 7 },
+  { key: '30', label: 'Last 30 days', days: 30 },
+  { key: '90', label: 'Last 90 days', days: 90 },
+  { key: '365', label: 'Last 12 months', days: 365 },
+];
+
+function dateRange(days: number) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - days);
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+}
 
 export default function ReportingPage() {
-  const [module, setModule] = useState('sales');
-  const [range, setRange] = useState('last30');
+  const params = useParams();
+  const module = (['sales', 'products', 'customers'].includes(String(params.module)) ? params.module : 'sales') as Module;
+  const [range, setRange] = useState('30');
+  const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>('day');
   const [sales, setSales] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const load = async () => {
+  const { start, end } = useMemo(() => dateRange(Number(range)), [range]);
+
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    const start = range === 'year' ? `${new Date().getFullYear()}-01-01` : new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    const end = new Date().toISOString().slice(0, 10);
-    const query = `?start=${start}&end=${end}`;
-    try {
-      if (module === 'sales') {
-        setSales(await api.adminGet(`admin/reporting/sales${query}&granularity=day`)); setRows([]);
-      } else {
-        const data = await api.adminGet(`admin/reporting/${module}${query}`);
-        setRows(Array.isArray(data) ? data : data?.data ?? []);
-        setSales(null);
-      }
-    } catch { /* ignore */ }
-    setLoading(false);
-  };
-  useEffect(() => { load(); }, [module, range]);
+    setError('');
+    const query = `?start=${start}&end=${end}${module === 'sales' ? `&granularity=${granularity}` : ''}`;
+    api
+      .adminGet(`admin/reporting/${module}${query}`)
+      .then((data) => {
+        if (cancelled) return;
+        if (module === 'sales') {
+          setSales(data ?? null);
+          setRows([]);
+        } else {
+          setRows(Array.isArray(data) ? data : data?.data ?? []);
+          setSales(null);
+        }
+      })
+      .catch((requestError) => {
+        if (!cancelled) {
+          setError(requestError?.message ?? 'Unable to load the report.');
+          setRows([]);
+          setSales(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [module, start, end, granularity]);
 
-  const max = Math.max(...(sales?.series ?? []).map((point: any) => point.sales), 1);
+  const exportCsv = async () => {
+    try {
+      await api.downloadAdminFile(
+        `admin/reporting/${module}?format=csv&start=${start}&end=${end}${module === 'sales' ? `&granularity=${granularity}` : ''}`,
+        `${module}-report.csv`,
+      );
+    } catch (requestError: any) {
+      setError(requestError?.message ?? 'Unable to export the report.');
+    }
+  };
+
+  const series: any[] = sales?.series ?? [];
+  const maxSales = Math.max(...series.map((point) => Number(point.sales ?? 0)), 1);
+  const totals = sales?.totals ?? {};
+  const totalRevenue = module === 'products' || module === 'customers'
+    ? rows.reduce((sum, row) => sum + Number(row.total ?? 0), 0)
+    : 0;
+
+  const metrics = [
+    { key: 'total_sales', label: 'Total sales', value: money(totals.total_sales ?? 0), icon: <IconTrendingUp size={17} /> },
+    { key: 'total_orders', label: 'Orders', value: totals.total_orders ?? 0, icon: <IconShoppingBag size={17} /> },
+    { key: 'tax_collected', label: 'Tax collected', value: money(totals.tax_collected ?? 0), icon: <IconReceipt size={17} /> },
+    { key: 'shipping_collected', label: 'Shipping collected', value: money(totals.shipping_collected ?? 0), icon: <IconTruck size={17} /> },
+    { key: 'refunds', label: 'Refunds', value: money(totals.refunds ?? 0), icon: <IconArrowBackUp size={17} /> },
+    { key: 'coupon_discount', label: 'Coupon discount', value: money(totals.coupon_discount ?? 0), icon: <IconTicket size={17} /> },
+  ];
 
   return (
-    <Container size="xl" py="md">
-      <Title order={2} mb="md">Reporting</Title>
-      <Group mb="md">
-        <SegmentedControl value={module} onChange={setModule} data={[
-          { value: 'sales', label: 'Sales' }, { value: 'products', label: 'Products' }, { value: 'customers', label: 'Customers' },
-        ]} />
-        <SegmentedControl value={range} onChange={setRange} data={[
-          { value: 'last30', label: 'Last 30 days' }, { value: 'year', label: 'This year' },
-        ]} />
-        <Button variant="light" onClick={load}>Refresh</Button>
-      </Group>
-      {loading ? <Text>Loading...</Text> : module === 'sales' ? (
-        <Stack>
-          <SimpleGrid cols={{ base: 2, lg: 4 }}>
-            {['total_sales', 'total_orders', 'tax_collected', 'refunds'].map((key) => (
-              <Card key={key} withBorder radius="md" p="md">
-                <Text size="xs" c="dimmed" tt="uppercase">{key.replace('_', ' ')}</Text>
-                <Text size="lg" fw={600} mt={4}>{sales?.totals?.[key] ?? 0}</Text>
-              </Card>
+    <div>
+      <AdminPageHeader
+        title="Reporting"
+        subtitle="Analyse sales performance, best selling products and top customers."
+        actions={
+          <button type="button" className="admin-button" onClick={exportCsv}>
+            <IconDownload size={15} /> Export CSV
+          </button>
+        }
+      />
+
+      <div className="report-toolbar">
+        <div className="admin-tabs" style={{ marginBottom: 0 }}>
+          {TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={`/admin/reporting/${tab.key}`}
+              className="admin-tab"
+              data-active={module === tab.key}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+        <div className="report-range">
+          <select className="admin-input admin-input-inline" value={range} onChange={(event) => setRange(event.target.value)}>
+            {RANGES.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
             ))}
-          </SimpleGrid>
-          <Card withBorder p="md">
-            <Text fw={500} mb="sm">Sales over time</Text>
-            {(sales?.series ?? []).length === 0 ? <Text c="dimmed">No data.</Text> : (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180 }}>
-                {(sales?.series ?? []).map((point: any) => (
-                  <div key={point.label} style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ height: `${Math.max((point.sales / max) * 150, 4)}px`, background: '#228be6', borderRadius: '4px 4px 0 0' }} title={`${point.label}: ${point.sales}`} />
-                    <Text size="9px" c="dimmed">{point.label.slice(5)}</Text>
-                  </div>
-                ))}
+          </select>
+          {module === 'sales' && (
+            <select className="admin-input admin-input-inline" value={granularity} onChange={(event) => setGranularity(event.target.value as any)}>
+              <option value="day">Daily</option>
+              <option value="week">Weekly</option>
+              <option value="month">Monthly</option>
+            </select>
+          )}
+        </div>
+      </div>
+
+      <p className="admin-muted report-period">
+        Showing data from <strong>{start}</strong> to <strong>{end}</strong>.
+      </p>
+
+      {error && <div className="admin-alert danger">{error}</div>}
+
+      {module === 'sales' ? (
+        <>
+          <div className="report-metrics">
+            {metrics.map((metric) => (
+              <div className="report-metric" key={metric.key}>
+                <span className="report-metric-icon">{metric.icon}</span>
+                <div>
+                  <p>{metric.label}</p>
+                  <strong>{loading ? '—' : metric.value}</strong>
+                </div>
               </div>
+            ))}
+          </div>
+
+          <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
+            <div className="admin-card-head" style={{ padding: 0, marginBottom: 18 }}>
+              <div>
+                <h2 className="admin-card-title">Sales over time</h2>
+                <p className="admin-card-subtitle">Net invoiced sales grouped by {granularity}.</p>
+              </div>
+              <span className="admin-pill">{series.length} buckets</span>
+            </div>
+            {loading ? (
+              <div className="admin-skeleton-row" style={{ height: 220 }} />
+            ) : series.length === 0 ? (
+              <div className="admin-empty">
+                <h3>No sales in this period</h3>
+                <p>Try widening the date range or selecting a different granularity.</p>
+              </div>
+            ) : (
+              <>
+                <div className="report-chart">
+                  {series.map((point, index) => {
+                    const height = Math.max((Number(point.sales ?? 0) / maxSales) * 100, 1.5);
+                    return (
+                      <div className="report-bar-wrap" key={`${point.label}-${index}`}>
+                        <div className="report-bar" style={{ height: `${height}%` }}>
+                          <span className="report-bar-tooltip">
+                            {point.label}: {money(point.sales)} · {point.orders} orders
+                          </span>
+                        </div>
+                        <span className="report-bar-label">
+                          {String(point.label).length > 7 ? String(point.label).slice(5) : point.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="report-chart-axis">
+                  <span>0</span>
+                  <span>{money(maxSales)}</span>
+                </div>
+              </>
             )}
-          </Card>
-        </Stack>
+          </div>
+
+          <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
+            <h2 className="admin-card-title">Breakdown</h2>
+            <div className="report-table">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Period</th>
+                    <th>Orders</th>
+                    <th>Sales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {series.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="admin-muted">No data available for the selected period.</td>
+                    </tr>
+                  ) : (
+                    [...series].reverse().map((point, index) => (
+                      <tr key={`${point.label}-${index}`}>
+                        <td>{point.label}</td>
+                        <td>{point.orders}</td>
+                        <td>{money(point.sales)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       ) : (
-        <Table verticalSpacing="xs" withTableBorder>
-          <Table.Thead bg="gray.0"><Table.Tr><Table.Th>{module === 'products' ? 'Product' : 'Customer'}</Table.Th><Table.Th>{module === 'products' ? 'Qty' : 'Orders'}</Table.Th><Table.Th>Revenue</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>{rows.map((row) => (
-            <Table.Tr key={row.id ?? row.product_id}>
-              <Table.Td>{row.name ?? `${row.first_name} ${row.last_name}`}</Table.Td>
-              <Table.Td>{row.qty ?? row.orders}</Table.Td>
-              <Table.Td>{Number(row.total ?? 0).toFixed(2)} EUR</Table.Td>
-            </Table.Tr>
-          ))}</Table.Tbody>
-        </Table>
+        <>
+          <div className="report-metrics report-metrics-3">
+            <div className="report-metric">
+              <span className="report-metric-icon"><IconChartBar size={17} /></span>
+              <div>
+                <p>{module === 'products' ? 'Products sold' : 'Top customers'}</p>
+                <strong>{loading ? '—' : rows.length}</strong>
+              </div>
+            </div>
+            <div className="report-metric">
+              <span className="report-metric-icon"><IconTrendingUp size={17} /></span>
+              <div>
+                <p>Revenue in report</p>
+                <strong>{loading ? '—' : money(totalRevenue)}</strong>
+              </div>
+            </div>
+            <div className="report-metric">
+              <span className="report-metric-icon"><IconShoppingBag size={17} /></span>
+              <div>
+                <p>{module === 'products' ? 'Units sold' : 'Orders placed'}</p>
+                <strong>
+                  {loading ? '—' : rows.reduce((sum, row) => sum + Number(row.qty ?? row.orders ?? 0), 0)}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
+            <div className="admin-card-head" style={{ padding: 0, marginBottom: 14 }}>
+              <div>
+                <h2 className="admin-card-title">
+                  {module === 'products' ? 'Top selling products' : 'Top customers'}
+                </h2>
+                <p className="admin-card-subtitle">Ordered by revenue within the selected period.</p>
+              </div>
+            </div>
+            <div className="report-table">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>#</th>
+                    <th>{module === 'products' ? 'Product' : 'Customer'}</th>
+                    <th>{module === 'products' ? 'SKU' : 'Email'}</th>
+                    <th>{module === 'products' ? 'Units' : 'Orders'}</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, index) => (
+                      <tr key={index}>
+                        <td colSpan={5}><div className="admin-skeleton-row" /></td>
+                      </tr>
+                    ))
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="admin-muted">No records for the selected period.</td>
+                    </tr>
+                  ) : (
+                    rows.map((row, index) => (
+                      <tr key={`${row.id ?? row.product_id}-${index}`}>
+                        <td>
+                          <span className="admin-rank">{index + 1}</span>
+                        </td>
+                        <td>
+                          {module === 'products'
+                            ? row.name
+                            : `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || 'Guest'}
+                        </td>
+                        <td>{module === 'products' ? row.sku : row.email}</td>
+                        <td>{row.qty ?? row.orders ?? 0}</td>
+                        <td>{money(row.total)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
-    </Container>
+    </div>
   );
 }

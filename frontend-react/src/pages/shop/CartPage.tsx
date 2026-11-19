@@ -1,108 +1,282 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Container, Table, Text, Button, Group, Loader, Stack, TextInput, NumberInput, Divider, Title } from '@mantine/core';
+import { Link } from 'react-router-dom';
+import { IconArrowRight, IconShoppingBag, IconTag, IconTrash } from '@tabler/icons-react';
 import { api } from '../../api/client';
-import { shopCurrency } from '../../store';
-
-interface CartItem { id: number; name: string; quantity: number; formatted_price: string; formatted_total: string; product_id: number }
-interface Cart { items: CartItem[]; formatted_sub_total: string; formatted_tax_total: string; formatted_grand_total: string; coupon_code?: string }
+import { useCart, shopQuery } from '../../store';
+import { mediaUrl, formattedMoney } from '../../lib/format';
+import { updateCartQty, removeCartItem } from '../../lib/cart';
+import { useShopReload } from '../../lib/hooks';
+import ProductCard from '../../components/shop/ProductCard';
+import type { ProductCard as ProductCardModel } from '../../types';
 
 export default function CartPage() {
-  const [cart, setCart] = useState<Cart | null>(null);
-  const [loading, setLoading] = useState(true);
+  const reload = useShopReload();
+  const cart = useCart((state) => state.cart);
+  const refresh = useCart((state) => state.refresh);
+  const [busy, setBusy] = useState<number | null>(null);
   const [coupon, setCoupon] = useState('');
-  const navigate = useNavigate();
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [crossSell, setCrossSell] = useState<ProductCardModel[]>([]);
 
-  const refresh = async () => {
+  useEffect(() => {
+    refresh();
+    api
+      .get(`checkout/cart/cross-sell${shopQuery()}`)
+      .then((data) => setCrossSell(data?.data ?? data ?? []))
+      .catch(() => setCrossSell([]));
+  }, [refresh, reload]);
+
+  const changeQty = async (itemId: number, quantity: number) => {
+    if (quantity < 1) return;
+    setBusy(itemId);
     try {
-      const data = await api.get(`checkout/cart${cartQuery()}`);
-      setCart(data && data.items ? data : null);
-    } catch { /* ignore */ }
-    setLoading(false);
+      await updateCartQty(itemId, quantity);
+      await refresh();
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const cartQuery = () => {
-    const currency = localStorage.getItem('shop_currency');
-    return currency ? `?currency=${currency}` : '';
+  const remove = async (itemId: number) => {
+    setBusy(itemId);
+    try {
+      await removeCartItem(itemId);
+      await refresh();
+    } finally {
+      setBusy(null);
+    }
   };
 
-  useEffect(() => { refresh(); }, []);
-
-  const updateQuantity = async (itemId: number, quantity: number) => {
-    await api.put('checkout/cart', { qty: [{ cart_item_id: itemId, quantity }] });
-    refresh();
+  const applyCoupon = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setMessage('');
+    try {
+      await api.post(`checkout/cart/coupon${shopQuery()}`, { code: coupon.trim() });
+      setMessage('The coupon has been applied.');
+      setCoupon('');
+      await refresh();
+    } catch (requestError: any) {
+      setError(requestError?.message ?? 'Unable to apply the coupon.');
+    }
   };
 
-  const removeItem = async (itemId: number) => {
-    const token = localStorage.getItem('cart_token');
-    await fetch('/api/checkout/cart/selected', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'X-Cart-Token': token ?? '' },
-      body: JSON.stringify({ item_ids: [itemId] }),
-    });
-    refresh();
+  const removeCoupon = async () => {
+    setError('');
+    setMessage('');
+    try {
+      await api.delete(`checkout/cart/coupon${shopQuery()}`);
+      await refresh();
+      setMessage('The coupon has been removed.');
+    } catch (requestError: any) {
+      setError(requestError?.message ?? 'Unable to remove the coupon.');
+    }
   };
 
-  const applyCoupon = async () => {
-    if (!coupon.trim()) return;
-    try { await api.post('checkout/cart/coupon', { code: coupon.trim() }); refresh(); }
-    catch { /* ignore */ }
-  };
-
-  if (loading) return <Container py="xl"><Loader /></Container>;
   if (!cart || !cart.items?.length) {
     return (
-      <Container py="xl" ta="center">
-        <Title order={2}>Your cart is empty</Title>
-        <Button mt="md" component="a" href="/">Continue shopping</Button>
-      </Container>
+      <div className="shop-container">
+        <div className="shop-breadcrumbs">
+          <Link to="/">Home</Link>
+          <span>/</span>
+          <span>Shopping cart</span>
+        </div>
+        <div className="listing-empty" style={{ paddingTop: 50, paddingBottom: 90 }}>
+          <span className="empty-icon">
+            <IconShoppingBag size={34} />
+          </span>
+          <h2 className="shop-heading">Your cart is empty</h2>
+          <p className="shop-muted">Looks like you haven’t added anything yet. Let’s change that.</p>
+          <Link to="/search" className="shop-primary-button">
+            Continue shopping <IconArrowRight size={16} />
+          </Link>
+        </div>
+
+        {crossSell.length > 0 && (
+          <section className="shop-section">
+            <div className="shop-section-head">
+              <h2 className="shop-heading">You may also like</h2>
+            </div>
+            <div className="shop-grid">
+              {crossSell.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     );
   }
 
   return (
-    <Container size="lg" py="md">
-      <Title order={2} mb="md">Cart</Title>
-      <Table verticalSpacing="sm" highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Product</Table.Th><Table.Th>Price</Table.Th><Table.Th w={120}>Qty</Table.Th><Table.Th>Total</Table.Th><Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {cart.items.map((item) => (
-            <Table.Tr key={item.id}>
-              <Table.Td>
-                <Link to={`/product/${item.product_id}`} style={{ color: 'inherit' }}>{item.name}</Link>
-              </Table.Td>
-              <Table.Td>{item.formatted_price}</Table.Td>
-              <Table.Td>
-                <NumberInput size="xs" w={90} min={1} value={item.quantity}
-                  onChange={(v) => v && updateQuantity(item.id, Number(v))} />
-              </Table.Td>
-              <Table.Td>{item.formatted_total}</Table.Td>
-              <Table.Td>
-                <Button size="compact-xs" variant="subtle" color="red"
-                  onClick={() => removeItem(item.id)}>Remove</Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-      <Divider my="md" />
-      <Group justify="space-between">
-        <Group>
-          <TextInput placeholder="Coupon code" value={coupon} onChange={(e) => setCoupon(e.currentTarget.value)} />
-          <Button variant="outline" onClick={applyCoupon}>Apply coupon</Button>
-        </Group>
-        <Stack gap={4} ta="right">
-          <Text>Subtotal: {cart.formatted_sub_total}</Text>
-          {cart.formatted_tax_total && <Text>Tax: {cart.formatted_tax_total}</Text>}
-          <Title order={4}>Grand total: {cart.formatted_grand_total}</Title>
-        </Stack>
-      </Group>
-      <Group justify="flex-end" mt="lg">
-        <Button size="md" onClick={() => navigate('/checkout')}>Proceed to checkout</Button>
-      </Group>
-    </Container>
+    <div className="shop-container">
+      <div className="shop-breadcrumbs">
+        <Link to="/">Home</Link>
+        <span>/</span>
+        <span>Shopping cart</span>
+      </div>
+
+      <div className="listing-head" style={{ marginBottom: 20 }}>
+        <h1 className="shop-heading" style={{ fontSize: 36 }}>
+          Shopping cart
+        </h1>
+        <span className="listing-count">
+          {cart.items_qty} {cart.items_qty === 1 ? 'item' : 'items'}
+        </span>
+      </div>
+
+      <div className="cart-layout">
+        <div>
+          <table className="cart-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {cart.items.map((item: any) => (
+                <tr key={item.id} style={{ opacity: busy === item.id ? 0.55 : 1 }}>
+                  <td>
+                    <div className="cart-item">
+                      <Link to={`/product/${item.product_id}`} className="cart-item-media">
+                        <img src={mediaUrl(item.base_image?.url)} alt={item.name} />
+                      </Link>
+                      <div>
+                        <Link to={`/product/${item.product_id}`} className="cart-item-title">
+                          {item.name}
+                        </Link>
+                        <p className="shop-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
+                          SKU: {item.sku}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{formattedMoney(item.formatted_price, item.price)}</td>
+                  <td>
+                    <div className="qty-stepper qty-stepper-sm">
+                      <button type="button" onClick={() => changeQty(item.id, item.quantity - 1)} aria-label="Decrease">
+                        −
+                      </button>
+                      <input
+                        value={item.quantity}
+                        onChange={(event) => changeQty(item.id, Number(event.target.value) || 1)}
+                        aria-label="Quantity"
+                      />
+                      <button type="button" onClick={() => changeQty(item.id, item.quantity + 1)} aria-label="Increase">
+                        +
+                      </button>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                    {formattedMoney(item.formatted_total, item.total)}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button type="button" className="cart-remove" onClick={() => remove(item.id)} aria-label="Remove item">
+                      <IconTrash size={17} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ marginTop: 26 }}>
+            <Link to="/search" className="shop-secondary-button shop-button-sm">
+              Continue shopping
+            </Link>
+          </div>
+        </div>
+
+        <aside className="cart-summary">
+          <h2 className="cart-summary-title">Order summary</h2>
+
+          <div className="cart-summary-row">
+            <span>Subtotal</span>
+            <span>{formattedMoney(cart.formatted_sub_total, cart.sub_total)}</span>
+          </div>
+
+          {Number(cart.discount_amount ?? 0) > 0 && (
+            <div className="cart-summary-row" style={{ color: '#047857' }}>
+              <span>Discount</span>
+              <span>−{formattedMoney(cart.formatted_discount_amount, cart.discount_amount)}</span>
+            </div>
+          )}
+
+          <div className="cart-summary-row">
+            <span>Shipping</span>
+            <span>{formattedMoney(cart.formatted_shipping_amount, cart.shipping_amount)}</span>
+          </div>
+
+          <div className="cart-summary-row">
+            <span>Tax</span>
+            <span>{formattedMoney(cart.formatted_tax_total, cart.tax_total)}</span>
+          </div>
+
+          <div className="cart-summary-row total">
+            <span>Grand total</span>
+            <span>{formattedMoney(cart.formatted_grand_total, cart.grand_total)}</span>
+          </div>
+
+          <div className="coupon-box">
+            {cart.coupon_code ? (
+              <div className="coupon-applied">
+                <span>
+                  <IconTag size={14} /> {cart.coupon_code}
+                </span>
+                <button type="button" onClick={removeCoupon}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={applyCoupon}>
+                <label className="field-label" htmlFor="coupon">
+                  Coupon code
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    id="coupon"
+                    className="form-input"
+                    value={coupon}
+                    onChange={(event) => setCoupon(event.target.value)}
+                    placeholder="Enter code"
+                  />
+                  <button type="submit" className="shop-secondary-button shop-button-sm">
+                    Apply
+                  </button>
+                </div>
+              </form>
+            )}
+            {message && <p className="form-success">{message}</p>}
+            {error && <p className="form-error">{error}</p>}
+          </div>
+
+          <Link to="/checkout" className="shop-primary-button" style={{ width: '100%', marginTop: 16 }}>
+            Proceed to checkout <IconArrowRight size={16} />
+          </Link>
+
+          <p className="shop-muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 12 }}>
+            Secure checkout · Free returns within 30 days
+          </p>
+        </aside>
+      </div>
+
+      {crossSell.length > 0 && (
+        <section className="shop-section">
+          <div className="shop-section-head">
+            <h2 className="shop-heading">You may also like</h2>
+          </div>
+          <div className="shop-grid">
+            {crossSell.slice(0, 4).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

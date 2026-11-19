@@ -1,64 +1,100 @@
 import { useState } from 'react';
-import { Container, Title, TextInput, PasswordInput, Button, Stack, Paper, Tabs, Alert } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../../api/client';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { IconLock, IconMail, IconShoppingBag } from '@tabler/icons-react';
 import { useAuth } from '../../store';
 
 export default function SignInPage() {
+  const login = useAuth((state) => state.login);
   const navigate = useNavigate();
-  const login = useAuth((s) => s.login);
+  const [params] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const doLogin = async () => {
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
-    try { await login(email, password); navigate('/account'); }
-    catch (err: any) { setError(err.message); }
-  };
-
-  const doRegister = async () => {
-    setError('');
+    setBusy(true);
     try {
-      await api.post('customer/register', {
-        first_name: firstName, last_name: lastName, email,
-        password, password_confirmation: password,
-      });
-      await login(email, password);
-      navigate('/account');
-    } catch (err: any) { setError(err.message); }
+      await login(email.trim(), password);
+      navigate(params.get('redirect') ?? '/account');
+    } catch (requestError: any) {
+      setError(requestError?.message ?? 'The provided credentials are incorrect.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Container size={420} py="xl">
-      <Paper withBorder shadow="sm" p="xl" radius="md">
-        <Tabs defaultValue="signin">
-          <Tabs.List>
-            <Tabs.Tab value="signin">Sign in</Tabs.Tab>
-            <Tabs.Tab value="register">Create account</Tabs.Tab>
-          </Tabs.List>
-          {error && <Alert icon={<IconAlertCircle size={16} />} color="red" mt="md">{error}</Alert>}
-          <Tabs.Panel value="signin" pt="md">
-            <Stack>
-              <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-              <PasswordInput label="Password" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
-              <Button onClick={doLogin}>Sign in</Button>
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="register" pt="md">
-            <Stack>
-              <TextInput label="First name" value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} />
-              <TextInput label="Last name" value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} />
-              <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-              <PasswordInput label="Password" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
-              <Button onClick={doRegister}>Create account</Button>
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
-      </Paper>
-    </Container>
+    <div className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <IconShoppingBag size={22} />
+        </div>
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="shop-muted" style={{ textAlign: 'center', fontSize: 13, marginBottom: 26 }}>
+          Sign in to your EzCommerce account to continue.
+        </p>
+
+        <form onSubmit={submit}>
+          <label className="field-label" htmlFor="email">
+            Email address
+          </label>
+          <div className="input-icon">
+            <IconMail size={16} />
+            <input
+              id="email"
+              type="email"
+              className="form-input"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          <label className="field-label" htmlFor="password">
+            Password
+          </label>
+          <div className="input-icon">
+            <IconLock size={16} />
+            <input
+              id="password"
+              type="password"
+              className="form-input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Your password"
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '4px 0 18px' }}>
+            <Link to="/forgot-password" className="shop-link" style={{ fontSize: 12 }}>
+              Forgot password?
+            </Link>
+          </div>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <button type="submit" className="shop-primary-button" style={{ width: '100%' }} disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+
+        <p className="auth-switch">
+          New to EzCommerce?{' '}
+          <Link to="/register" className="shop-link">
+            Create an account
+          </Link>
+        </p>
+
+        <div className="auth-demo">
+          <strong>Demo account</strong>
+          <span>customer@example.com · customer123</span>
+        </div>
+      </div>
+    </div>
   );
 }
