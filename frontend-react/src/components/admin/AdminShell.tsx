@@ -174,6 +174,20 @@ export default function AdminShell() {
     localStorage.setItem('admin_collapsed', collapsed ? '1' : '0');
   }, [collapsed]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileOpen]);
+
   const activeGroup = useMemo(
     () => MENU.find((item) => item.children?.some((child) => location.pathname.startsWith(child.to)))?.label,
     [location.pathname],
@@ -240,7 +254,7 @@ export default function AdminShell() {
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to="/" target="_blank" className="admin-icon-button" title="Visit store">
+          <Link to="/" target="_blank" className="admin-icon-button admin-visit-store" title="Visit store">
             <IconExternalLink size={18} />
           </Link>
           <button type="button" className="admin-icon-button" aria-label="Notifications">
@@ -283,6 +297,16 @@ export default function AdminShell() {
           </Menu>
         </div>
       </header>
+
+      {mobileOpen && (
+        <button
+          type="button"
+          className="admin-sidebar-backdrop"
+          data-open="true"
+          aria-label="Close menu"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
       <aside className="admin-sidebar" data-collapsed={collapsed} data-mobile-open={mobileOpen}>
         <div className="admin-sidebar-nav">

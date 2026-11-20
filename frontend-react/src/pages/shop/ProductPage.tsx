@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { IconHeart, IconMinus, IconPlus, IconShoppingBag, IconTruck, IconRefresh, IconShieldCheck } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { shopQuery, useAuth } from '../../store';
-import { mediaUrl, stripHtml } from '../../lib/format';
+import { mediaUrl, money, stripHtml } from '../../lib/format';
 import { addToCart, fallbackImage } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
 import Stars from '../../components/shop/Stars';
@@ -140,7 +140,13 @@ export default function ProductPage() {
     );
   }
 
-  const price = variant?.price != null ? `€${Number(variant.price).toFixed(2)}` : product.formatted_price;
+  const currentPrice = variant?.price != null ? Number(variant.price) : Number(product.price);
+  const regularNumber =
+    product.regular_price != null
+      ? Number(product.regular_price)
+      : Number(String(product.formatted_regular_price ?? '').replace(/[^0-9.]/g, '')) || null;
+  const showCompare = Boolean(product.on_sale && regularNumber && currentPrice && regularNumber > currentPrice + 0.001);
+  const price = variant?.price != null ? money(currentPrice) : product.formatted_price;
   const sku = variant?.sku ?? product.sku;
 
   return (
@@ -195,13 +201,13 @@ export default function ProductPage() {
 
           <div className="product-info-price-row">
             <span className="product-info-price">{price}</span>
-            {product.on_sale && product.formatted_regular_price && (
+            {showCompare && (
               <span className="product-price-regular" style={{ fontSize: 18 }}>
                 {product.formatted_regular_price}
               </span>
             )}
-            {product.on_sale && product.formatted_regular_price && (
-              <span className="product-save-badge">Save {product.formatted_regular_price}</span>
+            {showCompare && (
+              <span className="product-save-badge">Save {money(regularNumber! - currentPrice)}</span>
             )}
           </div>
 

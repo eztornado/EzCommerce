@@ -128,62 +128,64 @@ export default function CartPage() {
 
       <div className="cart-layout">
         <div>
-          <table className="cart-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Quantity</th>
-                <th style={{ textAlign: 'right' }}>Total</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {cart.items.map((item: any) => (
-                <tr key={item.id} style={{ opacity: busy === item.id ? 0.55 : 1 }}>
-                  <td>
-                    <div className="cart-item">
-                      <Link to={`/product/${item.product_id}`} className="cart-item-media">
-                        <img src={mediaUrl(item.base_image?.url)} alt={item.name} />
-                      </Link>
-                      <div>
-                        <Link to={`/product/${item.product_id}`} className="cart-item-title">
-                          {item.name}
-                        </Link>
-                        <p className="shop-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                          SKU: {item.sku}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>{formattedMoney(item.formatted_price, item.price)}</td>
-                  <td>
-                    <div className="qty-stepper qty-stepper-sm">
-                      <button type="button" onClick={() => changeQty(item.id, item.quantity - 1)} aria-label="Decrease">
-                        −
-                      </button>
-                      <input
-                        value={item.quantity}
-                        onChange={(event) => changeQty(item.id, Number(event.target.value) || 1)}
-                        aria-label="Quantity"
-                      />
-                      <button type="button" onClick={() => changeQty(item.id, item.quantity + 1)} aria-label="Increase">
-                        +
-                      </button>
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                    {formattedMoney(item.formatted_total, item.total)}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button type="button" className="cart-remove" onClick={() => remove(item.id)} aria-label="Remove item">
-                      <IconTrash size={17} />
-                    </button>
-                  </td>
+          <div className="cart-table-wrap">
+            <table className="cart-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {cart.items.map((item: any) => (
+                  <tr key={item.id} style={{ opacity: busy === item.id ? 0.55 : 1 }}>
+                    <td>
+                      <div className="cart-item">
+                        <Link to={`/product/${item.product_id}`} className="cart-item-media">
+                          <img src={mediaUrl(item.base_image?.url)} alt={item.name} />
+                        </Link>
+                        <div>
+                          <Link to={`/product/${item.product_id}`} className="cart-item-title">
+                            {item.name}
+                          </Link>
+                          <p className="shop-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
+                            SKU: {item.sku}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{formattedMoney(item.formatted_price, item.price)}</td>
+                    <td>
+                      <div className="qty-stepper qty-stepper-sm">
+                        <button type="button" onClick={() => changeQty(item.id, item.quantity - 1)} aria-label="Decrease">
+                          −
+                        </button>
+                        <input
+                          value={item.quantity}
+                          onChange={(event) => changeQty(item.id, Number(event.target.value) || 1)}
+                          aria-label="Quantity"
+                        />
+                        <button type="button" onClick={() => changeQty(item.id, item.quantity + 1)} aria-label="Increase">
+                          +
+                        </button>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                      {formattedMoney(item.formatted_total, item.total)}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="cart-remove" onClick={() => remove(item.id)} aria-label="Remove item">
+                        <IconTrash size={17} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div style={{ marginTop: 26 }}>
             <Link to="/search" className="shop-secondary-button shop-button-sm">
