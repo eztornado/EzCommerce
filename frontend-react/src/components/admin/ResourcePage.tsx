@@ -3,6 +3,7 @@ import { Modal } from '@mantine/core';
 import { IconEdit, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from './ui';
+import { t } from '../../i18n';
 
 export type FieldType = 'text' | 'email' | 'password' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox' | 'color';
 
@@ -114,7 +115,7 @@ export default function ResourcePage({
       const data = await api.adminGet(endpoint);
       setRows(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load records.');
+      setError(requestError?.message ?? t('Unable to load records.'));
       setRows([]);
     } finally {
       setLoading(false);
@@ -163,7 +164,7 @@ export default function ResourcePage({
     try {
       const missing = fields.find((field) => field.required && !values[field.name]);
       if (missing) {
-        setFormError(`The ${missing.label.toLowerCase()} field is required.`);
+        setFormError(t('The {field} field is required.', { field: t(missing.label).toLowerCase() }));
         setSaving(false);
         return;
       }
@@ -176,11 +177,11 @@ export default function ResourcePage({
       if (editing) {
         const url = (updateEndpoint ?? `${endpoint}/edit/{id}`).replace('{id}', String(editing[idKey]));
         await api.adminPut(url, payload);
-        setMessage('The record has been updated successfully.');
+        setMessage(t('The record has been updated successfully.'));
       } else {
         const url = createEndpoint ?? `${endpoint}/store`;
         await api.adminPost(url, payload);
-        setMessage('The record has been created successfully.');
+        setMessage(t('The record has been created successfully.'));
       }
       setOpen(false);
       await load();
@@ -189,23 +190,23 @@ export default function ResourcePage({
       const detail = requestError?.errors
         ? Object.values(requestError.errors).flat().join(' ')
         : requestError?.message;
-      setFormError(detail || 'Unable to save the record.');
+      setFormError(detail || t('Unable to save the record.'));
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (row: any) => {
-    if (!window.confirm('Delete this record? This action cannot be undone.')) return;
+    if (!window.confirm(t('Delete this record? This action cannot be undone.'))) return;
     setError('');
     try {
       const url = (deleteEndpoint ?? `${endpoint}/{id}`).replace('{id}', String(row[idKey]));
       await api.adminDelete(url);
-      setMessage('The record has been deleted successfully.');
+      setMessage(t('The record has been deleted successfully.'));
       await load();
       onChanged?.();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the record.');
+      setError(requestError?.message ?? t('Unable to delete the record.'));
     }
   };
 
@@ -223,7 +224,7 @@ export default function ResourcePage({
             {toolbar}
             {canCreate && (
               <button type="button" className="admin-button primary" onClick={startCreate}>
-                <IconPlus size={15} /> {createLabel}
+                <IconPlus size={15} /> {t(createLabel)}
               </button>
             )}
           </div>
@@ -239,17 +240,17 @@ export default function ResourcePage({
             <span style={{ position: 'absolute', left: 11, display: 'flex', color: '#9ca3af' }}>
               <IconSearch size={15} />
             </span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t(searchPlaceholder)} />
             {search && (
-              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label={t('Clear search')}>
                 <IconX size={13} />
               </button>
             )}
           </div>
           <div style={{ flex: 1 }} />
-          <span className="admin-muted admin-small">{filtered.length} record(s)</span>
+          <span className="admin-muted admin-small">{t('{count} record(s)', { count: filtered.length })}</span>
           <button type="button" className="admin-toolbar-button" onClick={load}>
-            Refresh
+            {t('Refresh')}
           </button>
         </div>
 
@@ -258,9 +259,9 @@ export default function ResourcePage({
             <thead>
               <tr>
                 {shownColumns.map((field) => (
-                  <th key={field.name}>{field.label}</th>
+                  <th key={field.name}>{t(field.label)}</th>
                 ))}
-                {(canEdit || canDelete || rowActions) && <th className="actions">Action</th>}
+                {(canEdit || canDelete || rowActions) && <th className="actions">{t('Action')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -275,7 +276,7 @@ export default function ResourcePage({
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={shownColumns.length + 1}>
-                    <div className="admin-empty">{emptyLabel}</div>
+                    <div className="admin-empty">{t(emptyLabel)}</div>
                   </td>
                 </tr>
               ) : (
@@ -290,7 +291,7 @@ export default function ResourcePage({
                             : cell
                               ? cell(field, row)
                               : field.type === 'checkbox'
-                                ? <span className={`status-badge ${value ? 'green' : 'red'}`}>{value ? 'Active' : 'Inactive'}</span>
+                                ? <span className={`status-badge ${value ? 'green' : 'red'}`}>{value ? t('Active') : t('Inactive')}</span>
                                 : value ?? <span className="admin-muted">—</span>}
                         </td>
                       );
@@ -300,12 +301,12 @@ export default function ResourcePage({
                         <div className="admin-row-actions">
                           {rowActions?.(row, load)}
                           {canEdit && (
-                            <button type="button" className="admin-icon-action" onClick={() => startEdit(row)} title="Edit">
+                            <button type="button" className="admin-icon-action" onClick={() => startEdit(row)} title={t('Edit')}>
                               <IconEdit size={15} />
                             </button>
                           )}
                           {canDelete && (
-                            <button type="button" className="admin-icon-action danger" onClick={() => remove(row)} title="Delete">
+                            <button type="button" className="admin-icon-action danger" onClick={() => remove(row)} title={t('Delete')}>
                               <IconTrash size={15} />
                             </button>
                           )}
@@ -323,7 +324,7 @@ export default function ResourcePage({
       <Modal
         opened={open}
         onClose={() => setOpen(false)}
-        title={editing ? `Edit ${title.replace(/s$/, '').toLowerCase()}` : createLabel}
+        title={editing ? t('Edit {item}', { item: t(title).replace(/s$/i, '').toLowerCase() }) : t(createLabel)}
         size="lg"
         centered
         overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
@@ -340,14 +341,14 @@ export default function ResourcePage({
                   style={field.colSpan === 2 ? { gridColumn: '1 / -1' } : undefined}
                 >
                   <span className="admin-field-label">
-                    {field.label} {field.required && <em>*</em>}
+                    {t(field.label)} {field.required && <em>*</em>}
                   </span>
                   {field.type === 'textarea' ? (
                     <textarea
                       className="admin-input"
                       rows={4}
                       value={values[field.name] ?? ''}
-                      placeholder={field.placeholder}
+                      placeholder={field.placeholder ? t(field.placeholder) : undefined}
                       onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
                     />
                   ) : field.type === 'select' ? (
@@ -361,10 +362,10 @@ export default function ResourcePage({
                         }))
                       }
                     >
-                      <option value="">{field.placeholder ?? 'Select…'}</option>
+                      <option value="">{field.placeholder ? t(field.placeholder) : t('Select…')}</option>
                       {(field.options ?? []).map((option) => (
                         <option key={String(option.value)} value={option.value}>
-                          {option.label}
+                          {t(option.label)}
                         </option>
                       ))}
                     </select>
@@ -375,14 +376,14 @@ export default function ResourcePage({
                         checked={!!values[field.name]}
                         onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.checked }))}
                       />
-                      <span>{values[field.name] ? 'Active' : 'Inactive'}</span>
+                      <span>{values[field.name] ? t('Active') : t('Inactive')}</span>
                     </span>
                   ) : (
                     <input
                       className="admin-input"
                       type={field.type ?? 'text'}
                       value={values[field.name] ?? ''}
-                      placeholder={field.placeholder}
+                      placeholder={field.placeholder ? t(field.placeholder) : undefined}
                       min={field.min}
                       step={field.step}
                       onChange={(event) =>
@@ -393,16 +394,16 @@ export default function ResourcePage({
                       }
                     />
                   )}
-                  {field.hint && <span className="admin-field-hint">{field.hint}</span>}
+                  {field.hint && <span className="admin-field-hint">{t(field.hint)}</span>}
                 </label>
               ))}
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" disabled={saving} onClick={submit}>
-              {saving ? 'Saving…' : editing ? 'Save changes' : createLabel}
+              {saving ? t('Saving…') : editing ? t('Save changes') : t(createLabel)}
             </button>
           </div>
         </div>

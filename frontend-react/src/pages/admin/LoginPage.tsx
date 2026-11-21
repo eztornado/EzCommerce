@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconLock, IconMail, IconShoppingBag } from '@tabler/icons-react';
 import { useAdminAuth } from '../../store';
+import { t } from '../../i18n';
 
 export default function AdminLoginPage() {
   const login = useAdminAuth((state) => state.login);
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
       await login(email.trim(), password);
       navigate('/admin');
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'The provided credentials are incorrect.');
+      setError(requestError?.message ?? t('The provided credentials are incorrect.'));
     } finally {
       setBusy(false);
     }
@@ -35,16 +36,16 @@ export default function AdminLoginPage() {
           </span>
           <div>
             <strong>EzCommerce</strong>
-            <span>Administration panel</span>
+            <span>{t('Administration panel')}</span>
           </div>
         </div>
 
-        <h1 className="admin-login-title">Sign in to your account</h1>
-        <p className="admin-login-subtitle">Use your administrator credentials to access the dashboard.</p>
+        <h1 className="admin-login-title">{t('Sign in to your account')}</h1>
+        <p className="admin-login-subtitle">{t('Use your administrator credentials to access the dashboard.')}</p>
 
         <form onSubmit={submit}>
           <label className="admin-field-label" htmlFor="admin-email">
-            Email address
+            {t('Email address')}
           </label>
           <div className="input-icon">
             <IconMail size={16} />
@@ -60,7 +61,7 @@ export default function AdminLoginPage() {
           </div>
 
           <label className="admin-field-label" htmlFor="admin-password">
-            Password
+            {t('Password')}
           </label>
           <div className="input-icon">
             <IconLock size={16} />
@@ -77,20 +78,20 @@ export default function AdminLoginPage() {
 
           <label className="checkout-check" style={{ marginTop: 4 }}>
             <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
-            Remember me
+            {t('Remember me')}
           </label>
 
           {error && <p className="form-error">{error}</p>}
 
           <button type="submit" className="admin-button primary full" style={{ marginTop: 16 }} disabled={busy}>
-            {busy ? 'Signing in…' : 'Sign in'}
+            {busy ? t('Signing in…') : t('Sign in')}
           </button>
         </form>
 
         <div className="admin-login-demo">
           <IconShoppingBag size={15} />
           <span>
-            Demo credentials: <strong>admin@example.com</strong> / <strong>admin123</strong>
+            {t('Demo credentials:')} <strong>admin@example.com</strong> / <strong>admin123</strong>
           </span>
         </div>
       </div>

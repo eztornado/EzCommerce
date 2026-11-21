@@ -4,6 +4,7 @@ import { IconPlus, IconRefresh, IconSearch, IconTrash, IconX } from '@tabler/ico
 import { api } from '../../api/client';
 import DataGrid from '../../components/admin/DataGrid';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 interface OptionRow {
   admin_name: string;
@@ -69,7 +70,7 @@ export function AttributesPage() {
       });
       setOpen(true);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load the attribute.');
+      setError(requestError?.message ?? t('Unable to load the attribute.'));
     }
   };
 
@@ -80,10 +81,10 @@ export function AttributesPage() {
       if (editing) await api.adminPut(`admin/catalog/attributes/edit/${editing}`, form);
       else await api.adminPost('admin/catalog/attributes/store', form);
       setOpen(false);
-      setMessage(editing ? 'Attribute updated.' : 'Attribute created.');
+      setMessage(editing ? t('Attribute updated.') : t('Attribute created.'));
       setGridKey((key) => key + 1);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the attribute.');
+      setError(requestError?.message ?? t('Unable to save the attribute.'));
     }
   };
 
@@ -91,10 +92,10 @@ export function AttributesPage() {
     if (!window.confirm(`Delete attribute “${record.admin_name}”?`)) return;
     try {
       await api.adminDelete(`admin/catalog/attributes/${record.__primary}`);
-      setMessage('Attribute deleted.');
+      setMessage(t('Attribute deleted.'));
       setGridKey((key) => key + 1);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the attribute.');
+      setError(requestError?.message ?? t('Unable to delete the attribute.'));
     }
   };
 
@@ -103,11 +104,11 @@ export function AttributesPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Attributes"
-        subtitle="Define the product properties used by attribute families, filters and variants."
+        title={t('Attributes')}
+        subtitle={t('Define the product properties used by attribute families, filters and variants.')}
         actions={
           <button type="button" className="admin-button primary" onClick={startCreate}>
-            <IconPlus size={15} /> Create attribute
+            <IconPlus size={15} /> {t('Create attribute')}
           </button>
         }
       />
@@ -119,25 +120,25 @@ export function AttributesPage() {
         <DataGrid
           key={gridKey}
           path="admin/catalog/attributes"
-          emptyLabel="No attributes found."
+          emptyLabel={t('No attributes found.')}
           actions={(record) => (
             <>
               <button type="button" className="admin-link" onClick={() => startEdit(record)}>
-                Edit
+                {t('Edit')}
               </button>
               <button type="button" className="admin-link danger" onClick={() => remove(record)}>
-                Delete
+                {t('Delete')}
               </button>
             </>
           )}
         />
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? 'Edit attribute' : 'New attribute'} centered size="xl">
+      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit attribute') : t('New attribute')} centered size="xl">
         <form onSubmit={save}>
           <div className="admin-form-grid">
             <label className="admin-field">
-              <span className="admin-field-label">Code *</span>
+              <span className="admin-field-label">{t('Code')} *</span>
               <input
                 className="admin-input"
                 value={form.code}
@@ -147,11 +148,11 @@ export function AttributesPage() {
               />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Admin name *</span>
+              <span className="admin-field-label">{t('Admin name')} *</span>
               <input className="admin-input" value={form.admin_name} onChange={(event) => setForm({ ...form, admin_name: event.target.value })} required />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Type</span>
+              <span className="admin-field-label">{t('Type')}</span>
               <select className="admin-input" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
                 {ATTRIBUTE_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -175,7 +176,7 @@ export function AttributesPage() {
             ].map(([field, label]) => (
               <label className="filter-check" key={field}>
                 <input type="checkbox" checked={!!form[field]} onChange={() => toggleFlag(field)} />
-                <span>{label}</span>
+                <span>{t(label)}</span>
               </label>
             ))}
           </div>
@@ -184,14 +185,14 @@ export function AttributesPage() {
             <div style={{ marginTop: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="admin-section-title" style={{ margin: 0 }}>
-                  Options
+                  {t('Options')}
                 </h3>
                 <button
                   type="button"
                   className="admin-button ghost"
                   onClick={() => setForm({ ...form, options: [...form.options, { admin_name: '', swatch_value: '', sort_order: form.options.length }] })}
                 >
-                  <IconPlus size={14} /> Add option
+                  <IconPlus size={14} /> {t('Add option')}
                 </button>
               </div>
               <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
@@ -205,7 +206,7 @@ export function AttributesPage() {
                         options[index] = { ...option, admin_name: event.target.value };
                         setForm({ ...form, options });
                       }}
-                      placeholder="Option name"
+                      placeholder={t('Option name')}
                     />
                     <input
                       type="color"
@@ -244,10 +245,10 @@ export function AttributesPage() {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
             <button type="button" className="admin-button ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" className="admin-button primary">
-              {editing ? 'Save changes' : 'Create attribute'}
+              {editing ? t('Save changes') : t('Create attribute')}
             </button>
           </div>
         </form>
@@ -281,21 +282,21 @@ export function FamiliesPage() {
       if (editing) await api.adminPut(`admin/catalog/families/edit/${editing}`, form);
       else await api.adminPost('admin/catalog/families/store', form);
       setOpen(false);
-      setMessage(editing ? 'Attribute family updated.' : 'Attribute family created.');
+      setMessage(editing ? t('Attribute family updated.') : t('Attribute family created.'));
       load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the attribute family.');
+      setError(requestError?.message ?? t('Unable to save the attribute family.'));
     }
   };
 
   const remove = async (family: any) => {
-    if (!window.confirm(`Delete family “${family.name}”?`)) return;
+    if (!window.confirm(t('Delete family “{name}”?', { name: family.name }))) return;
     try {
       await api.adminDelete(`admin/catalog/families/${family.id}`);
-      setMessage('Attribute family deleted.');
+      setMessage(t('Attribute family deleted.'));
       load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the attribute family.');
+      setError(requestError?.message ?? t('Unable to delete the attribute family.'));
     }
   };
 
@@ -308,8 +309,8 @@ export function FamiliesPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Attribute Families"
-        subtitle="Group attributes into families that can be assigned to products."
+        title={t('Attribute Families')}
+        subtitle={t('Group attributes into families that can be assigned to products.')}
         actions={
           <button
             type="button"
@@ -320,7 +321,7 @@ export function FamiliesPage() {
               setOpen(true);
             }}
           >
-            <IconPlus size={15} /> Create family
+            <IconPlus size={15} /> {t('Create family')}
           </button>
         }
       />
@@ -337,29 +338,29 @@ export function FamiliesPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search..."
-              aria-label="Search attribute families"
+              placeholder={t('Search...')}
+              aria-label={t('Search attribute families')}
             />
             {search && (
-              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label={t('Clear search')}>
                 <IconX size={13} />
               </button>
             )}
           </div>
           <div style={{ flex: 1 }} />
-          <span className="admin-muted admin-small">{visibleFamilies.length} record(s)</span>
+          <span className="admin-muted admin-small">{t('{count} record(s)', { count: visibleFamilies.length })}</span>
           <button type="button" className="admin-toolbar-button" onClick={load}>
-            <IconRefresh size={15} /> Refresh
+            <IconRefresh size={15} /> {t('Refresh')}
           </button>
         </div>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Code</th>
-              <th>Name</th>
-              <th>User defined</th>
-              <th className="actions">Action</th>
+              <th>{t('ID')}</th>
+              <th>{t('Code')}</th>
+              <th>{t('Name')}</th>
+              <th>{t('User defined')}</th>
+              <th className="actions">{t('Action')}</th>
             </tr>
           </thead>
           <tbody>
@@ -367,7 +368,7 @@ export function FamiliesPage() {
               <tr>
                 <td colSpan={5}>
                   <div className="admin-empty">
-                    {families.length ? 'No families match your search.' : 'No attribute families found.'}
+                    {families.length ? t('No families match your search.') : t('No attribute families found.')}
                   </div>
                 </td>
               </tr>
@@ -379,7 +380,7 @@ export function FamiliesPage() {
                     <span className="admin-code">{family.code}</span>
                   </td>
                   <td style={{ color: '#111827', fontWeight: 500 }}>{family.name}</td>
-                  <td>{family.is_user_defined ? 'Yes' : 'No'}</td>
+                  <td>{family.is_user_defined ? t('Yes') : t('No')}</td>
                   <td className="actions">
                     <button
                       type="button"
@@ -390,10 +391,10 @@ export function FamiliesPage() {
                         setOpen(true);
                       }}
                     >
-                      Edit
+                      {t('Edit')}
                     </button>
                     <button type="button" className="admin-link danger" onClick={() => remove(family)}>
-                      Delete
+                      {t('Delete')}
                     </button>
                   </td>
                 </tr>
@@ -403,23 +404,23 @@ export function FamiliesPage() {
         </table>
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? 'Edit attribute family' : 'New attribute family'} centered>
+      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit attribute family') : t('New attribute family')} centered>
         <form onSubmit={save}>
           <label className="admin-field">
-            <span className="admin-field-label">Code *</span>
+            <span className="admin-field-label">{t('Code')} *</span>
             <input className="admin-input" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
           </label>
           <label className="admin-field" style={{ marginTop: 14 }}>
-            <span className="admin-field-label">Name *</span>
+            <span className="admin-field-label">{t('Name')} *</span>
             <input className="admin-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
           </label>
           {error && <p className="form-error">{error}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
             <button type="button" className="admin-button ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" className="admin-button primary">
-              Save
+              {t('Save')}
             </button>
           </div>
         </form>

@@ -44,6 +44,7 @@ import {
 } from '@tabler/icons-react';
 import { useAdminAuth } from '../../store';
 import { initials } from '../../lib/format';
+import { t } from '../../i18n';
 
 interface MenuChild {
   label: string;
@@ -222,10 +223,10 @@ export default function AdminShell() {
     <div className="admin-shell">
       <header className="admin-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-          <button type="button" className="admin-icon-button admin-mobile-only" onClick={() => setMobileOpen((open) => !open)} aria-label="Toggle menu">
+          <button type="button" className="admin-icon-button admin-mobile-only" onClick={() => setMobileOpen((open) => !open)} aria-label={t('Toggle menu')}>
             <IconMenu2 size={20} />
           </button>
-          <button type="button" className="admin-icon-button admin-collapse-button" onClick={() => setCollapsed((value) => !value)} aria-label="Collapse sidebar">
+          <button type="button" className="admin-icon-button admin-collapse-button" onClick={() => setCollapsed((value) => !value)} aria-label={t('Collapse sidebar')}>
             <IconMenu2 size={19} />
           </button>
           <Link to="/admin" className="admin-logo">
@@ -247,17 +248,17 @@ export default function AdminShell() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search products, orders, customers..."
-            aria-label="Global search"
+            placeholder={t('Search products, orders, customers...')}
+            aria-label={t('Global search')}
           />
           <span className="admin-kbd">⌘ K</span>
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to="/" target="_blank" className="admin-icon-button admin-visit-store" title="Visit store">
+          <Link to="/" target="_blank" className="admin-icon-button admin-visit-store" title={t('Visit store')}>
             <IconExternalLink size={18} />
           </Link>
-          <button type="button" className="admin-icon-button" aria-label="Notifications">
+          <button type="button" className="admin-icon-button" aria-label={t('Notifications')}>
             <IconBell size={18} />
             <span className="admin-notification-dot" />
           </button>
@@ -267,7 +268,7 @@ export default function AdminShell() {
                 <span className="admin-avatar">{initialsValue}</span>
                 {!collapsed && (
                   <span className="admin-profile-copy">
-                    <strong>{user?.name ?? 'Administrator'}</strong>
+                    <strong>{user?.name ?? t('Administrator')}</strong>
                     <span>{user?.email ?? 'admin@example.com'}</span>
                   </span>
                 )}
@@ -275,12 +276,12 @@ export default function AdminShell() {
               </button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>Signed in as {user?.email ?? 'admin@example.com'}</Menu.Label>
+              <Menu.Label>{t('Signed in as {email}', { email: user?.email ?? 'admin@example.com' })}</Menu.Label>
               <Menu.Item leftSection={<IconUser size={15} />} component={Link} to="/admin/settings/users">
-                My account
+                {t('My account')}
               </Menu.Item>
               <Menu.Item leftSection={<IconSettings size={15} />} component={Link} to="/admin/configuration">
-                Configuration
+                {t('Configuration')}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
@@ -291,7 +292,7 @@ export default function AdminShell() {
                   navigate('/admin/login');
                 }}
               >
-                Sign out
+                {t('Sign out')}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -303,7 +304,7 @@ export default function AdminShell() {
           type="button"
           className="admin-sidebar-backdrop"
           data-open="true"
-          aria-label="Close menu"
+          aria-label={t('Close menu')}
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -326,12 +327,12 @@ export default function AdminShell() {
                         ? navigate(item.children![0].to)
                         : setOpenGroups((current) => ({ ...current, [item.label]: !isOpen }))
                     }
-                    title={item.label}
+                    title={t(item.label)}
                   >
                     <span className="admin-menu-icon">{item.icon}</span>
                     {!collapsed && (
                       <>
-                        <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                        <span style={{ flex: 1, textAlign: 'left' }}>{t(item.label)}</span>
                         <IconChevronRight
                           size={14}
                           style={{ transform: isOpen ? 'rotate(90deg)' : undefined, transition: 'transform .18s' }}
@@ -344,7 +345,7 @@ export default function AdminShell() {
                     <div className="admin-submenu" data-open={isOpen}>
                       {item.children.map((child) => (
                         <NavLink key={child.to} to={child.to} data-active={location.pathname === child.to}>
-                          {child.label}
+                          {t(child.label)}
                         </NavLink>
                       ))}
                     </div>
@@ -355,9 +356,9 @@ export default function AdminShell() {
 
             return (
               <div className="admin-menu-group" key={item.label}>
-                <NavLink to={item.to!} end={item.to === '/admin'} className="admin-menu-link" data-active={item.to === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(item.to!)} title={item.label}>
+                <NavLink to={item.to!} end={item.to === '/admin'} className="admin-menu-link" data-active={item.to === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(item.to!)} title={t(item.label)}>
                   <span className="admin-menu-icon">{item.icon}</span>
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && <span>{t(item.label)}</span>}
                 </NavLink>
               </div>
             );
@@ -367,10 +368,10 @@ export default function AdminShell() {
 
       <main className="admin-main" data-collapsed={collapsed}>
         <div className="admin-breadcrumb">
-          <Link to="/admin">Dashboard</Link>
+          <Link to="/admin">{t('Dashboard')}</Link>
           {crumbs.map((crumb) => [
             <IconChevronRight size={12} key={`${crumb}-icon`} />,
-            <span key={crumb}>{crumb}</span>,
+            <span key={crumb}>{t(crumb)}</span>,
           ])}
         </div>
         <Outlet />

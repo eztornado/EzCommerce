@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useShop, useAuth } from './store';
+import I18nBridge from './i18n/I18nBridge';
 
 import ShopLayout from './components/shop/ShopLayout';
 import HomePage from './pages/shop/HomePage';
@@ -63,7 +64,8 @@ export default function App() {
   }, [loadContext, restore]);
 
   return (
-    <BrowserRouter>
+    <I18nBridge>
+      <BrowserRouter>
       <Routes>
         {/* Storefront */}
         <Route element={<ShopLayout />}>
@@ -150,6 +152,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </I18nBridge>
   );
 }

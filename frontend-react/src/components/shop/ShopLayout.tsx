@@ -14,6 +14,7 @@ import { api } from '../../api/client';
 import { useAuth, useCart, useShop, shopQuery } from '../../store';
 import { mediaUrl } from '../../lib/format';
 import { useShopReload } from '../../lib/hooks';
+import { t, setLocale, uiLocaleName, useLocale, type UiLocale } from '../../i18n';
 import type { Category } from '../../types';
 
 export default function ShopLayout() {
@@ -23,6 +24,7 @@ export default function ShopLayout() {
   const loggedIn = useAuth((state) => state.loggedIn);
   const customer = useAuth((state) => state.customer);
   const reload = useShopReload();
+  const locale = useLocale();
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -70,8 +72,15 @@ export default function ShopLayout() {
     }
   };
 
+  // El idioma de la interfaz se puede previsualizar desde aquí; el idioma de
+  // contenido (en/es) se mantiene separado porque el catálogo puede no estar
+  // traducido en todos los locales.
+  const chooseLanguage = async (code: UiLocale) => {
+    setLocale(code);
+    if (code !== 'ja' && code !== context?.locale) await changeLocale(code);
+  };
+
   const activeCurrency = context?.currencies.find((currency) => currency.code === context?.currency);
-  const activeLocale = context?.locales.find((locale) => locale.code === context?.locale);
 
   return (
     <div className="shop-shell">
@@ -93,20 +102,20 @@ export default function ShopLayout() {
           </Menu>
 
           <p className="topbar-offer">
-            {context?.header_offer ?? 'Free shipping on all orders over €100'}
-            <Link to="/products"> Shop now</Link>
+            {context?.header_offer ?? t('Free shipping on all orders over €100')}
+            <Link to="/products"> {t('Shop now')}</Link>
           </p>
 
           <Menu shadow="md" width={180} position="bottom-end">
             <Menu.Target>
               <button type="button" className="topbar-select">
-                {activeLocale?.name ?? 'English'} <IconChevronDown size={14} />
+                {uiLocaleName(locale)} <IconChevronDown size={14} />
               </button>
             </Menu.Target>
             <Menu.Dropdown>
-              {context?.locales.map((locale) => (
-                <Menu.Item key={locale.code} onClick={() => changeLocale(locale.code)}>
-                  {locale.name}
+              {(['en', 'es', 'ja'] as UiLocale[]).map((code) => (
+                <Menu.Item key={code} onClick={() => chooseLanguage(code)}>
+                  {uiLocaleName(code)}
                 </Menu.Item>
               ))}
             </Menu.Dropdown>
@@ -116,7 +125,12 @@ export default function ShopLayout() {
 
       <header className="shop-header">
         <div className="shop-container shop-header-main">
-          <button type="button" className="mobile-menu-toggle" onClick={() => setMobileOpen((open) => !open)} aria-label="Menu">
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label={t('Menu')}
+          >
             {mobileOpen ? <IconX size={22} /> : <IconMenu2 size={22} />}
           </button>
 
@@ -130,9 +144,9 @@ export default function ShopLayout() {
             )}
           </Link>
 
-          <nav className="shop-nav" aria-label="Main navigation">
+          <nav className="shop-nav" aria-label={t('Main navigation')}>
             <NavLink to="/" end className="shop-nav-link" data-active={location.pathname === '/'}>
-              Home
+              {t('Home')}
             </NavLink>
             {categories.map((category) => (
               <NavLink
@@ -145,7 +159,7 @@ export default function ShopLayout() {
               </NavLink>
             ))}
             <NavLink to="/search?sort=newest" className="shop-nav-link">
-              New Arrivals
+              {t('New Arrivals')}
             </NavLink>
           </nav>
 
@@ -157,34 +171,34 @@ export default function ShopLayout() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search products..."
-                aria-label="Search products"
+                placeholder={t('Search products...')}
+                aria-label={t('Search products')}
               />
             </form>
 
             <div className="shop-icon-row">
-              <Link to="/account/wishlist" className="shop-icon-button" aria-label="Wishlist">
+              <Link to="/account/wishlist" className="shop-icon-button" aria-label={t('Wishlist')}>
                 <IconHeart size={21} />
               </Link>
 
               <Menu shadow="md" width={230} position="bottom-end">
                 <Menu.Target>
-                  <button type="button" className="shop-icon-button" aria-label="Account">
+                  <button type="button" className="shop-icon-button" aria-label={t('Account')}>
                     <IconUser size={21} />
                   </button>
                 </Menu.Target>
                 <Menu.Dropdown>
                   {loggedIn ? (
                     <>
-                      <Menu.Label>Welcome, {customer?.first_name ?? 'Customer'}</Menu.Label>
+                      <Menu.Label>{t('Welcome, {name}', { name: customer?.first_name ?? t('Customer') })}</Menu.Label>
                       <Menu.Item component={Link} to="/account">
-                        My profile
+                        {t('My profile')}
                       </Menu.Item>
                       <Menu.Item component={Link} to="/account/orders">
-                        My orders
+                        {t('My orders')}
                       </Menu.Item>
                       <Menu.Item component={Link} to="/account/wishlist">
-                        Wishlist
+                        {t('Wishlist')}
                       </Menu.Item>
                       <Menu.Item
                         onClick={async () => {
@@ -192,24 +206,24 @@ export default function ShopLayout() {
                           navigate('/');
                         }}
                       >
-                        Sign out
+                        {t('Sign out')}
                       </Menu.Item>
                     </>
                   ) : (
                     <>
-                      <Menu.Label>Welcome to EzCommerce</Menu.Label>
+                      <Menu.Label>{t('Welcome to EzCommerce')}</Menu.Label>
                       <Menu.Item component={Link} to="/login">
-                        Sign in
+                        {t('Sign in')}
                       </Menu.Item>
                       <Menu.Item component={Link} to="/register">
-                        Create an account
+                        {t('Create an account')}
                       </Menu.Item>
                     </>
                   )}
                 </Menu.Dropdown>
               </Menu>
 
-              <Link to="/cart" className="shop-icon-button" aria-label="Shopping cart">
+              <Link to="/cart" className="shop-icon-button" aria-label={t('Shopping cart')}>
                 <IconShoppingBag size={21} />
                 {cartCount > 0 && <span className="shop-cart-count">{cartCount}</span>}
               </Link>
@@ -219,14 +233,14 @@ export default function ShopLayout() {
 
         {mobileOpen && (
           <div className="shop-mobile-nav">
-            <Link to="/">Home</Link>
+            <Link to="/">{t('Home')}</Link>
             {categories.map((category) => (
               <Link key={category.id} to={`/category/${category.id}`}>
                 {category.name}
               </Link>
             ))}
-            <Link to="/search">Search</Link>
-            <Link to="/account">My account</Link>
+            <Link to="/search">{t('Search')}</Link>
+            <Link to="/account">{t('My account')}</Link>
           </div>
         )}
       </header>
@@ -239,41 +253,41 @@ export default function ShopLayout() {
         <div className="shop-container shop-footer-main">
           <div className="shop-footer-links">
             <div>
-              <p className="shop-footer-column-title">Quick Links</p>
+              <p className="shop-footer-column-title">{t('Quick Links')}</p>
               <ul>
                 <li>
-                  <Link to="/">Home</Link>
+                  <Link to="/">{t('Home')}</Link>
                 </li>
                 <li>
-                  <Link to="/search?sort=newest">New arrivals</Link>
+                  <Link to="/search?sort=newest">{t('New arrivals')}</Link>
                 </li>
                 <li>
-                  <Link to="/search">All products</Link>
+                  <Link to="/search">{t('All products')}</Link>
                 </li>
                 <li>
-                  <Link to="/cart">Shopping cart</Link>
+                  <Link to="/cart">{t('Shopping cart')}</Link>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="shop-footer-column-title">Customer Service</p>
+              <p className="shop-footer-column-title">{t('Customer Service')}</p>
               <ul>
                 <li>
-                  <Link to="/account">My account</Link>
+                  <Link to="/account">{t('My account')}</Link>
                 </li>
                 <li>
-                  <Link to="/account/orders">Order tracking</Link>
+                  <Link to="/account/orders">{t('Order tracking')}</Link>
                 </li>
                 <li>
-                  <Link to="/account/wishlist">Wishlist</Link>
+                  <Link to="/account/wishlist">{t('Wishlist')}</Link>
                 </li>
                 <li>
-                  <Link to="/login">Sign in</Link>
+                  <Link to="/login">{t('Sign in')}</Link>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="shop-footer-column-title">Categories</p>
+              <p className="shop-footer-column-title">{t('Categories')}</p>
               <ul>
                 {categories.slice(0, 4).map((category) => (
                   <li key={category.id}>
@@ -283,7 +297,7 @@ export default function ShopLayout() {
               </ul>
             </div>
             <div>
-              <p className="shop-footer-column-title">Follow Us</p>
+              <p className="shop-footer-column-title">{t('Follow Us')}</p>
               <ul>
                 <li>
                   <a href="https://instagram.com" target="_blank" rel="noreferrer">
@@ -310,11 +324,9 @@ export default function ShopLayout() {
           </div>
 
           <div className="shop-footer-newsletter">
-            <p className="shop-footer-title">
-              Subscribe to our newsletter and get <em>10% off</em> your first order.
-            </p>
+            <p className="shop-footer-title">{t('Subscribe to our newsletter and get 10% off your first order.')}</p>
             <p className="shop-muted" style={{ fontSize: 12, marginTop: 8 }}>
-              Stay up to date with new collections, offers and stories from EzCommerce.
+              {t('Stay up to date with new collections, offers and stories from EzCommerce.')}
             </p>
             <form className="shop-footer-input" onSubmit={subscribe}>
               <input
@@ -322,20 +334,20 @@ export default function ShopLayout() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="email@example.com"
-                aria-label="Email address"
+                aria-label={t('Email address')}
                 required
               />
-              <button type="submit">Subscribe</button>
+              <button type="submit">{t('Subscribe')}</button>
             </form>
             {subscribed && (
-              <p style={{ fontSize: 12, color: '#047857', marginTop: 8 }}>Thanks for subscribing!</p>
+              <p style={{ fontSize: 12, color: '#047857', marginTop: 8 }}>{t('Thanks for subscribing!')}</p>
             )}
           </div>
         </div>
         <div className="shop-footer-bottom">
           <div className="shop-container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <p style={{ margin: 0 }}>© {new Date().getFullYear()} EzCommerce. All rights reserved.</p>
-            <p style={{ margin: 0 }}>Secure payments · Privacy policy · Terms &amp; conditions</p>
+            <p style={{ margin: 0 }}>{t('© {year} EzCommerce. All rights reserved.', { year: new Date().getFullYear() })}</p>
+            <p style={{ margin: 0 }}>{t('Secure payments · Privacy policy · Terms & conditions')}</p>
           </div>
         </div>
       </footer>

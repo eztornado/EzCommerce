@@ -16,6 +16,7 @@ import {
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 import { useShop } from '../../store';
 
 interface Section {
@@ -87,7 +88,7 @@ export default function AppearancePage() {
       const data = await api.adminGet(`admin/appearance/sections/list/${target}`);
       setSections(Array.isArray(data) ? data : data?.data ?? []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load the appearance sections.');
+      setError(requestError?.message ?? t('Unable to load the appearance sections.'));
       setSections([]);
     } finally {
       setLoading(false);
@@ -125,14 +126,14 @@ export default function AppearancePage() {
 
   const submit = async () => {
     if (!form.name.trim()) {
-      setError('The section name is required.');
+      setError(t('The section name is required.'));
       return;
     }
     let options: any;
     try {
       options = JSON.parse(form.options || '{}');
     } catch {
-      setError('The options must be valid JSON.');
+      setError(t('The options must be valid JSON.'));
       return;
     }
     setSaving(true);
@@ -146,7 +147,7 @@ export default function AppearancePage() {
           locale,
           options,
         });
-        setNotice('The section has been updated.');
+        setNotice(t('The section has been updated.'));
       } else {
         await api.adminPost('admin/appearance/sections/store', {
           type: form.type,
@@ -156,12 +157,12 @@ export default function AppearancePage() {
           locale,
           options,
         });
-        setNotice('The section has been created.');
+        setNotice(t('The section has been created.'));
       }
       closeModal();
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the section.');
+      setError(requestError?.message ?? t('Unable to save the section.'));
     } finally {
       setSaving(false);
     }
@@ -172,7 +173,7 @@ export default function AppearancePage() {
       await api.adminPost(`admin/appearance/sections/status/${section.id}`, { status: section.status ? 0 : 1 });
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update the section status.');
+      setError(requestError?.message ?? t('Unable to update the section status.'));
     }
   };
 
@@ -180,10 +181,10 @@ export default function AppearancePage() {
     if (!window.confirm(`Delete the “${section.name}” section? This cannot be undone.`)) return;
     try {
       await api.adminDelete(`admin/appearance/sections/${section.id}`);
-      setNotice('The section has been deleted.');
+      setNotice(t('The section has been deleted.'));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the section.');
+      setError(requestError?.message ?? t('Unable to delete the section.'));
     }
   };
 
@@ -196,7 +197,7 @@ export default function AppearancePage() {
     try {
       await api.adminPost('admin/appearance/sections/reorder', { order: next.map((section) => section.id) });
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to reorder the sections.');
+      setError(requestError?.message ?? t('Unable to reorder the sections.'));
       await load();
     }
   };
@@ -205,19 +206,19 @@ export default function AppearancePage() {
 
   const summary = (section: Section) => {
     const options = section.options ?? {};
-    if (Array.isArray(options.slides)) return `${options.slides.length} slide${options.slides.length === 1 ? '' : 's'}`;
+    if (Array.isArray(options.slides)) return t(options.slides.length === 1 ? '{count} slide' : '{count} slides', { count: options.slides.length });
     if (options.title && section.type === 'static_content') return options.title;
-    if (Array.isArray(options.services)) return `${options.services.length} services`;
-    if (Array.isArray(options.columns)) return `${options.columns.length} columns`;
-    if (options.limit) return `Limit ${options.limit}${options.filters?.sort ? ` · ${options.filters.sort}` : ''}`;
-    return 'No options configured';
+    if (Array.isArray(options.services)) return t('{count} services', { count: options.services.length });
+    if (Array.isArray(options.columns)) return t('{count} columns', { count: options.columns.length });
+    if (options.limit) return t('Limit {count}', { count: options.limit }) + (options.filters?.sort ? ` · ${options.filters.sort}` : '');
+    return t('No options configured');
   };
 
   return (
     <div>
       <AdminPageHeader
-        title="Appearance"
-        subtitle="Compose the storefront home page from reusable sections, per locale."
+        title={t('Appearance')}
+        subtitle={t('Compose the storefront home page from reusable sections, per locale.')}
         actions={
           <>
             <select className="admin-input admin-input-inline" value={locale} onChange={(event) => setLocale(event.target.value)}>
@@ -228,7 +229,7 @@ export default function AppearancePage() {
               ))}
             </select>
             <button type="button" className="admin-button primary" onClick={openCreate}>
-              <IconPlus size={15} /> Create section
+              <IconPlus size={15} /> {t('Create section')}
             </button>
           </>
         }
@@ -240,10 +241,10 @@ export default function AppearancePage() {
       <div className="admin-card">
         <div className="admin-card-head">
           <div>
-            <h2 className="admin-card-title">Home page sections</h2>
-            <p className="admin-card-subtitle">Drag-free ordering: use the arrows to change the position of each section.</p>
+            <h2 className="admin-card-title">{t('Home page sections')}</h2>
+            <p className="admin-card-subtitle">{t('Drag-free ordering: use the arrows to change the position of each section.')}</p>
           </div>
-          <span className="admin-pill">{sections.length} sections</span>
+          <span className="admin-pill">{t('{count} sections', { count: sections.length })}</span>
         </div>
 
         {loading ? (
@@ -254,10 +255,10 @@ export default function AppearancePage() {
           </div>
         ) : sections.length === 0 ? (
           <div className="admin-empty">
-            <h3>No sections for this locale</h3>
-            <p>Create your first section to start composing the storefront home page.</p>
+            <h3>{t('No sections for this locale')}</h3>
+            <p>{t('Create your first section to start composing the storefront home page.')}</p>
             <button type="button" className="admin-button primary" onClick={openCreate}>
-              Create section
+              {t('Create section')}
             </button>
           </div>
         ) : (
@@ -267,11 +268,11 @@ export default function AppearancePage() {
               return (
                 <div className="appearance-item" key={section.id}>
                   <div className="appearance-order">
-                    <button type="button" className="admin-icon-action" onClick={() => move(index, -1)} disabled={index === 0} title="Move up">
+                    <button type="button" className="admin-icon-action" onClick={() => move(index, -1)} disabled={index === 0} title={t('Move up')}>
                       <IconArrowUp size={14} />
                     </button>
                     <span>{index + 1}</span>
-                    <button type="button" className="admin-icon-action" onClick={() => move(index, 1)} disabled={index === sections.length - 1} title="Move down">
+                    <button type="button" className="admin-icon-action" onClick={() => move(index, 1)} disabled={index === sections.length - 1} title={t('Move down')}>
                       <IconArrowDown size={14} />
                     </button>
                   </div>
@@ -279,18 +280,18 @@ export default function AppearancePage() {
                   <div className="appearance-copy">
                     <strong>{section.name}</strong>
                     <span>
-                      {meta?.label ?? section.type} · {summary(section)}
+                      {meta?.label ? t(meta.label) : section.type} · {summary(section)}
                     </span>
                   </div>
-                  <span className={`status-badge ${section.status ? 'green' : 'gray'}`}>{section.status ? 'Active' : 'Inactive'}</span>
+                  <span className={`status-badge ${section.status ? 'green' : 'gray'}`}>{section.status ? t('Active') : t('Inactive')}</span>
                   <div className="admin-row-actions">
-                    <button type="button" className="admin-icon-action" onClick={() => toggle(section)} title={section.status ? 'Deactivate' : 'Activate'}>
+                    <button type="button" className="admin-icon-action" onClick={() => toggle(section)} title={section.status ? t('Deactivate') : t('Activate')}>
                       {section.status ? <IconX size={15} /> : <IconEye size={15} />}
                     </button>
-                    <button type="button" className="admin-icon-action" onClick={() => openEdit(section)} title="Edit">
+                    <button type="button" className="admin-icon-action" onClick={() => openEdit(section)} title={t('Edit')}>
                       <IconPencil size={15} />
                     </button>
-                    <button type="button" className="admin-icon-action danger" onClick={() => remove(section)} title="Delete">
+                    <button type="button" className="admin-icon-action danger" onClick={() => remove(section)} title={t('Delete')}>
                       <IconTrash size={15} />
                     </button>
                   </div>
@@ -302,13 +303,13 @@ export default function AppearancePage() {
       </div>
 
       <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
-        <h2 className="admin-card-title">Available section types</h2>
+        <h2 className="admin-card-title">{t('Available section types')}</h2>
         <div className="appearance-types">
           {TYPES.map((type) => (
             <div className="appearance-type-card" key={type.value}>
               <span>{type.icon}</span>
-              <strong>{type.label}</strong>
-              <p>{type.hint}</p>
+              <strong>{t(type.label)}</strong>
+              <p>{t(type.hint)}</p>
               <code>{type.value}</code>
             </div>
           ))}
@@ -320,8 +321,8 @@ export default function AppearancePage() {
           <div className="admin-modal" style={{ maxWidth: 720 }}>
             <div className="admin-modal-head">
               <div>
-                <h2>{editing ? 'Edit section' : 'Create section'}</h2>
-                <p>{editing ? `Update “${editing.name}” for ${locale}.` : 'Add a new section to the home page.'}</p>
+                <h2>{editing ? t('Edit section') : t('Create section')}</h2>
+                <p>{editing ? t('Update “{name}” for {locale}.', { name: editing.name, locale }) : t('Add a new section to the home page.')}</p>
               </div>
               <button type="button" className="admin-icon-action" onClick={closeModal}>
                 <IconX size={16} />
@@ -329,7 +330,7 @@ export default function AppearancePage() {
             </div>
             <div className="admin-modal-form">
               <label className="admin-field">
-                <span className="admin-field-label">Section type <em>*</em></span>
+                <span className="admin-field-label">{t('Section type')} <em>*</em></span>
                 <select
                   className="admin-input"
                   value={form.type}
@@ -344,29 +345,29 @@ export default function AppearancePage() {
                 >
                   {TYPES.map((type) => (
                     <option key={type.value} value={type.value}>
-                      {type.label}
+                      {t(type.label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Name <em>*</em></span>
+                <span className="admin-field-label">{t('Name')} <em>*</em></span>
                 <input
                   className="admin-input"
                   value={form.name}
-                  placeholder="Hero slider"
+                  placeholder={t('Hero slider')}
                   onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Status</span>
+                <span className="admin-field-label">{t('Status')}</span>
                 <select className="admin-input" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: Number(event.target.value) }))}>
-                  <option value={1}>Active</option>
-                  <option value={0}>Inactive</option>
+                  <option value={1}>{t('Active')}</option>
+                  <option value={0}>{t('Inactive')}</option>
                 </select>
               </label>
               <label className="admin-field admin-span-2">
-                <span className="admin-field-label">Options (JSON)</span>
+                <span className="admin-field-label">{t('Options (JSON)')}</span>
                 <textarea
                   className="admin-input admin-textarea data-transfer-code"
                   rows={16}
@@ -374,13 +375,13 @@ export default function AppearancePage() {
                   value={form.options}
                   onChange={(event) => setForm((current) => ({ ...current, options: event.target.value }))}
                 />
-                <span className="admin-field-hint">Stored in <code>theme_section_translations.options</code> for the selected locale.</span>
+                <span className="admin-field-hint">{t('Stored in')} <code>theme_section_translations.options</code> {t('for the selected locale.')}</span>
               </label>
             </div>
             <div className="admin-modal-actions">
-              <button type="button" className="admin-button" onClick={closeModal}>Cancel</button>
+              <button type="button" className="admin-button" onClick={closeModal}>{t('Cancel')}</button>
               <button type="button" className="admin-button primary" onClick={submit} disabled={saving}>
-                {saving ? 'Saving…' : editing ? 'Save section' : 'Create section'}
+                {saving ? t('Saving…') : editing ? t('Save section') : t('Create section')}
               </button>
             </div>
           </div>

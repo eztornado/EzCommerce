@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { IconHeart, IconMinus, IconPlus, IconShoppingBag, IconTruck, IconRefresh, IconShieldCheck } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { shopQuery, useAuth } from '../../store';
-import { mediaUrl, money, stripHtml } from '../../lib/format';
+import { formatLabel, mediaUrl, money, stripHtml } from '../../lib/format';
 import { addToCart, fallbackImage } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
+import { intlLocale, t } from '../../i18n';
 import Stars from '../../components/shop/Stars';
 import ProductCard from '../../components/shop/ProductCard';
 import type { ProductCard as ProductCardModel } from '../../types';
@@ -73,9 +74,9 @@ export default function ProductPage() {
     setMessage('');
     try {
       await addToCart(product.id, quantity, options);
-      setMessage('The item has been added to your cart.');
+      setMessage(t('The item has been added to your cart.'));
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to add this product to the cart.');
+      setError(requestError?.message ?? t('Unable to add this product to the cart.'));
     }
   };
 
@@ -91,9 +92,9 @@ export default function ProductPage() {
     }
     try {
       await api.post('customer/wishlist', { product_id: product.id });
-      setMessage('Added to your wishlist.');
+      setMessage(t('Added to your wishlist.'));
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to add to the wishlist.');
+      setError(requestError?.message ?? t('Unable to add to the wishlist.'));
     }
   };
 
@@ -107,7 +108,7 @@ export default function ProductPage() {
       const payload = await api.get(`product/${product.id}/reviews${shopQuery()}`);
       setReviews(payload?.data ?? []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to submit your review.');
+      setError(requestError?.message ?? t('Unable to submit your review.'));
     }
   };
 
@@ -131,10 +132,10 @@ export default function ProductPage() {
     return (
       <div className="shop-container listing-empty" style={{ paddingTop: 80, paddingBottom: 80 }}>
         <IconShoppingBag size={42} />
-        <h2>Product not found</h2>
-        <p>The product you are looking for is no longer available.</p>
+        <h2>{t('Product not found')}</h2>
+        <p>{t('The product you are looking for is no longer available.')}</p>
         <Link to="/search" className="shop-primary-button">
-          Continue shopping
+          {t('Continue shopping')}
         </Link>
       </div>
     );
@@ -151,10 +152,10 @@ export default function ProductPage() {
 
   return (
     <div className="shop-container">
-      <nav className="shop-breadcrumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
+      <nav className="shop-breadcrumbs" aria-label={t('Breadcrumb')}>
+        <Link to="/">{t('Home')}</Link>
         <span>/</span>
-        <Link to="/search">Shop</Link>
+        <Link to="/search">{t('Shop')}</Link>
         <span>/</span>
         <span>{product.name}</span>
       </nav>
@@ -169,7 +170,7 @@ export default function ProductPage() {
                 className="product-thumb"
                 data-active={index === activeImage}
                 onClick={() => setActiveImage(index)}
-                aria-label={`View image ${index + 1}`}
+                aria-label={t('View image {number}', { number: index + 1 })}
               >
                 <img src={mediaUrl(image.url)} alt={`${product.name} ${index + 1}`} />
               </button>
@@ -180,7 +181,7 @@ export default function ProductPage() {
               src={mediaUrl(images[activeImage]?.url) || fallbackImage}
               alt={product.name}
             />
-            {product.on_sale && <span className="product-badge sale">Sale</span>}
+            {product.on_sale && <span className="product-badge sale">{t('Sale')}</span>}
           </div>
         </div>
 
@@ -193,7 +194,7 @@ export default function ProductPage() {
               style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: 13 }}
               onClick={() => setTab('reviews')}
             >
-              {product.ratings?.total ?? 0} Reviews
+              {t('{count} Reviews', { count: product.ratings?.total ?? 0 })}
             </button>
           </div>
 
@@ -207,17 +208,17 @@ export default function ProductPage() {
               </span>
             )}
             {showCompare && (
-              <span className="product-save-badge">Save {money(regularNumber! - currentPrice)}</span>
+              <span className="product-save-badge">{t('Save {amount}', { amount: money(regularNumber! - currentPrice) })}</span>
             )}
           </div>
 
           <p className="shop-muted" style={{ fontSize: 14, marginTop: 6 }}>
-            SKU: <strong style={{ color: '#111827' }}>{sku}</strong>
+            {t('SKU')}: <strong style={{ color: '#111827' }}>{sku}</strong>
             {'  ·  '}
             {product.in_stock ? (
-              <span style={{ color: '#047857', fontWeight: 600 }}>In stock</span>
+              <span style={{ color: '#047857', fontWeight: 600 }}>{t('In stock')}</span>
             ) : (
-              <span style={{ color: '#b91c1c', fontWeight: 600 }}>Out of stock</span>
+              <span style={{ color: '#b91c1c', fontWeight: 600 }}>{t('Out of stock')}</span>
             )}
           </p>
 
@@ -227,7 +228,7 @@ export default function ProductPage() {
 
           {(product.super_attributes ?? []).map((attribute: any) => (
             <div className="product-option" key={attribute.code}>
-              <p className="product-option-label">Choose {attribute.label ?? attribute.code}</p>
+              <p className="product-option-label">{t('Choose {option}', { option: t(attribute.label ?? attribute.code) })}</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {(attribute.options ?? []).map((option: any) => {
                   const active = Number(options[attribute.code]) === Number(option.id);
@@ -239,10 +240,10 @@ export default function ProductPage() {
                       className={swatch ? 'option-swatch' : 'option-chip'}
                       data-active={active}
                       style={swatch ? { background: swatch } : undefined}
-                      title={option.admin_name}
+                      title={t(option.admin_name)}
                       onClick={() => setOptions((current) => ({ ...current, [attribute.code]: option.id }))}
                     >
-                      {!swatch && option.admin_name}
+                      {!swatch && t(option.admin_name)}
                     </button>
                   );
                 })}
@@ -252,25 +253,25 @@ export default function ProductPage() {
 
           <div className="product-buy-row">
             <div className="qty-stepper">
-              <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="Decrease quantity">
+              <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label={t('Decrease quantity')}>
                 <IconMinus size={14} />
               </button>
               <input
                 value={quantity}
                 onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))}
-                aria-label="Quantity"
+                aria-label={t('Quantity')}
               />
-              <button type="button" onClick={() => setQuantity((value) => value + 1)} aria-label="Increase quantity">
+              <button type="button" onClick={() => setQuantity((value) => value + 1)} aria-label={t('Increase quantity')}>
                 <IconPlus size={14} />
               </button>
             </div>
             <button type="button" className="shop-primary-button" onClick={add} disabled={!product.in_stock}>
-              <IconShoppingBag size={17} /> Add to cart
+              <IconShoppingBag size={17} /> {t('Add to cart')}
             </button>
             <button type="button" className="shop-secondary-button" onClick={buyNow} disabled={!product.in_stock}>
-              Buy now
+              {t('Buy now')}
             </button>
-            <button type="button" className="product-wishlist" onClick={addWishlist} aria-label="Add to wishlist">
+            <button type="button" className="product-wishlist" onClick={addWishlist} aria-label={t('Add to wishlist')}>
               <IconHeart size={20} />
             </button>
           </div>
@@ -281,15 +282,15 @@ export default function ProductPage() {
           <div className="product-assurances">
             <div>
               <IconTruck size={20} />
-              <span>Free delivery over €100</span>
+              <span>{t('Free delivery over €100')}</span>
             </div>
             <div>
               <IconRefresh size={20} />
-              <span>30-day returns</span>
+              <span>{t('30-day returns')}</span>
             </div>
             <div>
               <IconShieldCheck size={20} />
-              <span>Secure payment</span>
+              <span>{t('Secure payment')}</span>
             </div>
           </div>
         </div>
@@ -298,20 +299,20 @@ export default function ProductPage() {
       <div className="product-tabs">
         <div className="product-tab-list">
           <button type="button" className="product-tab" data-active={tab === 'description'} onClick={() => setTab('description')}>
-            Description
+            {t('Description')}
           </button>
           <button type="button" className="product-tab" data-active={tab === 'additional'} onClick={() => setTab('additional')}>
-            Additional information
+            {t('Additional information')}
           </button>
           <button type="button" className="product-tab" data-active={tab === 'reviews'} onClick={() => setTab('reviews')}>
-            Reviews ({reviews.length})
+            {t('Reviews ({count})', { count: reviews.length })}
           </button>
         </div>
 
         <div className="product-tab-content">
           {tab === 'description' && (
             <div style={{ maxWidth: 900, lineHeight: 1.8, color: '#374151' }}>
-              <p>{stripHtml(product.description) || product.short_description || 'No description available for this product.'}</p>
+              <p>{stripHtml(product.description) || product.short_description || t('No description available for this product.')}</p>
             </div>
           )}
 
@@ -319,17 +320,17 @@ export default function ProductPage() {
             <table className="additional-table">
               <tbody>
                 <tr>
-                  <th>SKU</th>
+                  <th>{t('SKU')}</th>
                   <td>{sku}</td>
                 </tr>
                 <tr>
-                  <th>Type</th>
-                  <td style={{ textTransform: 'capitalize' }}>{product.type}</td>
+                  <th>{t('Type')}</th>
+                  <td style={{ textTransform: 'capitalize' }}>{t(formatLabel(product.type))}</td>
                 </tr>
                 {(product.additional_information ?? []).map((row: any) => (
                   <tr key={row.code}>
-                    <th>{row.label}</th>
-                    <td>{row.value}</td>
+                    <th>{t(row.label)}</th>
+                    <td>{t(String(row.value))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -340,11 +341,11 @@ export default function ProductPage() {
             <div className="reviews-layout">
               <div>
                 <h3 className="shop-subheading" style={{ fontSize: 18 }}>
-                  Customer reviews
+                  {t('Customer reviews')}
                 </h3>
                 {reviews.length === 0 ? (
                   <p className="shop-muted" style={{ marginTop: 10 }}>
-                    There are no reviews yet. Be the first to review this product.
+                    {t('There are no reviews yet. Be the first to review this product.')}
                   </p>
                 ) : (
                   <div className="reviews-list">
@@ -354,7 +355,7 @@ export default function ProductPage() {
                           <div>
                             <strong>{review.title}</strong>
                             <p className="shop-muted" style={{ fontSize: 12, margin: '3px 0 0' }}>
-                              {review.name} · {new Date(review.created_at?.replace(' ', 'T') ?? Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {review.name} · {new Date(review.created_at?.replace(' ', 'T') ?? Date.now()).toLocaleDateString(intlLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}
                             </p>
                           </div>
                           <Stars value={review.rating} />
@@ -368,9 +369,9 @@ export default function ProductPage() {
 
               <form className="review-form" onSubmit={submitReview}>
                 <h3 className="shop-subheading" style={{ fontSize: 18 }}>
-                  Write a review
+                  {t('Write a review')}
                 </h3>
-                <label className="field-label">Rating</label>
+                <label className="field-label">{t('Rating')}</label>
                 <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
                   {[1, 2, 3, 4, 5].map((value) => (
                     <button
@@ -378,14 +379,14 @@ export default function ProductPage() {
                       type="button"
                       className="rating-button"
                       onClick={() => setReviewForm((current) => ({ ...current, rating: value }))}
-                      aria-label={`${value} stars`}
+                      aria-label={t('{count} stars', { count: value })}
                     >
                       <Stars value={reviewForm.rating >= value ? 5 : 0} size={20} />
                     </button>
                   ))}
                 </div>
                 <label className="field-label" htmlFor="review-name">
-                  Name
+                  {t('Name')}
                 </label>
                 <input
                   id="review-name"
@@ -395,7 +396,7 @@ export default function ProductPage() {
                   required
                 />
                 <label className="field-label" htmlFor="review-title">
-                  Title
+                  {t('Title')}
                 </label>
                 <input
                   id="review-title"
@@ -405,7 +406,7 @@ export default function ProductPage() {
                   required
                 />
                 <label className="field-label" htmlFor="review-comment">
-                  Review
+                  {t('Review')}
                 </label>
                 <textarea
                   id="review-comment"
@@ -416,9 +417,9 @@ export default function ProductPage() {
                   required
                 />
                 <button type="submit" className="shop-primary-button" style={{ width: '100%' }}>
-                  Submit review
+                  {t('Submit review')}
                 </button>
-                {reviewSent && <p className="form-success">Thank you! Your review has been submitted.</p>}
+                {reviewSent && <p className="form-success">{t('Thank you! Your review has been submitted.')}</p>}
               </form>
             </div>
           )}
@@ -428,9 +429,9 @@ export default function ProductPage() {
       {related.length > 0 && (
         <section className="shop-section">
           <div className="shop-section-head">
-            <h2 className="shop-heading">You may also like</h2>
+            <h2 className="shop-heading">{t('You may also like')}</h2>
             <Link to="/search" className="shop-link" style={{ fontSize: 14 }}>
-              View all →
+              {t('View all')} →
             </Link>
           </div>
           <div className="shop-grid">

@@ -3,6 +3,7 @@ import { Modal } from '@mantine/core';
 import { IconChevronRight, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 interface CategoryNode {
   id: number;
@@ -72,21 +73,21 @@ export default function CategoriesPage() {
       if (editing) await api.adminPut(`admin/catalog/categories/edit/${editing}?locale=en`, form);
       else await api.adminPost('admin/catalog/categories/store', { ...form, locale: 'en' });
       setOpen(false);
-      setMessage(editing ? 'Category updated.' : 'Category created.');
+      setMessage(editing ? t('Category updated.') : t('Category created.'));
       load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the category.');
+      setError(requestError?.message ?? t('Unable to save the category.'));
     }
   };
 
   const remove = async (category: CategoryNode) => {
-    if (!window.confirm(`Delete “${category.name}”? Products in this category will lose the assignment.`)) return;
+    if (!window.confirm(t('Delete “{name}”? Products in this category will lose the assignment.', { name: category.name }))) return;
     try {
       await api.adminDelete(`admin/catalog/categories/${category.id}`);
-      setMessage('Category deleted.');
+      setMessage(t('Category deleted.'));
       load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the category.');
+      setError(requestError?.message ?? t('Unable to delete the category.'));
     }
   };
 
@@ -95,15 +96,15 @@ export default function CategoriesPage() {
       <div className="admin-tree-row" style={{ paddingLeft: 12 + depth * 24 }}>
         <IconChevronRight size={14} style={{ color: '#9ca3af' }} />
         <span style={{ flex: 1, fontWeight: depth === 0 ? 600 : 500, color: '#111827' }}>{node.name}</span>
-        <span className={`status-badge ${node.status === 0 ? 'red' : 'green'}`}>{node.status === 0 ? 'Inactive' : 'Active'}</span>
+        <span className={`status-badge ${node.status === 0 ? 'red' : 'green'}`}>{node.status === 0 ? t('Inactive') : t('Active')}</span>
         <span className="admin-muted admin-small">ID {node.id}</span>
-        <button type="button" className="admin-icon-button" onClick={() => startCreate(node.id)} title="Add child">
+        <button type="button" className="admin-icon-button" onClick={() => startCreate(node.id)} title={t('Add child')}>
           <IconPlus size={15} />
         </button>
-        <button type="button" className="admin-icon-button" onClick={() => startEdit(node)} title="Edit">
+        <button type="button" className="admin-icon-button" onClick={() => startEdit(node)} title={t('Edit')}>
           <IconPencil size={15} />
         </button>
-        <button type="button" className="admin-icon-button danger" onClick={() => remove(node)} title="Delete">
+        <button type="button" className="admin-icon-button danger" onClick={() => remove(node)} title={t('Delete')}>
           <IconTrash size={15} />
         </button>
       </div>
@@ -114,11 +115,11 @@ export default function CategoriesPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Categories"
-        subtitle="Organise the storefront navigation and product assignments."
+        title={t('Categories')}
+        subtitle={t('Organise the storefront navigation and product assignments.')}
         actions={
           <button type="button" className="admin-button primary" onClick={() => startCreate(1)}>
-            <IconPlus size={15} /> Create category
+            <IconPlus size={15} /> {t('Create category')}
           </button>
         }
       />
@@ -128,29 +129,29 @@ export default function CategoriesPage() {
 
       <div className="admin-card">
         <div className="admin-card-head">
-          <h2 className="admin-card-title">Category tree</h2>
-          <span className="admin-card-subtitle">Root category #1 is the store root</span>
+          <h2 className="admin-card-title">{t('Category tree')}</h2>
+          <span className="admin-card-subtitle">{t('Root category #1 is the store root')}</span>
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           {tree.length === 0 ? (
-            <div className="admin-empty">No categories yet.</div>
+            <div className="admin-empty">{t('No categories yet.')}</div>
           ) : (
             <div className="admin-tree">{tree.map((node) => renderNode(node))}</div>
           )}
         </div>
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? 'Edit category' : 'New category'} centered size="lg">
+      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit category') : t('New category')} centered size="lg">
         <form onSubmit={save}>
           <div className="admin-form-grid">
             <label className="admin-field span-2">
-              <span className="admin-field-label">Name *</span>
+              <span className="admin-field-label">{t('Name')} *</span>
               <input className="admin-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Parent category</span>
+              <span className="admin-field-label">{t('Parent category')}</span>
               <select className="admin-input" value={form.parent_id} onChange={(event) => setForm({ ...form, parent_id: Number(event.target.value) })}>
-                <option value={1}>Root</option>
+                <option value={1}>{t('Root')}</option>
                 {tree.map((node) => (
                   <option key={node.id} value={node.id}>
                     {node.name}
@@ -159,7 +160,7 @@ export default function CategoriesPage() {
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Position</span>
+              <span className="admin-field-label">{t('Position')}</span>
               <input
                 type="number"
                 className="admin-input"
@@ -168,22 +169,22 @@ export default function CategoriesPage() {
               />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Status</span>
+              <span className="admin-field-label">{t('Status')}</span>
               <select className="admin-input" value={form.status} onChange={(event) => setForm({ ...form, status: Number(event.target.value) })}>
-                <option value={1}>Active</option>
-                <option value={0}>Inactive</option>
+                <option value={1}>{t('Active')}</option>
+                <option value={0}>{t('Inactive')}</option>
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Display mode</span>
+              <span className="admin-field-label">{t('Display mode')}</span>
               <select className="admin-input" value={form.display_mode} onChange={(event) => setForm({ ...form, display_mode: event.target.value })}>
-                <option value="products_and_description">Products and description</option>
-                <option value="products_only">Products only</option>
-                <option value="description_only">Description only</option>
+                <option value="products_and_description">{t('Products and description')}</option>
+                <option value="products_only">{t('Products only')}</option>
+                <option value="description_only">{t('Description only')}</option>
               </select>
             </label>
             <label className="admin-field span-2">
-              <span className="admin-field-label">Description</span>
+              <span className="admin-field-label">{t('Description')}</span>
               <textarea
                 className="admin-input"
                 rows={4}
@@ -197,10 +198,10 @@ export default function CategoriesPage() {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
             <button type="button" className="admin-button ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" className="admin-button primary">
-              {editing ? 'Save changes' : 'Create category'}
+              {editing ? t('Save changes') : t('Create category')}
             </button>
           </div>
         </form>

@@ -9,6 +9,8 @@ import {
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { useShop } from '../../store';
+import { t } from '../../i18n';
 
 type FieldType = 'text' | 'number' | 'select' | 'boolean' | 'textarea';
 
@@ -46,8 +48,19 @@ const SECTIONS: ConfigSection[] = [
     groups: [
       {
         title: 'Store',
-        info: 'Basic measurement units used across the catalog.',
+        info: 'Storefront language, measurement units and breadcrumb defaults.',
         fields: [
+          {
+            code: 'general.general.locale_options.ui_locale',
+            label: 'Language',
+            type: 'select',
+            hint: 'Interface language for the storefront and the admin panel.',
+            options: [
+              { label: 'English', value: 'en' },
+              { label: 'Español', value: 'es' },
+              { label: '日本語', value: 'ja' },
+            ],
+          },
           {
             code: 'general.general.locale_options.weight_unit',
             label: 'Weight unit',
@@ -327,7 +340,7 @@ export default function ConfigurationPage() {
         setValues(next);
       })
       .catch((requestError) => {
-        if (!cancelled) setError(requestError?.message ?? 'Unable to load the configuration.');
+        if (!cancelled) setError(requestError?.message ?? t('Unable to load the configuration.'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -364,6 +377,9 @@ export default function ConfigurationPage() {
       await api.adminPost('admin/configuration', { values: payload });
       setStored((current) => ({ ...current, ...payload }));
       setSaved(true);
+      // El idioma de la interfaz se sirve desde /core/context: refrescamos el
+      // contexto para que tienda y panel se redibujen con el nuevo idioma.
+      await useShop.getState().loadContext();
     } catch (requestError: any) {
       setError(requestError?.message ?? 'Unable to save the configuration.');
     } finally {
@@ -392,11 +408,11 @@ export default function ConfigurationPage() {
 
     if (field.type === 'select') {
       return (
-        <select className="admin-input" value={value} onChange={(event) => setValue(field.code, event.target.value)}>
-          <option value="">Use system default</option>
+        <select id={field.code} className="admin-input" value={value} onChange={(event) => setValue(field.code, event.target.value)}>
+          <option value="">{t('Use system default')}</option>
           {field.options?.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {field.code.endsWith('ui_locale') ? option.label : t(option.label)}
             </option>
           ))}
         </select>
@@ -406,10 +422,11 @@ export default function ConfigurationPage() {
     if (field.type === 'textarea') {
       return (
         <textarea
+          id={field.code}
           className="admin-input admin-textarea"
           rows={3}
           value={value}
-          placeholder={field.placeholder}
+          placeholder={field.placeholder ? t(field.placeholder) : undefined}
           onChange={(event) => setValue(field.code, event.target.value)}
         />
       );
@@ -417,10 +434,11 @@ export default function ConfigurationPage() {
 
     return (
       <input
+        id={field.code}
         className="admin-input"
         type={field.type === 'number' ? 'number' : 'text'}
         value={value}
-        placeholder={field.placeholder}
+        placeholder={field.placeholder ? t(field.placeholder) : undefined}
         onChange={(event) => setValue(field.code, event.target.value)}
       />
     );
@@ -429,11 +447,11 @@ export default function ConfigurationPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Configuration"
-        subtitle="Manage storefront behaviour, sales channels, carriers and customer defaults."
+        title={t('Configuration')}
+        subtitle={t('Manage storefront behaviour, sales channels, carriers and customer defaults.')}
         actions={
           <button type="button" className="admin-button primary" onClick={save} disabled={saving || loading}>
-            {saving ? 'Saving…' : 'Save configuration'}
+            {saving ? t('Saving…') : t('Save configuration')}
           </button>
         }
       />
@@ -441,7 +459,7 @@ export default function ConfigurationPage() {
       {error && <div className="admin-alert danger">{error}</div>}
       {saved && !error && (
         <div className="admin-alert success">
-          <IconCheck size={15} /> {changes ? 'Configuration saved.' : 'Configuration saved successfully.'}
+          <IconCheck size={15} /> {t('Configuration saved successfully.')}
         </div>
       )}
 
@@ -456,7 +474,7 @@ export default function ConfigurationPage() {
               onClick={() => setActive(entry.key)}
             >
               {entry.icon}
-              <span>{entry.label}</span>
+              <span>{t(entry.label)}</span>
             </button>
           ))}
         </aside>
@@ -464,10 +482,10 @@ export default function ConfigurationPage() {
         <div className="admin-config-content">
           <div className="admin-config-head">
             <div>
-              <h2>{section.title}</h2>
-              <p>{section.info}</p>
+              <h2>{t(section.title)}</h2>
+              <p>{t(section.info)}</p>
             </div>
-            {changes > 0 && <span className="admin-pill blue">{changes} unsaved change{changes === 1 ? '' : 's'}</span>}
+            {changes > 0 && <span className="admin-pill blue">{t(changes === 1 ? '{count} unsaved change' : '{count} unsaved changes', { count: changes })}</span>}
           </div>
 
           {loading ? (
@@ -480,22 +498,22 @@ export default function ConfigurationPage() {
             section.groups.map((group) => (
               <section className="admin-config-group" key={group.title}>
                 <div className="admin-config-group-head">
-                  <h3>{group.title}</h3>
-                  {group.info && <p>{group.info}</p>}
+                  <h3>{t(group.title)}</h3>
+                  {group.info && <p>{t(group.info)}</p>}
                 </div>
                 <div className="admin-config-fields">
                   {group.fields.map((field) => (
                     <div className="admin-config-field" key={field.code}>
                       <div className="admin-config-label">
-                        <label htmlFor={field.code}>{field.label}</label>
+                        <label htmlFor={field.code}>{t(field.label)}</label>
                         <code>{field.code}</code>
-                        {field.hint && <span>{field.hint}</span>}
+                        {field.hint && <span>{t(field.hint)}</span>}
                       </div>
                       <div className="admin-config-control">
                         {renderField(field)}
                         {!stored[field.code] && (
                           <span className="admin-config-inherited">
-                            {values[field.code] ? 'Custom value' : 'Not configured yet'}
+                            {values[field.code] ? t('Custom value') : t('Not configured yet')}
                           </span>
                         )}
                       </div>
@@ -507,7 +525,7 @@ export default function ConfigurationPage() {
           )}
 
           <p className="admin-muted admin-small" style={{ marginTop: 18 }}>
-            Values are stored in <code>core_config</code> and applied immediately to the storefront.
+            {t('Values are stored in')} <code>core_config</code> {t('and applied immediately to the storefront.')}
           </p>
         </div>
       </div>

@@ -119,6 +119,7 @@ async fn seed_locales_and_currencies() -> Result<(), AppError> {
     for (code, name, direction) in [
         ("en", "English", "ltr"),
         ("es", "Spanish", "ltr"),
+        ("ja", "Japanese", "ltr"),
         ("fr", "French", "ltr"),
         ("de", "German", "ltr"),
         ("ar", "Arabic", "rtl"),
@@ -491,7 +492,7 @@ async fn seed_channel() -> Result<(), AppError> {
         ],
     )
     .await?;
-    for code in ["en", "es"] {
+    for code in ["en", "es", "ja"] {
         if let Some(locale_id) = id_of("locales", code).await {
             insert_ignore(
                 "channel_locales",

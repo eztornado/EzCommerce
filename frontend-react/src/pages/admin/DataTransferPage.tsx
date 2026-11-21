@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 const SAMPLE = `sku,name,price,quantity,status
 NEW-001,Canvas tote bag,39.90,25,1
@@ -76,7 +77,7 @@ export default function DataTransferPage() {
         entry.method === 'POST' ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } : undefined,
       );
     } catch (requestError: any) {
-      setError(requestError?.message ?? `Unable to export ${entry.title.toLowerCase()}.`);
+      setError(requestError?.message ?? t('Unable to export {item}.', { item: t(entry.title).toLowerCase() }));
     } finally {
       setDownloading('');
     }
@@ -84,7 +85,7 @@ export default function DataTransferPage() {
 
   const runImport = async () => {
     if (!csv.trim()) {
-      setError('Paste a CSV or choose a file before starting the import.');
+      setError(t('Paste a CSV or choose a file before starting the import.'));
       return;
     }
     setImporting(true);
@@ -94,7 +95,7 @@ export default function DataTransferPage() {
       const data = await api.adminPost('admin/data-transfer/products/import', { csv });
       setResult(data);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'The import could not be completed.');
+      setError(requestError?.message ?? t('The import could not be completed.'));
     } finally {
       setImporting(false);
     }
@@ -103,18 +104,18 @@ export default function DataTransferPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Data Transfer"
-        subtitle="Import and export catalog, customer and order data as CSV files."
+        title={t('Data Transfer')}
+        subtitle={t('Import and export catalog, customer and order data as CSV files.')}
       />
 
       {error && <div className="admin-alert danger">{error}</div>}
 
       <div className="admin-tabs">
         <button type="button" className="admin-tab" data-active={tab === 'import'} onClick={() => setTab('import')}>
-          Import
+          {t('Import')}
         </button>
         <button type="button" className="admin-tab" data-active={tab === 'export'} onClick={() => setTab('export')}>
-          Export
+          {t('Export')}
         </button>
       </div>
 
@@ -123,10 +124,9 @@ export default function DataTransferPage() {
           <section className="admin-card admin-card-pad">
             <div className="admin-card-head">
               <div>
-                <h2 className="admin-card-title">Import products</h2>
+                <h2 className="admin-card-title">{t('Import products')}</h2>
                 <p className="admin-card-subtitle">
-                  Upload a CSV with <code>sku,name,price,quantity,status</code>. Rows with an existing SKU are skipped
-                  and reported.
+                  {t('Upload a CSV with')} <code>sku,name,price,quantity,status</code>. {t('Rows with an existing SKU are skipped and reported.')}
                 </p>
               </div>
             </div>
@@ -145,8 +145,8 @@ export default function DataTransferPage() {
               onKeyDown={(event) => event.key === 'Enter' && fileRef.current?.click()}
             >
               <IconCloudUpload size={30} />
-              <strong>{fileName || 'Drop your CSV here or click to browse'}</strong>
-              <span>Maximum recommended size: 10 MB</span>
+              <strong>{fileName || t('Drop your CSV here or click to browse')}</strong>
+              <span>{t('Maximum recommended size: 10 MB')}</span>
               <input
                 ref={fileRef}
                 type="file"
@@ -160,7 +160,7 @@ export default function DataTransferPage() {
             </div>
 
             <div className="data-transfer-or">
-              <span>or paste the CSV content</span>
+              <span>{t('or paste the CSV content')}</span>
             </div>
 
             <textarea
@@ -178,19 +178,19 @@ export default function DataTransferPage() {
 
             <div className="admin-modal-actions">
               <button type="button" className="admin-button" onClick={() => setCsv(SAMPLE)}>
-                <IconFileTypeCsv size={15} /> Use sample data
+                <IconFileTypeCsv size={15} /> {t('Use sample data')}
               </button>
               <button type="button" className="admin-button primary" onClick={runImport} disabled={importing}>
-                <IconUpload size={15} /> {importing ? 'Importing…' : 'Start import'}
+                <IconUpload size={15} /> {importing ? t('Importing…') : t('Start import')}
               </button>
             </div>
           </section>
 
           <aside className="admin-card admin-card-pad">
-            <h2 className="admin-card-title">Import summary</h2>
+            <h2 className="admin-card-title">{t('Import summary')}</h2>
             {!result && !importing && (
               <p className="admin-muted" style={{ marginTop: 10 }}>
-                The result of your last import will appear here, including processed rows and any validation errors.
+                {t('The result of your last import will appear here, including processed rows and any validation errors.')}
               </p>
             )}
             {importing && <div className="admin-skeleton-row" style={{ marginTop: 14 }} />}
@@ -198,36 +198,36 @@ export default function DataTransferPage() {
               <>
                 <div className={`admin-alert ${result.invalid_rows_count ? 'warning' : 'success'}`} style={{ marginTop: 12 }}>
                   {result.invalid_rows_count ? <IconAlertTriangle size={15} /> : <IconCheck size={15} />}
-                  {result.processed_rows_count ?? 0} rows imported, {result.invalid_rows_count ?? 0} invalid.
+                  {t('{processed} rows imported, {invalid} invalid.', { processed: result.processed_rows_count ?? 0, invalid: result.invalid_rows_count ?? 0 })}
                 </div>
                 <dl className="data-transfer-stats">
                   <div>
-                    <dt>State</dt>
-                    <dd style={{ textTransform: 'capitalize' }}>{String(result.state ?? 'completed').replace(/_/g, ' ')}</dd>
+                    <dt>{t('State')}</dt>
+                    <dd style={{ textTransform: 'capitalize' }}>{t(result.state ?? 'completed').replace(/_/g, ' ')}</dd>
                   </div>
                   <div>
-                    <dt>Processed</dt>
+                    <dt>{t('Processed')}</dt>
                     <dd>{result.processed_rows_count ?? 0}</dd>
                   </div>
                   <div>
-                    <dt>Invalid</dt>
+                    <dt>{t('Invalid')}</dt>
                     <dd>{result.invalid_rows_count ?? 0}</dd>
                   </div>
                 </dl>
                 {(result.errors ?? []).length > 0 && (
                   <div className="data-transfer-errors">
-                    <p className="admin-small">Errors</p>
+                    <p className="admin-small">{t('Errors')}</p>
                     <ul>
                       {(result.errors ?? []).slice(0, 20).map((entry: any, index: number) => (
                         <li key={index}>
-                          <strong>Row {entry.row}</strong> {entry.error}
+                          <strong>{t('Row {number}', { number: entry.row })}</strong> {entry.error}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
                 <button type="button" className="admin-button" style={{ marginTop: 14 }} onClick={() => { setResult(null); setCsv(''); setFileName(''); }}>
-                  <IconX size={15} /> Clear
+                  <IconX size={15} /> {t('Clear')}
                 </button>
               </>
             )}
@@ -242,8 +242,8 @@ export default function DataTransferPage() {
                   <IconFileTypeCsv size={20} />
                 </span>
                 <div>
-                  <h2 className="admin-card-title">{entry.title}</h2>
-                  <p className="admin-card-subtitle">{entry.description}</p>
+                  <h2 className="admin-card-title">{t(entry.title)}</h2>
+                  <p className="admin-card-subtitle">{t(entry.description)}</p>
                 </div>
               </div>
               <div className="data-transfer-columns">
@@ -257,7 +257,7 @@ export default function DataTransferPage() {
                 onClick={() => download(entry)}
                 disabled={downloading === entry.key}
               >
-                <IconDownload size={15} /> {downloading === entry.key ? 'Preparing…' : `Export ${entry.title.toLowerCase()}`}
+                <IconDownload size={15} /> {downloading === entry.key ? t('Preparing…') : t('Export {item}', { item: t(entry.title).toLowerCase() })}
               </button>
             </section>
           ))}

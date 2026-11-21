@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import DataGrid from '../../components/admin/DataGrid';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 export function CartRulesPage() {
   return (
@@ -10,7 +11,7 @@ export function CartRulesPage() {
         subtitle="Automatic discounts and coupons applied to the shopping cart."
         actions={
           <Link to="/admin/marketing/promotions/cart-rules/create" className="admin-button primary">
-            Create cart rule
+            {t('Create cart rule')}
           </Link>
         }
       />
@@ -21,7 +22,7 @@ export function CartRulesPage() {
           hideActions={['Edit']}
           actions={(record) => (
             <Link className="admin-link" to={`/admin/marketing/promotions/cart-rules/edit/${record.__primary ?? record.id}`}>
-              Edit
+              {t('Edit')}
             </Link>
           )}
         />
@@ -38,7 +39,7 @@ export function CatalogRulesPage() {
         subtitle="Price rules applied automatically to products in the catalog."
         actions={
           <Link to="/admin/marketing/promotions/catalog-rules/create" className="admin-button primary">
-            Create catalog rule
+            {t('Create catalog rule')}
           </Link>
         }
       />
@@ -48,7 +49,7 @@ export function CatalogRulesPage() {
           emptyLabel="No catalog rules found."
           actions={(record) => (
             <Link className="admin-link" to={`/admin/marketing/promotions/catalog-rules/edit/${record.__primary ?? record.id}`}>
-              Edit
+              {t('Edit')}
             </Link>
           )}
         />

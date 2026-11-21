@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { formatDate } from '../../lib/format';
 import { AdminPageHeader, Badge } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 const RMA_STATUSES = [
   { id: 1, title: 'Pending Review' },
@@ -32,7 +33,7 @@ export function RmaPage() {
       setRows(Array.isArray(payload?.data) ? payload.data : []);
       setMeta(payload?.meta ?? { current_page: page, last_page: 1, total: 0 });
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load return requests.');
+      setError(requestError?.message ?? t('Unable to load return requests.'));
     } finally {
       setLoading(false);
     }
@@ -45,10 +46,10 @@ export function RmaPage() {
   const updateStatus = async (id: number, statusId: number) => {
     try {
       await api.adminPost(`admin/rma/status/${id}`, { rma_status_id: statusId });
-      setMessage('The RMA status has been updated.');
+      setMessage(t('The RMA status has been updated.'));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update the RMA.');
+      setError(requestError?.message ?? t('Unable to update the RMA.'));
     }
   };
 
@@ -59,8 +60,8 @@ export function RmaPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Returns (RMA)"
-        subtitle="Review return and refund requests raised by customers."
+        title={t('Returns (RMA)')}
+        subtitle={t('Review return and refund requests raised by customers.')}
       />
       {message && <div className="admin-alert success">{message}</div>}
       {error && <div className="admin-alert danger">{error}</div>}
@@ -69,26 +70,26 @@ export function RmaPage() {
           <input
             className="admin-input"
             style={{ maxWidth: 280 }}
-            placeholder="Search by order or status…"
+            placeholder={t('Search by order or status…')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
           <div style={{ flex: 1 }} />
           <button type="button" className="admin-toolbar-button" onClick={load}>
-            Refresh
+            {t('Refresh')}
           </button>
         </div>
         <div className="admin-table-wrap" style={{ marginTop: 12, boxShadow: 'none' }}>
           <table className="admin-table">
             <thead>
               <tr>
-                <th>RMA</th>
-                <th>Order</th>
-                <th>Status</th>
-                <th>Package condition</th>
-                <th>Information</th>
-                <th>Created</th>
-                <th className="actions">Update status</th>
+                <th>{t('RMA')}</th>
+                <th>{t('Order')}</th>
+                <th>{t('Status')}</th>
+                <th>{t('Package condition')}</th>
+                <th>{t('Information')}</th>
+                <th>{t('Created')}</th>
+                <th className="actions">{t('Update status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +104,7 @@ export function RmaPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
-                    <div className="admin-empty">No return requests found.</div>
+                    <div className="admin-empty">{t('No return requests found.')}</div>
                   </td>
                 </tr>
               ) : (
@@ -118,7 +119,7 @@ export function RmaPage() {
                       </Link>
                     </td>
                     <td>
-                      <Badge status={row.status_title} label={row.status_title ?? 'Pending'} />
+                      <Badge status={row.status_title} label={row.status_title ? t(row.status_title) : t('Pending')} />
                     </td>
                     <td>{row.package_condition || '—'}</td>
                     <td className="admin-table-clip">{row.information || '—'}</td>
@@ -131,7 +132,7 @@ export function RmaPage() {
                       >
                         {RMA_STATUSES.map((status) => (
                           <option key={status.id} value={status.id}>
-                            {status.title}
+                            {t(status.title)}
                           </option>
                         ))}
                       </select>
@@ -145,11 +146,11 @@ export function RmaPage() {
         {meta.last_page > 1 && (
           <div className="admin-pagination">
             <span>
-              Page {meta.current_page} of {meta.last_page} · {meta.total} request(s)
+              {t('Page {page} of {last} · {total} request(s)', { page: meta.current_page, last: meta.last_page, total: meta.total })}
             </span>
             <div style={{ display: 'flex', gap: 6 }}>
               <button type="button" className="admin-page-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
-                Previous
+                {t('Previous')}
               </button>
               <button
                 type="button"
@@ -157,7 +158,7 @@ export function RmaPage() {
                 disabled={page >= meta.last_page}
                 onClick={() => setPage((value) => value + 1)}
               >
-                Next
+                {t('Next')}
               </button>
             </div>
           </div>
@@ -179,7 +180,7 @@ export function GdprPage() {
       const payload = await api.adminGet('admin/gdpr');
       setRows(Array.isArray(payload) ? payload : []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load GDPR requests.');
+      setError(requestError?.message ?? t('Unable to load GDPR requests.'));
     } finally {
       setLoading(false);
     }
@@ -192,18 +193,18 @@ export function GdprPage() {
   const update = async (id: number, status: string) => {
     try {
       await api.adminPost(`admin/gdpr/status/${id}`, { status });
-      setMessage(`The request has been marked as ${status}.`);
+      setMessage(t('The request has been marked as {status}.', { status: t(status) }));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update the request.');
+      setError(requestError?.message ?? t('Unable to update the request.'));
     }
   };
 
   return (
     <div>
       <AdminPageHeader
-        title="GDPR Requests"
-        subtitle="Handle customer data export and deletion requests."
+        title={t('GDPR Requests')}
+        subtitle={t('Handle customer data export and deletion requests.')}
       />
       {message && <div className="admin-alert success">{message}</div>}
       {error && <div className="admin-alert danger">{error}</div>}
@@ -211,13 +212,13 @@ export function GdprPage() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Customer</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Message</th>
-              <th>Requested</th>
-              <th className="actions">Actions</th>
+              <th>{t('ID')}</th>
+              <th>{t('Customer')}</th>
+              <th>{t('Type')}</th>
+              <th>{t('Status')}</th>
+              <th>{t('Message')}</th>
+              <th>{t('Requested')}</th>
+              <th className="actions">{t('Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -232,7 +233,7 @@ export function GdprPage() {
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={7}>
-                  <div className="admin-empty">No GDPR requests found.</div>
+                  <div className="admin-empty">{t('No GDPR requests found.')}</div>
                 </td>
               </tr>
             ) : (
@@ -241,7 +242,7 @@ export function GdprPage() {
                   <td>#{row.id}</td>
                   <td>{row.email ?? row.customer_id}</td>
                   <td>
-                    <span className="admin-pill">{row.type}</span>
+                    <span className="admin-pill">{t(row.type)}</span>
                   </td>
                   <td>
                     <Badge status={row.status} />
@@ -252,17 +253,17 @@ export function GdprPage() {
                     <div className="admin-row-actions">
                       {row.type === 'export' && row.status === 'approved' && row.customer_id && (
                         <Link className="admin-link" to={`/admin/customers/view/${row.customer_id}`}>
-                          View customer
+                          {t('View customer')}
                         </Link>
                       )}
                       {row.status !== 'approved' && (
                         <button type="button" className="admin-link" onClick={() => update(row.id, 'approved')}>
-                          Approve
+                          {t('Approve')}
                         </button>
                       )}
                       {row.status !== 'declined' && (
                         <button type="button" className="admin-link danger" onClick={() => update(row.id, 'declined')}>
-                          Decline
+                          {t('Decline')}
                         </button>
                       )}
                     </div>

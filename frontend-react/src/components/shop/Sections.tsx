@@ -6,6 +6,7 @@ import { shopQuery } from '../../store';
 import { mediaUrl } from '../../lib/format';
 import { fallbackImage } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
+import { t } from '../../i18n';
 import ProductCard from './ProductCard';
 import type { Category, ProductCard as ProductCardModel } from '../../types';
 
@@ -18,11 +19,11 @@ export function SectionHead({ title, href, linkLabel = 'View all' }: { title: st
   };
   return (
     <div className="shop-section-head">
-      <h2 className="shop-heading">{title}</h2>
+      <h2 className="shop-heading">{t(title)}</h2>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {href && (
           <Link to={href} className="shop-link" style={{ fontSize: 14 }}>
-            {linkLabel} →
+            {t(linkLabel)} →
           </Link>
         )}
         <CarouselArrows onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
@@ -34,10 +35,10 @@ export function SectionHead({ title, href, linkLabel = 'View all' }: { title: st
 export function CarouselArrows({ onPrev, onNext }: { onPrev: () => void; onNext: () => void }) {
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      <button type="button" className="shop-carousel-arrow" onClick={onPrev} aria-label="Previous">
+      <button type="button" className="shop-carousel-arrow" onClick={onPrev} aria-label={t('Previous')}>
         <IconArrowLeft size={18} />
       </button>
-      <button type="button" className="shop-carousel-arrow" onClick={onNext} aria-label="Next">
+      <button type="button" className="shop-carousel-arrow" onClick={onNext} aria-label={t('Next')}>
         <IconArrowRight size={18} />
       </button>
     </div>
@@ -75,11 +76,11 @@ export function ProductCarousel({ title, params, href }: { title: string; params
     <section className="shop-section">
       <div className="shop-container">
         <div className="shop-section-head">
-          <h2 className="shop-heading">{title}</h2>
+          <h2 className="shop-heading">{t(title)}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {href && (
               <Link to={href} className="shop-link" style={{ fontSize: 14 }}>
-                View all →
+                {t('View all')} →
               </Link>
             )}
             <CarouselArrows onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
@@ -115,18 +116,18 @@ export function CategoryCarousel({ title, limit = 8 }: { title: string; limit?: 
     <section className="shop-section">
       <div className="shop-container">
         <div className="shop-section-head">
-          <h2 className="shop-heading">{title}</h2>
+          <h2 className="shop-heading">{t(title)}</h2>
           <CarouselArrows onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
         </div>
         <div className="shop-carousel-track" ref={ref}>
           {categories.map((category) => (
             <Link to={`/category/${category.id}`} className="shop-carousel-item category-tile" key={category.id}>
               <div className="category-tile-media">
-                <img src={mediaUrl(category.banner_url) || fallbackImage} alt={category.name ?? 'Category'} loading="lazy" />
+                <img src={mediaUrl(category.banner_url) || fallbackImage} alt={category.name ?? t('Category')} loading="lazy" />
               </div>
               <h3 className="category-tile-title">{category.name}</h3>
               <span className="shop-muted" style={{ fontSize: 13 }}>
-                Shop now →
+                {t('Shop now')} →
               </span>
             </Link>
           ))}
@@ -147,22 +148,22 @@ export function HeroCarousel({ slides }: { slides: any[] }) {
   if (!slides.length) return null;
 
   return (
-    <section className="shop-hero" aria-label="Featured collections">
+    <section className="shop-hero" aria-label={t('Featured collections')}>
       {slides.map((slide, index) => (
         <div className="shop-hero-slide" data-active={index === active} key={index} aria-hidden={index !== active}>
-          <img src={mediaUrl(slide.image)} alt={slide.title ?? 'Collection'} />
+          <img src={mediaUrl(slide.image)} alt={slide.title ?? t('Collection')} />
           <div className="shop-hero-overlay" />
           <div className="shop-container" style={{ height: '100%' }}>
             <div className="shop-hero-content">
-              <span className="shop-hero-eyebrow">EzCommerce · New season</span>
-              <h1 className="shop-hero-title">{slide.title}</h1>
-              <p className="shop-hero-subtitle">{slide.subtitle}</p>
+              <span className="shop-hero-eyebrow">{t('EzCommerce · New season')}</span>
+              <h1 className="shop-hero-title">{slide.title ? t(slide.title) : ''}</h1>
+              <p className="shop-hero-subtitle">{slide.subtitle ? t(slide.subtitle) : ''}</p>
               <Link
                 to={slide.link ?? slide.button?.link ?? '/products'}
                 className="shop-primary-button"
                 style={{ background: '#fff', color: '#060C3B', borderColor: '#fff' }}
               >
-                {slide.button?.title ?? 'Shop now'}
+                {slide.button?.title ? t(slide.button.title) : t('Shop now')}
               </Link>
             </div>
           </div>
@@ -175,7 +176,7 @@ export function HeroCarousel({ slides }: { slides: any[] }) {
             type="button"
             className="shop-hero-dot"
             data-active={index === active}
-            aria-label={`Go to slide ${index + 1}`}
+            aria-label={t('Go to slide {number}', { number: index + 1 })}
             onClick={() => setActive(index)}
           />
         ))}
@@ -191,17 +192,17 @@ export function PromoBanner({ options }: { options: any }) {
         <div className="promo-banner" style={options?.image ? { backgroundImage: `url(${mediaUrl(options.image)})` } : undefined}>
           <div className="promo-banner-content">
             <span className="shop-hero-eyebrow" style={{ color: '#c2a26b' }}>
-              Limited time
+              {t('Limited time')}
             </span>
             <h2 className="shop-heading" style={{ fontSize: 40 }}>
-              {options?.title}
+              {options?.title ? t(options.title) : ''}
             </h2>
             <p style={{ fontSize: 16, margin: '12px 0 22px', color: 'rgba(255,255,255,0.86)' }}>
-              {options?.subtitle}
+              {options?.subtitle ? t(options.subtitle) : ''}
             </p>
             {options?.button?.link && (
               <Link to={options.button.link} className="shop-primary-button">
-                {options.button.title ?? 'Shop now'}
+                {options.button.title ? t(options.button.title) : t('Shop now')}
               </Link>
             )}
           </div>
@@ -213,10 +214,10 @@ export function PromoBanner({ options }: { options: any }) {
 
 export function ServicesStrip() {
   const items = [
-    { icon: <IconTruck size={22} />, title: 'Free Shipping', text: 'On orders over €100' },
-    { icon: <IconRefresh size={22} />, title: 'Easy Returns', text: '30-day return policy' },
-    { icon: <IconCreditCard size={22} />, title: 'Secure Payment', text: 'Protected checkout' },
-    { icon: <IconHeadphones size={22} />, title: '24/7 Support', text: 'We are here to help' },
+    { icon: <IconTruck size={22} />, title: t('Free Shipping'), text: t('On orders over €100') },
+    { icon: <IconRefresh size={22} />, title: t('Easy Returns'), text: t('30-day return policy') },
+    { icon: <IconCreditCard size={22} />, title: t('Secure Payment'), text: t('Protected checkout') },
+    { icon: <IconHeadphones size={22} />, title: t('24/7 Support'), text: t('We are here to help') },
   ];
   return (
     <div className="shop-container">

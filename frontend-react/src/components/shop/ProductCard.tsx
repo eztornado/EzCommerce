@@ -3,6 +3,7 @@ import { IconHeart, IconShoppingBag, IconEye } from '@tabler/icons-react';
 import { mediaUrl, stripHtml } from '../../lib/format';
 import { fallbackImage } from '../../lib/cart';
 import Stars from './Stars';
+import { t } from '../../i18n';
 import type { ProductCard as ProductCardModel } from '../../types';
 
 interface Props {
@@ -21,7 +22,7 @@ export default function ProductCard({ product, className = '', list = false }: P
     return (
       <div className={`shop-list-card ${className}`}>
         <Link to={href} className="media">
-          <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? 'Product'} loading="lazy" />
+          <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? t('Product')} loading="lazy" />
         </Link>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Link to={href}>
@@ -32,7 +33,7 @@ export default function ProductCard({ product, className = '', list = false }: P
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
             <Stars value={rating} />
             <span className="shop-muted" style={{ fontSize: 12 }}>
-              {reviews} {reviews === 1 ? 'Review' : 'Reviews'}
+              {t(reviews === 1 ? '{count} Review' : '{count} Reviews', { count: reviews })}
             </span>
           </div>
           <p className="shop-muted" style={{ fontSize: 13, margin: '12px 0', maxWidth: 520 }}>
@@ -46,10 +47,10 @@ export default function ProductCard({ product, className = '', list = false }: P
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
             <Link to={href} className="shop-primary-button shop-button-sm">
-              <IconShoppingBag size={15} /> View product
+              <IconShoppingBag size={15} /> {t('View product')}
             </Link>
             <Link to={`/product/${product.url_key ?? product.id}`} className="shop-secondary-button shop-button-sm">
-              Details
+              {t('Details')}
             </Link>
           </div>
         </div>
@@ -60,9 +61,9 @@ export default function ProductCard({ product, className = '', list = false }: P
   return (
     <div className={`product-card ${className}`}>
       <Link to={href} className="product-card-media" aria-label={product.name ?? 'Product'}>
-        <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? 'Product'} loading="lazy" />
-        {product.on_sale && <span className="product-badge sale">Sale</span>}
-        {!product.on_sale && product.is_new && <span className="product-badge new">New</span>}
+        <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? t('Product')} loading="lazy" />
+        {product.on_sale && <span className="product-badge sale">{t('Sale')}</span>}
+        {!product.on_sale && product.is_new && <span className="product-badge new">{t('New')}</span>}
         {reviews > 0 && (
           <span className="product-rating-chip">
             <Stars value={rating} size={11} /> {rating.toFixed(1)}
@@ -77,18 +78,18 @@ export default function ProductCard({ product, className = '', list = false }: P
               window.location.assign(href);
             }}
           >
-            {product.type === 'configurable' ? 'Choose options' : 'Add to cart'}
+            {product.type === 'configurable' ? t('Choose options') : t('Add to cart')}
           </button>
-          <span className="quick-icon" role="button" aria-label="View product">
+          <span className="quick-icon" role="button" aria-label={t('View product')}>
             <IconEye size={16} />
           </span>
-          <span className="quick-icon" role="button" aria-label="Add to wishlist">
+          <span className="quick-icon" role="button" aria-label={t('Add to wishlist')}>
             <IconHeart size={16} />
           </span>
         </div>
       </Link>
       <Link to={href}>
-        <h3 className="product-card-title">{product.name ?? product.sku ?? 'Unnamed product'}</h3>
+        <h3 className="product-card-title">{product.name ?? product.sku ?? t('Unnamed product')}</h3>
       </Link>
       <div className="product-price-row">
         <span>{product.formatted_price}</span>
@@ -98,7 +99,7 @@ export default function ProductCard({ product, className = '', list = false }: P
       </div>
       {!product.in_stock && (
         <span className="shop-muted" style={{ fontSize: 12, marginTop: 4 }}>
-          Out of stock
+          {t('Out of stock')}
         </span>
       )}
     </div>

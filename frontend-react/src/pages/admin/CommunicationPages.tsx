@@ -5,33 +5,34 @@ import { api } from '../../api/client';
 import { formatDate } from '../../lib/format';
 import ResourcePage from '../../components/admin/ResourcePage';
 import { AdminPageHeader, Badge } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 export function TemplatesPage() {
   return (
     <ResourcePage
-      title="Email Templates"
-      subtitle="Reusable email bodies used by campaigns and transactional messages."
+      title={t('Email Templates')}
+      subtitle={t('Reusable email bodies used by campaigns and transactional messages.')}
       endpoint="admin/marketing/communications/templates"
-      createLabel="Create template"
+      createLabel={t('Create template')}
       fields={[
-        { name: 'id', label: 'ID', formHidden: true },
-        { name: 'name', label: 'Name', required: true, placeholder: 'Welcome email' },
-        { name: 'status', label: 'Status', type: 'checkbox', defaultValue: true },
+        { name: 'id', label: t('ID'), formHidden: true },
+        { name: 'name', label: t('Name'), required: true, placeholder: 'Welcome email' },
+        { name: 'status', label: t('Status'), type: 'checkbox', defaultValue: true },
         {
           name: 'content',
-          label: 'Content',
+          label: t('Content'),
           type: 'textarea',
           colSpan: 2,
-          placeholder: 'Hello {{first_name}}, …',
-          hint: 'Available placeholders: {{first_name}}, {{last_name}}, {{name}}, {{email}}.',
+          placeholder: t('Hello {{first_name}}, …'),
+          hint: t('Available placeholders: {{first_name}}, {{last_name}}, {{name}}, {{email}}.'),
         },
-        { name: 'updated_at', label: 'Updated', formHidden: true, render: (value) => formatDate(value, true) },
+        { name: 'updated_at', label: t('Updated'), formHidden: true, render: (value) => formatDate(value, true) },
       ]}
       columns={['id', 'name', 'status', 'updated_at']}
       createEndpoint="admin/marketing/communications/templates/store"
       updateEndpoint="admin/marketing/communications/templates/edit/{id}"
       deleteEndpoint="admin/marketing/communications/templates/{id}"
-      emptyLabel="No email templates found."
+      emptyLabel={t('No email templates found.')}
     />
   );
 }
@@ -39,22 +40,22 @@ export function TemplatesPage() {
 export function EventsPage() {
   return (
     <ResourcePage
-      title="Events"
-      subtitle="Dates and occasions that campaigns can be attached to."
+      title={t('Events')}
+      subtitle={t('Dates and occasions that campaigns can be attached to.')}
       endpoint="admin/marketing/communications/events"
-      createLabel="Create event"
+      createLabel={t('Create event')}
       fields={[
-        { name: 'id', label: 'ID', formHidden: true },
-        { name: 'name', label: 'Name', required: true, placeholder: 'Black Friday' },
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'description', label: 'Description', type: 'textarea', colSpan: 2 },
-        { name: 'created_at', label: 'Created', formHidden: true, render: (value) => formatDate(value, true) },
+        { name: 'id', label: t('ID'), formHidden: true },
+        { name: 'name', label: t('Name'), required: true, placeholder: t('Black Friday') },
+        { name: 'date', label: t('Date'), type: 'date' },
+        { name: 'description', label: t('Description'), type: 'textarea', colSpan: 2 },
+        { name: 'created_at', label: t('Created'), formHidden: true, render: (value) => formatDate(value, true) },
       ]}
       columns={['id', 'name', 'date', 'created_at']}
       createEndpoint="admin/marketing/communications/events/store"
       updateEndpoint="admin/marketing/communications/events/edit/{id}"
       deleteEndpoint="admin/marketing/communications/events/{id}"
-      emptyLabel="No events found."
+      emptyLabel={t('No events found.')}
     />
   );
 }
@@ -87,7 +88,7 @@ export function CampaignsPage() {
       setEvents(Array.isArray(eventRows) ? eventRows : []);
       setGroups(Array.isArray(groupRows) ? groupRows : []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load campaigns.');
+      setError(requestError?.message ?? t('Unable to load campaigns.'));
     } finally {
       setLoading(false);
     }
@@ -138,45 +139,45 @@ export function CampaignsPage() {
       if (editing) await api.adminPut(`admin/marketing/communications/campaigns/edit/${editing.id}`, payload);
       else await api.adminPost('admin/marketing/communications/campaigns/store', payload);
       setOpen(false);
-      setMessage(editing ? 'The campaign has been updated.' : 'The campaign has been created.');
+      setMessage(editing ? t('The campaign has been updated.') : t('The campaign has been created.'));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the campaign.');
+      setError(requestError?.message ?? t('Unable to save the campaign.'));
     } finally {
       setSaving(false);
     }
   };
 
   const send = async (row: any) => {
-    if (!window.confirm(`Send “${row.name}” to subscribed customers?`)) return;
+    if (!window.confirm(t('Send “{name}” to subscribed customers?', { name: row.name }))) return;
     try {
       const result = await api.adminPost(`admin/marketing/communications/campaigns/send/${row.id}`, {});
-      setMessage(`Campaign queued for ${result?.recipients ?? 0} recipients.`);
+      setMessage(t('Campaign queued for {count} recipients.', { count: result?.recipients ?? 0 }));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to send the campaign.');
+      setError(requestError?.message ?? t('Unable to send the campaign.'));
     }
   };
 
   const remove = async (row: any) => {
-    if (!window.confirm(`Delete campaign “${row.name}”?`)) return;
+    if (!window.confirm(t('Delete campaign “{name}”?', { name: row.name }))) return;
     try {
       await api.adminDelete(`admin/marketing/communications/campaigns/${row.id}`);
-      setMessage('The campaign has been deleted.');
+      setMessage(t('The campaign has been deleted.'));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the campaign.');
+      setError(requestError?.message ?? t('Unable to delete the campaign.'));
     }
   };
 
   return (
     <div>
       <AdminPageHeader
-        title="Campaigns"
-        subtitle="Send newsletter campaigns to customers by group and event."
+        title={t('Campaigns')}
+        subtitle={t('Send newsletter campaigns to customers by group and event.')}
         actions={
           <button type="button" className="admin-button primary" onClick={startCreate}>
-            <IconPlus size={15} /> Create campaign
+            <IconPlus size={15} /> {t('Create campaign')}
           </button>
         }
       />
@@ -192,33 +193,33 @@ export function CampaignsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search..."
-              aria-label="Search campaigns"
+              placeholder={t('Search...')}
+              aria-label={t('Search campaigns')}
             />
             {search && (
-              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label={t('Clear search')}>
                 <IconX size={13} />
               </button>
             )}
           </div>
           <div style={{ flex: 1 }} />
-          <span className="admin-muted admin-small">{visibleRows.length} record(s)</span>
+          <span className="admin-muted admin-small">{t('{count} record(s)', { count: visibleRows.length })}</span>
           <button type="button" className="admin-toolbar-button" onClick={() => load()}>
-            <IconRefresh size={15} /> Refresh
+            <IconRefresh size={15} /> {t('Refresh')}
           </button>
         </div>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Subject</th>
-              <th>Template</th>
-              <th>Event</th>
-              <th>Customer group</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th className="actions">Actions</th>
+              <th>{t('ID')}</th>
+              <th>{t('Name')}</th>
+              <th>{t('Subject')}</th>
+              <th>{t('Template')}</th>
+              <th>{t('Event')}</th>
+              <th>{t('Customer group')}</th>
+              <th>{t('Status')}</th>
+              <th>{t('Created')}</th>
+              <th className="actions">{t('Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -233,7 +234,7 @@ export function CampaignsPage() {
             ) : visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={9}>
-                  <div className="admin-empty">{rows.length ? 'No campaigns match your search.' : 'No campaigns found.'}</div>
+                  <div className="admin-empty">{rows.length ? t('No campaigns match your search.') : t('No campaigns found.')}</div>
                 </td>
               </tr>
             ) : (
@@ -244,18 +245,18 @@ export function CampaignsPage() {
                   <td>{row.subject}</td>
                   <td>{row.template_name || '—'}</td>
                   <td>{row.event_name || '—'}</td>
-                  <td>{row.group_name || 'All groups'}</td>
+                  <td>{row.group_name || t('All groups')}</td>
                   <td>
-                    <Badge status={row.status ? 'active' : 'inactive'} label={row.status ? 'Sent' : 'Draft'} />
+                    <Badge status={row.status ? 'active' : 'inactive'} label={row.status ? t('Sent') : t('Draft')} />
                   </td>
                   <td>{formatDate(row.created_at)}</td>
                   <td className="actions">
                     <div className="admin-row-actions">
                       <button type="button" className="admin-link" onClick={() => startEdit(row)}>
-                        Edit
+                        {t('Edit')}
                       </button>
                       <button type="button" className="admin-link" onClick={() => send(row)}>
-                        <IconSend size={14} /> Send
+                        <IconSend size={14} /> {t('Send')}
                       </button>
                       <button type="button" className="admin-link danger" onClick={() => remove(row)}>
                         <IconTrash size={14} />
@@ -269,25 +270,25 @@ export function CampaignsPage() {
         </table>
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? 'Edit campaign' : 'Create campaign'} size="lg" centered>
+      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit campaign') : t('Create campaign')} size="lg" centered>
         <div className="admin-modal-form">
           <div className="admin-form-grid">
             <label className="admin-field">
-              <span className="admin-field-label">Name</span>
+              <span className="admin-field-label">{t('Name')}</span>
               <input className="admin-input" value={values.name} onChange={(event) => setValues((current: any) => ({ ...current, name: event.target.value }))} />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Subject</span>
+              <span className="admin-field-label">{t('Subject')}</span>
               <input className="admin-input" value={values.subject} onChange={(event) => setValues((current: any) => ({ ...current, subject: event.target.value }))} />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Template</span>
+              <span className="admin-field-label">{t('Template')}</span>
               <select
                 className="admin-input"
                 value={values.marketing_template_id}
                 onChange={(event) => setValues((current: any) => ({ ...current, marketing_template_id: event.target.value }))}
               >
-                <option value="">Select a template…</option>
+                <option value="">{t('Select a template…')}</option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}
@@ -296,13 +297,13 @@ export function CampaignsPage() {
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Customer group</span>
+              <span className="admin-field-label">{t('Customer group')}</span>
               <select
                 className="admin-input"
                 value={values.customer_group_id}
                 onChange={(event) => setValues((current: any) => ({ ...current, customer_group_id: event.target.value }))}
               >
-                <option value="">All groups</option>
+                <option value="">{t('All groups')}</option>
                 {groups.map((group) => (
                   <option key={group.id} value={group.id}>
                     {group.name}
@@ -311,13 +312,13 @@ export function CampaignsPage() {
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Event</span>
+              <span className="admin-field-label">{t('Event')}</span>
               <select
                 className="admin-input"
                 value={values.marketing_event_id}
                 onChange={(event) => setValues((current: any) => ({ ...current, marketing_event_id: event.target.value }))}
               >
-                <option value="">No event</option>
+                <option value="">{t('No event')}</option>
                 {events.map((event) => (
                   <option key={event.id} value={event.id}>
                     {event.name}
@@ -328,10 +329,10 @@ export function CampaignsPage() {
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : 'Save campaign'}
+              {saving ? t('Saving…') : t('Save campaign')}
             </button>
           </div>
         </div>
@@ -353,7 +354,7 @@ export function SubscribersPage() {
       const data = await api.adminGet('admin/seo/subscribers');
       setRows(Array.isArray(data) ? data : []);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load subscribers.');
+      setError(requestError?.message ?? t('Unable to load subscribers.'));
     } finally {
       setLoading(false);
     }
@@ -374,16 +375,16 @@ export function SubscribersPage() {
   const unsubscribe = async (row: any) => {
     try {
       await api.adminPut(`admin/seo/subscribers/${row.id}`, { subscribed: 0 });
-      setMessage(`${row.email} has been unsubscribed.`);
+      setMessage(t('{email} has been unsubscribed.', { email: row.email }));
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update the subscription.');
+      setError(requestError?.message ?? t('Unable to update the subscription.'));
     }
   };
 
   return (
     <div>
-      <AdminPageHeader title="Newsletter Subscribers" subtitle="Customers who opted in to marketing emails." />
+      <AdminPageHeader title={t('Newsletter Subscribers')} subtitle={t('Customers who opted in to marketing emails.')} />
       {message && <div className="admin-alert success">{message}</div>}
       {error && <div className="admin-alert danger">{error}</div>}
       <div className="admin-card admin-card-pad">
@@ -395,30 +396,30 @@ export function SubscribersPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search..."
-              aria-label="Search subscribers"
+              placeholder={t('Search...')}
+              aria-label={t('Search subscribers')}
             />
             {search && (
-              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label={t('Clear search')}>
                 <IconX size={13} />
               </button>
             )}
           </div>
           <div style={{ flex: 1 }} />
-          <span className="admin-muted admin-small">{visibleRows.length} record(s)</span>
+          <span className="admin-muted admin-small">{t('{count} record(s)', { count: visibleRows.length })}</span>
           <button type="button" className="admin-toolbar-button" onClick={() => load()}>
-            <IconRefresh size={15} /> Refresh
+            <IconRefresh size={15} /> {t('Refresh')}
           </button>
         </div>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Subscribed</th>
-              <th>Since</th>
-              <th className="actions">Action</th>
+              <th>{t('ID')}</th>
+              <th>{t('Name')}</th>
+              <th>{t('Email')}</th>
+              <th>{t('Subscribed')}</th>
+              <th>{t('Since')}</th>
+              <th className="actions">{t('Action')}</th>
             </tr>
           </thead>
           <tbody>
@@ -433,7 +434,7 @@ export function SubscribersPage() {
             ) : visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={6}>
-                  <div className="admin-empty">{rows.length ? 'No subscribers match your search.' : 'No newsletter subscribers yet.'}</div>
+                  <div className="admin-empty">{rows.length ? t('No subscribers match your search.') : t('No newsletter subscribers yet.')}</div>
                 </td>
               </tr>
             ) : (
@@ -445,12 +446,12 @@ export function SubscribersPage() {
                   </td>
                   <td>{row.email}</td>
                   <td>
-                    <Badge status={row.subscribed_to_news_letter ? 'active' : 'inactive'} label={row.subscribed_to_news_letter ? 'Yes' : 'No'} />
+                    <Badge status={row.subscribed_to_news_letter ? 'active' : 'inactive'} label={row.subscribed_to_news_letter ? t('Yes') : t('No')} />
                   </td>
                   <td>{formatDate(row.created_at)}</td>
                   <td className="actions">
                     <button type="button" className="admin-link danger" onClick={() => unsubscribe(row)}>
-                      Unsubscribe
+                      {t('Unsubscribe')}
                     </button>
                   </td>
                 </tr>

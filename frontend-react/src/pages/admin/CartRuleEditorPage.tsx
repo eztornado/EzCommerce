@@ -4,6 +4,7 @@ import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { formatDate } from '../../lib/format';
 import { AdminPageHeader, AdminTabs } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 const ACTION_TYPES = [
   { value: 'by_percent', label: 'By percent of product price' },
@@ -94,7 +95,7 @@ export default function CartRuleEditorPage() {
         });
         setCoupons(data.coupons ?? []);
       } catch (requestError: any) {
-        setError(requestError?.message ?? 'Unable to load the cart rule.');
+        setError(requestError?.message ?? t('Unable to load the cart rule.'));
       } finally {
         setLoading(false);
       }
@@ -121,7 +122,7 @@ export default function CartRuleEditorPage() {
     setError('');
     setMessage('');
     if (!String(rule.name ?? '').trim()) {
-      setError('The name field is required.');
+      setError(t('The name field is required.'));
       setTab('information');
       return;
     }
@@ -156,12 +157,12 @@ export default function CartRuleEditorPage() {
         if (nextId) navigate(`/admin/marketing/promotions/cart-rules/edit/${nextId}`);
       } else {
         await api.adminPut(`admin/marketing/cart-rules/edit/${id}`, payload);
-        setMessage('The cart rule has been saved successfully.');
+        setMessage(t('The cart rule has been saved successfully.'));
         const data = await api.adminGet(`admin/marketing/cart-rules/view/${id}`);
         setCoupons(data.coupons ?? []);
       }
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the cart rule.');
+      setError(requestError?.message ?? t('Unable to save the cart rule.'));
     } finally {
       setSaving(false);
     }
@@ -175,14 +176,14 @@ export default function CartRuleEditorPage() {
       setCoupons(data.coupons ?? []);
       setMessage('10 coupon codes have been generated.');
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to generate coupons.');
+      setError(requestError?.message ?? t('Unable to generate coupons.'));
     }
   };
 
   if (loading) {
     return (
       <div>
-        <AdminPageHeader title="Loading cart rule…" backTo="/admin/marketing/promotions/cart-rules" />
+        <AdminPageHeader title={t('Loading cart rule…')} backTo="/admin/marketing/promotions/cart-rules" />
         <div className="admin-card admin-card-pad">
           {Array.from({ length: 5 }).map((_, index) => (
             <div className="admin-skeleton-row" key={index} />
@@ -195,12 +196,12 @@ export default function CartRuleEditorPage() {
   return (
     <div>
       <AdminPageHeader
-        title={isCreate ? 'Create cart rule' : `Edit cart rule · ${rule.name}`}
-        subtitle="Configure conditions, coupon behaviour and the discount action."
+        title={isCreate ? t('Create cart rule') : t('Edit cart rule · {name}', { name: rule.name })}
+        subtitle={t('Configure conditions, coupon behaviour and the discount action.')}
         backTo="/admin/marketing/promotions/cart-rules"
         actions={
           <button type="button" className="admin-button primary" onClick={save} disabled={saving}>
-            <IconCheck size={15} /> {saving ? 'Saving…' : 'Save cart rule'}
+            <IconCheck size={15} /> {saving ? t('Saving…') : t('Save cart rule')}
           </button>
         }
       />
@@ -224,65 +225,65 @@ export default function CartRuleEditorPage() {
             <div className="admin-form-grid">
               <label className="admin-field" style={{ gridColumn: '1 / -1' }}>
                 <span className="admin-field-label">
-                  Name <em>*</em>
+                  {t('Name')} <em>*</em>
                 </span>
-                <input className="admin-input" value={rule.name ?? ''} onChange={(event) => set('name', event.target.value)} placeholder="Summer sale 10%" />
+                <input className="admin-input" value={rule.name ?? ''} onChange={(event) => set('name', event.target.value)} placeholder={t('Summer sale 10%')} />
               </label>
               <label className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Description</span>
+                <span className="admin-field-label">{t('Description')}</span>
                 <textarea className="admin-input" rows={3} value={rule.description ?? ''} onChange={(event) => set('description', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Status</span>
+                <span className="admin-field-label">{t('Status')}</span>
                 <select className="admin-input" value={rule.status ? '1' : '0'} onChange={(event) => set('status', event.target.value)}>
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
+                  <option value="1">{t('Active')}</option>
+                  <option value="0">{t('Inactive')}</option>
                 </select>
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Coupon type</span>
+                <span className="admin-field-label">{t('Coupon type')}</span>
                 <select className="admin-input" value={rule.coupon_type ?? 1} onChange={(event) => set('coupon_type', event.target.value)}>
-                  <option value="1">No coupon</option>
-                  <option value="2">Specific coupon</option>
+                  <option value="1">{t('No coupon')}</option>
+                  <option value="2">{t('Specific coupon')}</option>
                 </select>
               </label>
               {Number(rule.coupon_type) === 2 && (
                 <>
                   <label className="admin-field">
-                    <span className="admin-field-label">Coupon code</span>
-                    <input className="admin-input" value={rule.coupon_code ?? ''} onChange={(event) => set('coupon_code', event.target.value)} placeholder="WELCOME10" />
+                    <span className="admin-field-label">{t('Coupon code')}</span>
+                    <input className="admin-input" value={rule.coupon_code ?? ''} onChange={(event) => set('coupon_code', event.target.value)} placeholder={t('WELCOME10')} />
                   </label>
                   <label className="admin-field">
-                    <span className="admin-field-label">Auto-generate coupon codes</span>
+                    <span className="admin-field-label">{t('Auto-generate coupon codes')}</span>
                     <span className="admin-switch-row">
                       <input type="checkbox" checked={!!rule.use_auto_generation} onChange={(event) => set('use_auto_generation', event.target.checked)} />
-                      <span>{rule.use_auto_generation ? 'Enabled' : 'Disabled'}</span>
+                      <span>{rule.use_auto_generation ? t('Enabled') : t('Disabled')}</span>
                     </span>
                   </label>
                 </>
               )}
               <label className="admin-field">
-                <span className="admin-field-label">Start date</span>
+                <span className="admin-field-label">{t('Start date')}</span>
                 <input className="admin-input" type="date" value={(rule.starts_from ?? '').slice(0, 10)} onChange={(event) => set('starts_from', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">End date</span>
+                <span className="admin-field-label">{t('End date')}</span>
                 <input className="admin-input" type="date" value={(rule.ends_till ?? '').slice(0, 10)} onChange={(event) => set('ends_till', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Uses per coupon</span>
-                <input className="admin-input" type="number" min={0} value={rule.uses_per_coupon ?? ''} onChange={(event) => set('uses_per_coupon', event.target.value)} placeholder="Unlimited" />
+                <span className="admin-field-label">{t('Uses per coupon')}</span>
+                <input className="admin-input" type="number" min={0} value={rule.uses_per_coupon ?? ''} onChange={(event) => set('uses_per_coupon', event.target.value)} placeholder={t('Unlimited')} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Uses per customer</span>
-                <input className="admin-input" type="number" min={0} value={rule.usage_per_customer ?? ''} onChange={(event) => set('usage_per_customer', event.target.value)} placeholder="Unlimited" />
+                <span className="admin-field-label">{t('Uses per customer')}</span>
+                <input className="admin-input" type="number" min={0} value={rule.usage_per_customer ?? ''} onChange={(event) => set('usage_per_customer', event.target.value)} placeholder={t('Unlimited')} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Priority</span>
+                <span className="admin-field-label">{t('Priority')}</span>
                 <input className="admin-input" type="number" value={rule.sort ?? 0} onChange={(event) => set('sort', event.target.value)} />
               </label>
               <div className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Channels</span>
+                <span className="admin-field-label">{t('Channels')}</span>
                 <div className="admin-check-grid">
                   {channels.map((channel) => (
                     <label key={channel.id} className="admin-check-row">
@@ -304,7 +305,7 @@ export default function CartRuleEditorPage() {
                 </div>
               </div>
               <div className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Customer groups</span>
+                <span className="admin-field-label">{t('Customer groups')}</span>
                 <div className="admin-check-grid">
                   {groups.map((group) => (
                     <label key={group.id} className="admin-check-row">
@@ -332,16 +333,16 @@ export default function CartRuleEditorPage() {
             <div>
               <div className="admin-form-grid" style={{ marginBottom: 18 }}>
                 <label className="admin-field">
-                  <span className="admin-field-label">Condition combination</span>
+                  <span className="admin-field-label">{t('Condition combination')}</span>
                   <select className="admin-input" value={rule.condition_type ?? 1} onChange={(event) => set('condition_type', event.target.value)}>
-                    <option value="1">All conditions must be true (AND)</option>
-                    <option value="2">Any condition must be true (OR)</option>
+                    <option value="1">{t('All conditions must be true (AND)')}</option>
+                    <option value="2">{t('Any condition must be true (OR)')}</option>
                   </select>
                 </label>
               </div>
               <div className="admin-condition-list">
                 {(rule.conditions ?? []).length === 0 && (
-                  <p className="admin-muted">No conditions. The rule will apply to every cart.</p>
+                  <p className="admin-muted">{t('No conditions. The rule will apply to every cart.')}</p>
                 )}
                 {(rule.conditions ?? []).map((condition: any, index: number) => (
                   <div className="admin-condition-row" key={index}>
@@ -352,7 +353,7 @@ export default function CartRuleEditorPage() {
                     >
                       {ATTRIBUTES.map((attribute) => (
                         <option key={attribute.value} value={attribute.value}>
-                          {attribute.label}
+                          {t(attribute.label)}
                         </option>
                       ))}
                     </select>
@@ -363,7 +364,7 @@ export default function CartRuleEditorPage() {
                     >
                       {OPERATORS.map((operator) => (
                         <option key={operator.value} value={operator.value}>
-                          {operator.label}
+                          {t(operator.label)}
                         </option>
                       ))}
                     </select>
@@ -371,7 +372,7 @@ export default function CartRuleEditorPage() {
                       className="admin-input"
                       value={condition.value ?? ''}
                       onChange={(event) => updateCondition(index, 'value', event.target.value)}
-                      placeholder="Value"
+                      placeholder={t('Value')}
                     />
                     <button type="button" className="admin-icon-action danger" onClick={() => removeCondition(index)}>
                       <IconTrash size={15} />
@@ -380,7 +381,7 @@ export default function CartRuleEditorPage() {
                 ))}
               </div>
               <button type="button" className="admin-button" onClick={addCondition} style={{ marginTop: 12 }}>
-                <IconPlus size={15} /> Add condition
+                <IconPlus size={15} /> {t('Add condition')}
               </button>
             </div>
           )}
@@ -388,38 +389,38 @@ export default function CartRuleEditorPage() {
           {tab === 'actions' && (
             <div className="admin-form-grid">
               <label className="admin-field">
-                <span className="admin-field-label">Action type</span>
+                <span className="admin-field-label">{t('Action type')}</span>
                 <select className="admin-input" value={rule.action_type ?? 'by_percent'} onChange={(event) => set('action_type', event.target.value)}>
                   {ACTION_TYPES.map((action) => (
                     <option key={action.value} value={action.value}>
-                      {action.label}
+                      {t(action.label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Discount amount</span>
+                <span className="admin-field-label">{t('Discount amount')}</span>
                 <input className="admin-input" type="number" step="0.01" value={rule.discount_amount ?? 0} onChange={(event) => set('discount_amount', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Discount quantity</span>
+                <span className="admin-field-label">{t('Discount quantity')}</span>
                 <input className="admin-input" type="number" value={rule.discount_quantity ?? 1} onChange={(event) => set('discount_quantity', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Discount step (buy X)</span>
+                <span className="admin-field-label">{t('Discount step (buy X)')}</span>
                 <input className="admin-input" type="number" value={rule.discount_step ?? 1} onChange={(event) => set('discount_step', event.target.value)} />
               </label>
               <label className="admin-check-row">
                 <input type="checkbox" checked={!!rule.apply_to_shipping} onChange={(event) => set('apply_to_shipping', event.target.checked)} />
-                <span>Apply to shipping amount</span>
+                <span>{t('Apply to shipping amount')}</span>
               </label>
               <label className="admin-check-row">
                 <input type="checkbox" checked={!!rule.free_shipping} onChange={(event) => set('free_shipping', event.target.checked)} />
-                <span>Free shipping</span>
+                <span>{t('Free shipping')}</span>
               </label>
               <label className="admin-check-row">
                 <input type="checkbox" checked={!!rule.end_other_rules} onChange={(event) => set('end_other_rules', event.target.checked)} />
-                <span>Stop further rules from processing</span>
+                <span>{t('Stop further rules from processing')}</span>
               </label>
             </div>
           )}
@@ -427,27 +428,27 @@ export default function CartRuleEditorPage() {
           {tab === 'coupons' && (
             <div>
               {isCreate ? (
-                <div className="admin-empty">Save the rule before generating coupons.</div>
+                <div className="admin-empty">{t('Save the rule before generating coupons.')}</div>
               ) : (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <p className="admin-muted">Coupon codes attached to this rule.</p>
+                    <p className="admin-muted">{t('Coupon codes attached to this rule.')}</p>
                     <button type="button" className="admin-button" onClick={generateCoupons}>
-                      <IconPlus size={15} /> Generate 10 coupons
+                      <IconPlus size={15} /> {t('Generate 10 coupons')}
                     </button>
                   </div>
                   {coupons.length === 0 ? (
-                    <div className="admin-empty">No coupons have been generated for this rule.</div>
+                    <div className="admin-empty">{t('No coupons have been generated for this rule.')}</div>
                   ) : (
                     <table className="admin-table">
                       <thead>
                         <tr>
-                          <th>Code</th>
-                          <th>Usage limit</th>
-                          <th>Per customer</th>
-                          <th>Times used</th>
-                          <th>Expires</th>
-                          <th>Primary</th>
+                          <th>{t('Code')}</th>
+                          <th>{t('Usage limit')}</th>
+                          <th>{t('Per customer')}</th>
+                          <th>{t('Times used')}</th>
+                          <th>{t('Expires')}</th>
+                          <th>{t('Primary')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -456,11 +457,11 @@ export default function CartRuleEditorPage() {
                             <td>
                               <span className="admin-code">{coupon.code}</span>
                             </td>
-                            <td>{coupon.usage_limit ?? 'Unlimited'}</td>
-                            <td>{coupon.usage_per_customer ?? 'Unlimited'}</td>
+                            <td>{coupon.usage_limit ?? t('Unlimited')}</td>
+                            <td>{coupon.usage_per_customer ?? t('Unlimited')}</td>
                             <td>{coupon.times_used ?? 0}</td>
                             <td>{coupon.expired_at ? formatDate(coupon.expired_at) : '—'}</td>
-                            <td>{coupon.is_primary ? <span className="status-badge green">Primary</span> : '—'}</td>
+                            <td>{coupon.is_primary ? <span className="status-badge green">{t('Primary')}</span> : '—'}</td>
                           </tr>
                         ))}
                       </tbody>

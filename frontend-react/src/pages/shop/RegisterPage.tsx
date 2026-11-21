@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { IconLock, IconMail, IconUser, IconShoppingBag } from '@tabler/icons-react';
 import { api } from '../../api/client';
+import { t } from '../../i18n';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function RegisterPage() {
         navigate('/login');
       }
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to create your account.');
+      setError(requestError?.message ?? t('Unable to create your account.'));
     } finally {
       setBusy(false);
     }
@@ -43,16 +44,16 @@ export default function RegisterPage() {
         <div className="auth-logo">
           <IconShoppingBag size={22} />
         </div>
-        <h1 className="auth-title">Create an account</h1>
+        <h1 className="auth-title">{t('Create an account')}</h1>
         <p className="shop-muted" style={{ textAlign: 'center', fontSize: 13, marginBottom: 26 }}>
-          Join EzCommerce for a faster checkout, order tracking and exclusive offers.
+          {t('Join EzCommerce for a faster checkout, order tracking and exclusive offers.')}
         </p>
 
         <form onSubmit={submit}>
           <div className="two-col">
             <div>
               <label className="field-label" htmlFor="first_name">
-                First name
+                {t('First name')}
               </label>
               <div className="input-icon">
                 <IconUser size={16} />
@@ -61,14 +62,14 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="field-label" htmlFor="last_name">
-                Last name
+                {t('Last name')}
               </label>
               <input id="last_name" className="form-input" value={form.last_name} onChange={(event) => set('last_name', event.target.value)} required />
             </div>
           </div>
 
           <label className="field-label" htmlFor="email">
-            Email address
+            {t('Email address')}
           </label>
           <div className="input-icon">
             <IconMail size={16} />
@@ -78,7 +79,7 @@ export default function RegisterPage() {
           <div className="two-col">
             <div>
               <label className="field-label" htmlFor="password">
-                Password
+                {t('Password')}
               </label>
               <div className="input-icon">
                 <IconLock size={16} />
@@ -87,7 +88,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="field-label" htmlFor="password_confirmation">
-                Confirm password
+                {t('Confirm password')}
               </label>
               <input
                 id="password_confirmation"
@@ -107,20 +108,20 @@ export default function RegisterPage() {
               checked={form.subscribed_to_news_letter}
               onChange={(event) => set('subscribed_to_news_letter', event.target.checked)}
             />
-            Subscribe to the EzCommerce newsletter
+            {t('Subscribe to the EzCommerce newsletter')}
           </label>
 
           {error && <p className="form-error">{error}</p>}
 
           <button type="submit" className="shop-primary-button" style={{ width: '100%', marginTop: 16 }} disabled={busy}>
-            {busy ? 'Creating account…' : 'Create account'}
+            {busy ? t('Creating account…') : t('Create account')}
           </button>
         </form>
 
         <p className="auth-switch">
-          Already have an account?{' '}
+          {t('Already have an account?')}{' '}
           <Link to="/login" className="shop-link">
-            Sign in
+            {t('Sign in')}
           </Link>
         </p>
       </div>

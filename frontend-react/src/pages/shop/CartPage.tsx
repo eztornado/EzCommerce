@@ -6,6 +6,7 @@ import { useCart, shopQuery } from '../../store';
 import { mediaUrl, formattedMoney } from '../../lib/format';
 import { updateCartQty, removeCartItem } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
+import { t } from '../../i18n';
 import ProductCard from '../../components/shop/ProductCard';
 import type { ProductCard as ProductCardModel } from '../../types';
 
@@ -54,11 +55,11 @@ export default function CartPage() {
     setMessage('');
     try {
       await api.post(`checkout/cart/coupon${shopQuery()}`, { code: coupon.trim() });
-      setMessage('The coupon has been applied.');
+      setMessage(t('The coupon has been applied.'));
       setCoupon('');
       await refresh();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to apply the coupon.');
+      setError(requestError?.message ?? t('Unable to apply the coupon.'));
     }
   };
 
@@ -68,9 +69,9 @@ export default function CartPage() {
     try {
       await api.delete(`checkout/cart/coupon${shopQuery()}`);
       await refresh();
-      setMessage('The coupon has been removed.');
+      setMessage(t('The coupon has been removed.'));
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to remove the coupon.');
+      setError(requestError?.message ?? t('Unable to remove the coupon.'));
     }
   };
 
@@ -78,25 +79,25 @@ export default function CartPage() {
     return (
       <div className="shop-container">
         <div className="shop-breadcrumbs">
-          <Link to="/">Home</Link>
+          <Link to="/">{t('Home')}</Link>
           <span>/</span>
-          <span>Shopping cart</span>
+          <span>{t('Shopping cart')}</span>
         </div>
         <div className="listing-empty" style={{ paddingTop: 50, paddingBottom: 90 }}>
           <span className="empty-icon">
             <IconShoppingBag size={34} />
           </span>
-          <h2 className="shop-heading">Your cart is empty</h2>
-          <p className="shop-muted">Looks like you haven’t added anything yet. Let’s change that.</p>
+          <h2 className="shop-heading">{t('Your cart is empty')}</h2>
+          <p className="shop-muted">{t('Looks like you haven’t added anything yet. Let’s change that.')}</p>
           <Link to="/search" className="shop-primary-button">
-            Continue shopping <IconArrowRight size={16} />
+            {t('Continue shopping')} <IconArrowRight size={16} />
           </Link>
         </div>
 
         {crossSell.length > 0 && (
           <section className="shop-section">
             <div className="shop-section-head">
-              <h2 className="shop-heading">You may also like</h2>
+              <h2 className="shop-heading">{t('You may also like')}</h2>
             </div>
             <div className="shop-grid">
               {crossSell.slice(0, 4).map((product) => (
@@ -112,17 +113,17 @@ export default function CartPage() {
   return (
     <div className="shop-container">
       <div className="shop-breadcrumbs">
-        <Link to="/">Home</Link>
+        <Link to="/">{t('Home')}</Link>
         <span>/</span>
-        <span>Shopping cart</span>
+        <span>{t('Shopping cart')}</span>
       </div>
 
       <div className="listing-head" style={{ marginBottom: 20 }}>
         <h1 className="shop-heading" style={{ fontSize: 36 }}>
-          Shopping cart
+          {t('Shopping cart')}
         </h1>
         <span className="listing-count">
-          {cart.items_qty} {cart.items_qty === 1 ? 'item' : 'items'}
+          {t(cart.items_qty === 1 ? '{count} item' : '{count} items', { count: cart.items_qty })}
         </span>
       </div>
 
@@ -132,10 +133,10 @@ export default function CartPage() {
             <table className="cart-table">
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Price</th>
-                  <th>Quantity</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th>{t('Product')}</th>
+                  <th>{t('Price')}</th>
+                  <th>{t('Quantity')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Total')}</th>
                   <th />
                 </tr>
               </thead>
@@ -152,7 +153,7 @@ export default function CartPage() {
                             {item.name}
                           </Link>
                           <p className="shop-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                            SKU: {item.sku}
+                            {t('SKU')}: {item.sku}
                           </p>
                         </div>
                       </div>
@@ -160,15 +161,15 @@ export default function CartPage() {
                     <td>{formattedMoney(item.formatted_price, item.price)}</td>
                     <td>
                       <div className="qty-stepper qty-stepper-sm">
-                        <button type="button" onClick={() => changeQty(item.id, item.quantity - 1)} aria-label="Decrease">
+                        <button type="button" onClick={() => changeQty(item.id, item.quantity - 1)} aria-label={t('Decrease')}>
                           −
                         </button>
                         <input
                           value={item.quantity}
                           onChange={(event) => changeQty(item.id, Number(event.target.value) || 1)}
-                          aria-label="Quantity"
+                          aria-label={t('Quantity')}
                         />
-                        <button type="button" onClick={() => changeQty(item.id, item.quantity + 1)} aria-label="Increase">
+                        <button type="button" onClick={() => changeQty(item.id, item.quantity + 1)} aria-label={t('Increase')}>
                           +
                         </button>
                       </div>
@@ -177,7 +178,7 @@ export default function CartPage() {
                       {formattedMoney(item.formatted_total, item.total)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button type="button" className="cart-remove" onClick={() => remove(item.id)} aria-label="Remove item">
+                      <button type="button" className="cart-remove" onClick={() => remove(item.id)} aria-label={t('Remove item')}>
                         <IconTrash size={17} />
                       </button>
                     </td>
@@ -189,38 +190,38 @@ export default function CartPage() {
 
           <div style={{ marginTop: 26 }}>
             <Link to="/search" className="shop-secondary-button shop-button-sm">
-              Continue shopping
+              {t('Continue shopping')}
             </Link>
           </div>
         </div>
 
         <aside className="cart-summary">
-          <h2 className="cart-summary-title">Order summary</h2>
+          <h2 className="cart-summary-title">{t('Order summary')}</h2>
 
           <div className="cart-summary-row">
-            <span>Subtotal</span>
+            <span>{t('Subtotal')}</span>
             <span>{formattedMoney(cart.formatted_sub_total, cart.sub_total)}</span>
           </div>
 
           {Number(cart.discount_amount ?? 0) > 0 && (
             <div className="cart-summary-row" style={{ color: '#047857' }}>
-              <span>Discount</span>
+              <span>{t('Discount')}</span>
               <span>−{formattedMoney(cart.formatted_discount_amount, cart.discount_amount)}</span>
             </div>
           )}
 
           <div className="cart-summary-row">
-            <span>Shipping</span>
+            <span>{t('Shipping')}</span>
             <span>{formattedMoney(cart.formatted_shipping_amount, cart.shipping_amount)}</span>
           </div>
 
           <div className="cart-summary-row">
-            <span>Tax</span>
+            <span>{t('Tax')}</span>
             <span>{formattedMoney(cart.formatted_tax_total, cart.tax_total)}</span>
           </div>
 
           <div className="cart-summary-row total">
-            <span>Grand total</span>
+            <span>{t('Grand total')}</span>
             <span>{formattedMoney(cart.formatted_grand_total, cart.grand_total)}</span>
           </div>
 
@@ -231,13 +232,13 @@ export default function CartPage() {
                   <IconTag size={14} /> {cart.coupon_code}
                 </span>
                 <button type="button" onClick={removeCoupon}>
-                  Remove
+                  {t('Remove')}
                 </button>
               </div>
             ) : (
               <form onSubmit={applyCoupon}>
                 <label className="field-label" htmlFor="coupon">
-                  Coupon code
+                  {t('Coupon code')}
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
@@ -245,10 +246,10 @@ export default function CartPage() {
                     className="form-input"
                     value={coupon}
                     onChange={(event) => setCoupon(event.target.value)}
-                    placeholder="Enter code"
+                    placeholder={t('Enter code')}
                   />
                   <button type="submit" className="shop-secondary-button shop-button-sm">
-                    Apply
+                    {t('Apply')}
                   </button>
                 </div>
               </form>
@@ -258,11 +259,11 @@ export default function CartPage() {
           </div>
 
           <Link to="/checkout" className="shop-primary-button" style={{ width: '100%', marginTop: 16 }}>
-            Proceed to checkout <IconArrowRight size={16} />
+            {t('Proceed to checkout')} <IconArrowRight size={16} />
           </Link>
 
           <p className="shop-muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 12 }}>
-            Secure checkout · Free returns within 30 days
+            {t('Secure checkout · Free returns within 30 days')}
           </p>
         </aside>
       </div>
@@ -270,7 +271,7 @@ export default function CartPage() {
       {crossSell.length > 0 && (
         <section className="shop-section">
           <div className="shop-section-head">
-            <h2 className="shop-heading">You may also like</h2>
+            <h2 className="shop-heading">{t('You may also like')}</h2>
           </div>
           <div className="shop-grid">
             {crossSell.slice(0, 4).map((product) => (

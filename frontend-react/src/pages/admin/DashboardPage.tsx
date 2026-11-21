@@ -9,7 +9,8 @@ import {
   IconBox,
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
-import { formatDate, statusColor } from '../../lib/format';
+import { formatDate, formatLabel, money, statusColor } from '../../lib/format';
+import { intlLocale, t } from '../../i18n';
 import { AdminPageHeader } from '../../components/admin/ui';
 
 interface SeriesPoint {
@@ -43,11 +44,11 @@ export default function DashboardPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Hi! Administrator"
-        subtitle="Quickly review what's going on in your store."
+        title={t('Hi! Administrator')}
+        subtitle={t("Quickly review what's going on in your store.")}
         actions={
           <Link to="/admin/reporting/sales" className="admin-button primary">
-            <IconChartHistogram size={15} /> View reports
+            <IconChartHistogram size={15} /> {t('View reports')}
           </Link>
         }
       />
@@ -55,35 +56,35 @@ export default function DashboardPage() {
       <div className="admin-stat-grid">
         <Stat
           icon={<IconCurrencyEuro size={24} />}
-          label="Total Sales"
-          value={`€${Number(stats?.total_sales?.current ?? 0).toFixed(2)}`}
+          label={t('Total Sales')}
+          value={money(Number(stats?.total_sales?.current ?? 0))}
           progress={stats?.total_sales?.progress}
           tone="blue"
         />
         <Stat
           icon={<IconShoppingCart size={24} />}
-          label="Total Orders"
+          label={t('Total Orders')}
           value={String(stats?.total_orders?.current ?? 0)}
           progress={stats?.total_orders?.progress}
           tone="violet"
         />
         <Stat
           icon={<IconUsers size={24} />}
-          label="Total Customers"
+          label={t('Total Customers')}
           value={String(stats?.total_customers?.current ?? 0)}
           progress={stats?.total_customers?.progress}
           tone="emerald"
         />
         <Stat
           icon={<IconBox size={24} />}
-          label="Average Order"
-          value={`€${Number(stats?.avg_sales?.current ?? 0).toFixed(2)}`}
+          label={t('Average Order')}
+          value={money(Number(stats?.avg_sales?.current ?? 0))}
           progress={stats?.avg_sales?.progress}
           tone="amber"
         />
         <Stat
           icon={<IconArrowUpRight size={24} />}
-          label="Orders Today"
+          label={t('Orders Today')}
           value={String(sales.series[sales.series.length - 1]?.orders ?? 0)}
           progress={100}
           tone="rose"
@@ -93,20 +94,20 @@ export default function DashboardPage() {
       <div className="admin-dashboard-grid">
         <section className="admin-card admin-chart-card">
           <div className="admin-card-head">
-            <h2 className="admin-card-title">Sales overview</h2>
-            <span className="admin-card-subtitle">Revenue over the reporting period</span>
+            <h2 className="admin-card-title">{t('Sales overview')}</h2>
+            <span className="admin-card-subtitle">{t('Revenue over the reporting period')}</span>
           </div>
           <div className="admin-card-pad">
             <SalesChart series={sales.series} />
             <div className="admin-chart-legend">
               <span>
-                <i style={{ background: '#598de6' }} /> Revenue
+                <i style={{ background: '#598de6' }} /> {t('Revenue')}
               </span>
               <span>
-                <i style={{ background: '#c7d9f5' }} /> {Number(sales.totals?.total_orders ?? 0)} orders
+                <i style={{ background: '#c7d9f5' }} /> {t('{count} orders', { count: Number(sales.totals?.total_orders ?? 0) })}
               </span>
               <span style={{ marginLeft: 'auto' }}>
-                Shipping collected: <strong>€{Number(sales.totals?.shipping_collected ?? 0).toFixed(2)}</strong>
+                {t('Shipping collected:')} <strong>{money(Number(sales.totals?.shipping_collected ?? 0))}</strong>
               </span>
             </div>
           </div>
@@ -114,14 +115,14 @@ export default function DashboardPage() {
 
         <section className="admin-card">
           <div className="admin-card-head">
-            <h2 className="admin-card-title">Top selling products</h2>
+            <h2 className="admin-card-title">{t('Top selling products')}</h2>
             <Link to="/admin/reporting/products" className="admin-link">
-              View all
+              {t('View all')}
             </Link>
           </div>
           <div className="admin-card-pad">
             {products.length === 0 ? (
-              <p className="admin-muted">No sales recorded yet.</p>
+              <p className="admin-muted">{t('No sales recorded yet.')}</p>
             ) : (
               <div className="admin-top-products">
                 {products.map((product, index) => {
@@ -135,10 +136,10 @@ export default function DashboardPage() {
                           <span style={{ width: `${Math.max(6, (Number(product.total) / max) * 100)}%` }} />
                         </div>
                         <p className="admin-muted admin-small">
-                          {product.sku} · {product.qty} sold
+                          {product.sku} · {t('{count} sold', { count: product.qty })}
                         </p>
                       </div>
-                      <strong className="admin-top-product-total">€{Number(product.total ?? 0).toFixed(2)}</strong>
+                      <strong className="admin-top-product-total">{money(Number(product.total ?? 0))}</strong>
                     </div>
                   );
                 })}
@@ -149,20 +150,20 @@ export default function DashboardPage() {
 
         <section className="admin-card admin-span-2">
           <div className="admin-card-head">
-            <h2 className="admin-card-title">Recent orders</h2>
+            <h2 className="admin-card-title">{t('Recent orders')}</h2>
             <Link to="/admin/sales/orders" className="admin-link">
-              View all orders
+              {t('View all orders')}
             </Link>
           </div>
           <div className="admin-card-pad" style={{ paddingTop: 0 }}>
             <table className="admin-table" style={{ minWidth: 640 }}>
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                  <th>Date</th>
+                  <th>{t('Order')}</th>
+                  <th>{t('Customer')}</th>
+                  <th>{t('Status')}</th>
+                  <th>{t('Total')}</th>
+                  <th>{t('Date')}</th>
                   <th />
                 </tr>
               </thead>
@@ -177,14 +178,14 @@ export default function DashboardPage() {
                     <td>{order.customer_email}</td>
                     <td>
                       <span className={`status-badge ${statusColor(order.status)}`} style={{ textTransform: 'capitalize' }}>
-                        {order.status}
+                        {t(formatLabel(order.status))}
                       </span>
                     </td>
-                    <td>{order.base_grand_total}</td>
+                    <td>{money(order.base_grand_total)}</td>
                     <td>{formatDate(order.created_at)}</td>
                     <td className="actions">
                       <Link to={`/admin/sales/orders/view/${order.__primary}`} className="admin-link">
-                        View
+                        {t('View')}
                       </Link>
                     </td>
                   </tr>
@@ -196,14 +197,14 @@ export default function DashboardPage() {
 
         <section className="admin-card">
           <div className="admin-card-head">
-            <h2 className="admin-card-title">Top customers</h2>
+            <h2 className="admin-card-title">{t('Top customers')}</h2>
             <Link to="/admin/customers" className="admin-link">
-              View all
+              {t('View all')}
             </Link>
           </div>
           <div className="admin-card-pad">
             {customers.length === 0 ? (
-              <p className="admin-muted">No customers yet.</p>
+              <p className="admin-muted">{t('No customers yet.')}</p>
             ) : (
               <div className="admin-customer-list">
                 {customers.map((customer) => (
@@ -220,9 +221,9 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <strong>€{Number(customer.total ?? 0).toFixed(2)}</strong>
+                      <strong>{money(Number(customer.total ?? 0))}</strong>
                       <p className="admin-muted admin-small" style={{ margin: 0 }}>
-                        {customer.orders} orders
+                        {t('{count} orders', { count: customer.orders })}
                       </p>
                     </div>
                   </div>
@@ -242,9 +243,9 @@ function Stat({ icon, label, value, progress, tone }: { icon: React.ReactNode; l
       <span className={`admin-stat-icon ${tone}`}>{icon}</span>
       <div style={{ minWidth: 0 }}>
         <div className="admin-stat-value">{value}</div>
-        <div className="admin-stat-label">{label}</div>
+        <div className="admin-stat-label">{t(label)}</div>
         <div className="admin-stat-progress" style={{ color: '#047857' }}>
-          <IconArrowUpRight size={11} /> {Number(progress ?? 0).toFixed(0)}% vs last period
+          <IconArrowUpRight size={11} /> {t('{percent}% vs last period', { percent: Number(progress ?? 0).toFixed(0) })}
         </div>
       </div>
     </div>
@@ -253,7 +254,7 @@ function Stat({ icon, label, value, progress, tone }: { icon: React.ReactNode; l
 
 function SalesChart({ series }: { series: SeriesPoint[] }) {
   if (!series.length) {
-    return <div className="admin-chart-empty">No sales data available for the selected period.</div>;
+    return <div className="admin-chart-empty">{t('No sales data available for the selected period.')}</div>;
   }
 
   const width = 720;
@@ -266,7 +267,7 @@ function SalesChart({ series }: { series: SeriesPoint[] }) {
   const barWidth = Math.min(30, step * 0.46);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="admin-chart" role="img" aria-label="Revenue chart">
+    <svg viewBox={`0 0 ${width} ${height}`} className="admin-chart" role="img" aria-label={t('Revenue chart')}>
       {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
         const y = padding.top + innerHeight * fraction;
         return (
@@ -286,10 +287,10 @@ function SalesChart({ series }: { series: SeriesPoint[] }) {
         return (
           <g key={point.label}>
             <rect x={x} y={y} width={barWidth} height={barHeight} rx="4" fill="#598de6">
-              <title>{`€${point.sales.toFixed(2)} · ${point.orders} orders`}</title>
+              <title>{t('{amount} · {count} orders', { amount: money(point.sales), count: point.orders })}</title>
             </rect>
             <text x={x + barWidth / 2} y={height - 12} textAnchor="middle" fontSize="12" fill="#6b7280">
-              {new Date(point.label).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              {new Date(point.label).toLocaleDateString(intlLocale(), { day: '2-digit', month: 'short' })}
             </text>
           </g>
         );

@@ -12,6 +12,7 @@ import { api } from '../../api/client';
 import { useAuth, useCart, shopQuery } from '../../store';
 import { mediaUrl, formattedMoney } from '../../lib/format';
 import { notifyCart } from '../../lib/hooks';
+import { t } from '../../i18n';
 import type { Cart } from '../../types';
 
 interface AddressForm {
@@ -56,37 +57,37 @@ function AddressFields({
     <div className="checkout-form-grid">
       <div>
         <label className="field-label" htmlFor={`${prefix}-first`}>
-          First name *
+          {t('First name')} *
         </label>
         <input id={`${prefix}-first`} className="form-input" value={value.first_name} onChange={(e) => set('first_name', e.target.value)} required />
       </div>
       <div>
         <label className="field-label" htmlFor={`${prefix}-last`}>
-          Last name *
+          {t('Last name')} *
         </label>
         <input id={`${prefix}-last`} className="form-input" value={value.last_name} onChange={(e) => set('last_name', e.target.value)} required />
       </div>
       <div className="span-2">
         <label className="field-label" htmlFor={`${prefix}-email`}>
-          Email *
+          {t('Email')} *
         </label>
         <input id={`${prefix}-email`} type="email" className="form-input" value={value.email} onChange={(e) => set('email', e.target.value)} required />
       </div>
       <div className="span-2">
         <label className="field-label" htmlFor={`${prefix}-company`}>
-          Company
+          {t('Company')}
         </label>
         <input id={`${prefix}-company`} className="form-input" value={value.company} onChange={(e) => set('company', e.target.value)} />
       </div>
       <div className="span-2">
         <label className="field-label" htmlFor={`${prefix}-address`}>
-          Street address *
+          {t('Street address')} *
         </label>
         <input id={`${prefix}-address`} className="form-input" value={value.address} onChange={(e) => set('address', e.target.value)} required />
       </div>
       <div>
         <label className="field-label" htmlFor={`${prefix}-country`}>
-          Country *
+          {t('Country')} *
         </label>
         <select id={`${prefix}-country`} className="form-input" value={value.country} onChange={(e) => set('country', e.target.value)} required>
           {countries.map((country) => (
@@ -98,25 +99,25 @@ function AddressFields({
       </div>
       <div>
         <label className="field-label" htmlFor={`${prefix}-state`}>
-          State / Province *
+          {t('State / Province')} *
         </label>
         <input id={`${prefix}-state`} className="form-input" value={value.state} onChange={(e) => set('state', e.target.value)} required />
       </div>
       <div>
         <label className="field-label" htmlFor={`${prefix}-city`}>
-          City *
+          {t('City')} *
         </label>
         <input id={`${prefix}-city`} className="form-input" value={value.city} onChange={(e) => set('city', e.target.value)} required />
       </div>
       <div>
         <label className="field-label" htmlFor={`${prefix}-postcode`}>
-          Postcode *
+          {t('Postcode')} *
         </label>
         <input id={`${prefix}-postcode`} className="form-input" value={value.postcode} onChange={(e) => set('postcode', e.target.value)} required />
       </div>
       <div className="span-2">
         <label className="field-label" htmlFor={`${prefix}-phone`}>
-          Phone
+          {t('Phone')}
         </label>
         <input id={`${prefix}-phone`} className="form-input" value={value.phone} onChange={(e) => set('phone', e.target.value)} />
       </div>
@@ -154,7 +155,7 @@ export default function CheckoutPage() {
         });
         setCountries(Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name)));
       })
-      .catch(() => setCountries([{ code: 'ES', name: 'Spain' }]));
+      .catch(() => setCountries([{ code: 'ES', name: t('Spain') }]));
 
     api
       .get(`checkout/onepage/summary${shopQuery()}`)
@@ -228,7 +229,7 @@ export default function CheckoutPage() {
       setCart(summary);
       setStep(2);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Please review the address fields.');
+      setError(requestError?.message ?? t('Please review the address fields.'));
     } finally {
       setBusy(false);
     }
@@ -237,7 +238,7 @@ export default function CheckoutPage() {
   const saveShipping = async () => {
     setError('');
     if (!shippingMethod) {
-      setError('Please choose a shipping method.');
+      setError(t('Please choose a shipping method.'));
       return;
     }
     setBusy(true);
@@ -253,7 +254,7 @@ export default function CheckoutPage() {
       setCart(summary);
       setStep(3);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the shipping method.');
+      setError(requestError?.message ?? t('Unable to save the shipping method.'));
     } finally {
       setBusy(false);
     }
@@ -262,7 +263,7 @@ export default function CheckoutPage() {
   const placeOrder = async () => {
     setError('');
     if (!paymentMethod) {
-      setError('Please choose a payment method.');
+      setError(t('Please choose a payment method.'));
       return;
     }
     setBusy(true);
@@ -277,7 +278,7 @@ export default function CheckoutPage() {
       const orderId = data?.order_id ?? data?.order?.id;
       navigate(`/checkout/success/${orderId}`);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to place the order.');
+      setError(requestError?.message ?? t('Unable to place the order.'));
       setBusy(false);
     }
   };
@@ -290,19 +291,19 @@ export default function CheckoutPage() {
       const summary = await api.get(`checkout/onepage/summary${shopQuery()}`);
       setCart(summary);
       setCoupon('');
-      setCouponMessage('Coupon applied.');
+      setCouponMessage(t('Coupon applied.'));
     } catch (requestError: any) {
-      setCouponMessage(requestError?.message ?? 'Invalid coupon.');
+      setCouponMessage(requestError?.message ?? t('Invalid coupon.'));
     }
   };
 
   if (!cart || !cart.items?.length) {
     return (
       <div className="shop-container listing-empty" style={{ paddingTop: 70, paddingBottom: 100 }}>
-        <h2 className="shop-heading">Your cart is empty</h2>
-        <p className="shop-muted">Add a few products before proceeding to checkout.</p>
+        <h2 className="shop-heading">{t('Your cart is empty')}</h2>
+        <p className="shop-muted">{t('Add a few products before proceeding to checkout.')}</p>
         <Link to="/search" className="shop-primary-button">
-          Continue shopping
+          {t('Continue shopping')}
         </Link>
       </div>
     );
@@ -311,31 +312,31 @@ export default function CheckoutPage() {
   return (
     <div className="shop-container">
       <div className="shop-breadcrumbs">
-        <Link to="/">Home</Link>
+        <Link to="/">{t('Home')}</Link>
         <span>/</span>
-        <Link to="/cart">Cart</Link>
+        <Link to="/cart">{t('Cart')}</Link>
         <span>/</span>
-        <span>Checkout</span>
+        <span>{t('Checkout')}</span>
       </div>
 
       <div className="listing-head" style={{ marginBottom: 18 }}>
         <h1 className="shop-heading" style={{ fontSize: 36 }}>
-          Checkout
+          {t('Checkout')}
         </h1>
         <Link to="/cart" className="shop-link" style={{ fontSize: 14 }}>
-          <IconArrowLeft size={14} /> Back to cart
+          <IconArrowLeft size={14} /> {t('Back to cart')}
         </Link>
       </div>
 
       <div className="checkout-steps">
         <span className="checkout-step" data-active={step === 1} data-done={step > 1}>
-          {step > 1 ? <IconCheck size={14} /> : '1'} Address
+          {step > 1 ? <IconCheck size={14} /> : '1'} {t('Address')}
         </span>
         <span className="checkout-step" data-active={step === 2} data-done={step > 2}>
-          {step > 2 ? <IconCheck size={14} /> : '2'} Shipping
+          {step > 2 ? <IconCheck size={14} /> : '2'} {t('Shipping')}
         </span>
         <span className="checkout-step" data-active={step === 3}>
-          3 Payment
+          3 {t('Payment')}
         </span>
       </div>
 
@@ -344,11 +345,11 @@ export default function CheckoutPage() {
           <section className="checkout-panel">
             <div className="checkout-panel-head">
               <h2>
-                <span className="checkout-number">1</span> Billing address
+                <span className="checkout-number">1</span> {t('Billing address')}
               </h2>
               {step > 1 && (
                 <button type="button" className="shop-link" onClick={() => setStep(1)}>
-                  Edit
+                  {t('Edit')}
                 </button>
               )}
             </div>
@@ -359,7 +360,7 @@ export default function CheckoutPage() {
                   saveAddresses();
                 }}
               >
-                <AddressFields value={billing} onChange={setBilling} countries={countries.length ? countries : [{ code: 'ES', name: 'Spain' }]} prefix="billing" />
+                <AddressFields value={billing} onChange={setBilling} countries={countries.length ? countries : [{ code: 'ES', name: t('Spain') }]} prefix="billing" />
 
                 <label className="checkout-check">
                   <input
@@ -370,30 +371,30 @@ export default function CheckoutPage() {
                       if (event.target.checked && !shipping.first_name) setShipping({ ...billing });
                     }}
                   />
-                  Ship to a different address
+                  {t('Ship to a different address')}
                 </label>
 
                 {differentShipping && (
                   <div style={{ marginTop: 18 }}>
-                    <h3 className="checkout-subtitle">Shipping address</h3>
-                    <AddressFields value={shipping} onChange={setShipping} countries={countries.length ? countries : [{ code: 'ES', name: 'Spain' }]} prefix="shipping" />
+                    <h3 className="checkout-subtitle">{t('Shipping address')}</h3>
+                    <AddressFields value={shipping} onChange={setShipping} countries={countries.length ? countries : [{ code: 'ES', name: t('Spain') }]} prefix="shipping" />
                   </div>
                 )}
 
                 {!loggedIn && (
                   <p className="shop-muted" style={{ fontSize: 12, marginTop: 14 }}>
-                    Already have an account?{' '}
+                    {t('Already have an account?')}{' '}
                     <Link to="/login" className="shop-link">
-                      Sign in
+                      {t('Sign in')}
                     </Link>{' '}
-                    for a faster checkout.
+                    {t('for a faster checkout.')}
                   </p>
                 )}
 
                 {error && <p className="form-error">{error}</p>}
 
                 <button type="submit" className="shop-primary-button" style={{ marginTop: 18 }} disabled={busy}>
-                  {busy ? 'Saving…' : 'Continue to shipping'} <IconChevronRight size={16} />
+                  {busy ? t('Saving…') : t('Continue to shipping')} <IconChevronRight size={16} />
                 </button>
               </form>
             ) : (
@@ -420,11 +421,11 @@ export default function CheckoutPage() {
             <section className="checkout-panel">
               <div className="checkout-panel-head">
                 <h2>
-                  <span className="checkout-number">2</span> Shipping method
+                  <span className="checkout-number">2</span> {t('Shipping method')}
                 </h2>
                 {step > 2 && (
                   <button type="button" className="shop-link" onClick={() => setStep(2)}>
-                    Edit
+                    {t('Edit')}
                   </button>
                 )}
               </div>
@@ -432,7 +433,7 @@ export default function CheckoutPage() {
               {step === 2 ? (
                 <div>
                   {shippingMethods.length === 0 ? (
-                    <p className="shop-muted">No shipping methods are available for this address.</p>
+                    <p className="shop-muted">{t('No shipping methods are available for this address.')}</p>
                   ) : (
                     <div className="choice-list">
                       {shippingMethods.map((method) => (
@@ -451,19 +452,19 @@ export default function CheckoutPage() {
                             <strong>{method.method_title}</strong>
                             <span>{method.method_description}</span>
                           </span>
-                          <span className="choice-price">{Number(method.price) === 0 ? 'Free' : `€${Number(method.price).toFixed(2)}`}</span>
+                          <span className="choice-price">{Number(method.price) === 0 ? t('Free') : `€${Number(method.price).toFixed(2)}`}</span>
                         </label>
                       ))}
                     </div>
                   )}
                   {error && <p className="form-error">{error}</p>}
                   <button type="button" className="shop-primary-button" style={{ marginTop: 18 }} onClick={saveShipping} disabled={busy || !shippingMethods.length}>
-                    {busy ? 'Saving…' : 'Continue to payment'} <IconChevronRight size={16} />
+                    {busy ? t('Saving…') : t('Continue to payment')} <IconChevronRight size={16} />
                   </button>
                 </div>
               ) : (
                 <p className="shop-muted" style={{ fontSize: 14 }}>
-                  {shippingMethods.find((method) => method.method === shippingMethod)?.method_title ?? 'Selected shipping method'}
+                  {shippingMethods.find((method) => method.method === shippingMethod)?.method_title ?? t('Selected shipping method')}
                 </p>
               )}
             </section>
@@ -473,7 +474,7 @@ export default function CheckoutPage() {
             <section className="checkout-panel">
               <div className="checkout-panel-head">
                 <h2>
-                  <span className="checkout-number">3</span> Payment method
+                  <span className="checkout-number">3</span> {t('Payment method')}
                 </h2>
               </div>
 
@@ -501,19 +502,19 @@ export default function CheckoutPage() {
               {error && <p className="form-error">{error}</p>}
 
               <button type="button" className="shop-primary-button" style={{ marginTop: 18, width: '100%' }} onClick={placeOrder} disabled={busy}>
-                {busy ? 'Placing order…' : `Place order · ${formattedMoney(cart.formatted_grand_total, cart.grand_total)}`} <IconLock size={15} />
+                {busy ? t('Placing order…') : t('Place order · {total}', { total: formattedMoney(cart.formatted_grand_total, cart.grand_total) })} <IconLock size={15} />
               </button>
               <p className="shop-muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 10 }}>
-                By placing the order you agree to our terms and conditions.
+                {t('By placing the order you agree to our terms and conditions.')}
               </p>
             </section>
           )}
         </div>
 
         <aside className="cart-summary checkout-summary">
-          <h2 className="cart-summary-title">Your order</h2>
+          <h2 className="cart-summary-title">{t('Your order')}</h2>
           <p className="shop-muted" style={{ fontSize: 12, marginTop: -8 }}>
-            {totalItems} {totalItems === 1 ? 'item' : 'items'} in cart
+            {t(totalItems === 1 ? '{count} item in cart' : '{count} items in cart', { count: totalItems })}
           </p>
 
           <div className="checkout-items">
@@ -535,34 +536,34 @@ export default function CheckoutPage() {
           </div>
 
           <div className="cart-summary-row" style={{ marginTop: 8 }}>
-            <span>Subtotal</span>
+            <span>{t('Subtotal')}</span>
             <span>{formattedMoney(cart.formatted_sub_total, cart.sub_total)}</span>
           </div>
           {Number((cart as any).discount_amount ?? 0) > 0 && (
             <div className="cart-summary-row" style={{ color: '#047857' }}>
-              <span>Discount</span>
+              <span>{t('Discount')}</span>
               <span>−{formattedMoney(cart.formatted_discount_amount, (cart as any).discount_amount)}</span>
             </div>
           )}
           <div className="cart-summary-row">
-            <span>Shipping</span>
+            <span>{t('Shipping')}</span>
             <span>{formattedMoney(cart.formatted_shipping_amount, cart.shipping_amount)}</span>
           </div>
           <div className="cart-summary-row">
-            <span>Tax</span>
+            <span>{t('Tax')}</span>
             <span>{formattedMoney((cart as any).formatted_tax_total ?? (cart as any).formatted_tax_amount, (cart as any).tax_total)}</span>
           </div>
           <div className="cart-summary-row total">
-            <span>Grand total</span>
+            <span>{t('Grand total')}</span>
             <span>{formattedMoney(cart.formatted_grand_total, cart.grand_total)}</span>
           </div>
 
           {!cart.coupon_code && (
             <form onSubmit={applyCoupon} style={{ marginTop: 8 }}>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input className="form-input" value={coupon} onChange={(event) => setCoupon(event.target.value)} placeholder="Coupon code" />
+                <input className="form-input" value={coupon} onChange={(event) => setCoupon(event.target.value)} placeholder={t('Coupon code')} />
                 <button type="submit" className="shop-secondary-button shop-button-sm">
-                  Apply
+                  {t('Apply')}
                 </button>
               </div>
               {couponMessage && <p className="shop-muted" style={{ fontSize: 12, marginTop: 6 }}>{couponMessage}</p>}

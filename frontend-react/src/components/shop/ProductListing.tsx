@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { shopQuery } from '../../store';
 import { useShopReload } from '../../lib/hooks';
 import ProductCard from './ProductCard';
+import { t } from '../../i18n';
 import type { ProductCard as ProductCardModel } from '../../types';
 
 interface AttributeOption {
@@ -169,23 +170,23 @@ export default function ProductListing({ title, description, categoryId, search,
     <aside className={`shop-filters ${filterOpen ? 'is-open' : ''}`}>
       <div className="shop-filter-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p className="shop-filter-title" style={{ margin: 0 }}>
-          Filters
+          {t('Filters')}
         </p>
         {activeFilters > 0 && (
           <button type="button" className="shop-link" style={{ fontSize: 12, background: 'none', border: 0, cursor: 'pointer' }} onClick={clearFilters}>
-            Clear all
+            {t('Clear all')}
           </button>
         )}
       </div>
 
       <div className="shop-filter-group">
-        <p className="shop-filter-title">Price</p>
+        <p className="shop-filter-title">{t('Price')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input
             className="filter-input"
             value={priceMin}
             onChange={(event) => setPriceMin(event.target.value)}
-            placeholder="Min"
+            placeholder={t('Min')}
             inputMode="decimal"
           />
           <span className="shop-muted">—</span>
@@ -193,7 +194,7 @@ export default function ProductListing({ title, description, categoryId, search,
             className="filter-input"
             value={priceMax}
             onChange={(event) => setPriceMax(event.target.value)}
-            placeholder="Max"
+            placeholder={t('Max')}
             inputMode="decimal"
           />
         </div>
@@ -206,7 +207,7 @@ export default function ProductListing({ title, description, categoryId, search,
             setPage(1);
           }}
         >
-          Apply
+          {t('Apply')}
         </button>
       </div>
 
@@ -222,7 +223,7 @@ export default function ProductListing({ title, description, categoryId, search,
               onClick={() => setExpanded((current) => ({ ...current, [attribute.code]: !current[attribute.code] }))}
             >
               <span className="shop-filter-title" style={{ margin: 0 }}>
-                {attribute.admin_name}
+                {t(attribute.admin_name)}
               </span>
               <IconChevronDown
                 size={16}
@@ -244,7 +245,7 @@ export default function ProductListing({ title, description, categoryId, search,
                         }))
                       }
                     />
-                    <span>{attribute.admin_name}</span>
+                    <span>{t(attribute.admin_name)}</span>
                   </label>
                 )}
 
@@ -269,7 +270,7 @@ export default function ProductListing({ title, description, categoryId, search,
                             }}
                           />
                         )}
-                        <span>{option.admin_name}</span>
+                        <span>{t(option.admin_name)}</span>
                       </label>
                     ))}
                     {!attribute.options && (
@@ -279,7 +280,7 @@ export default function ProductListing({ title, description, categoryId, search,
                         style={{ fontSize: 12, background: 'none', border: 0, textAlign: 'left', cursor: 'pointer', padding: 0 }}
                         onClick={() => loadOptions(attribute)}
                       >
-                        Load options
+                        {t('Load options')}
                       </button>
                     )}
                   </div>
@@ -287,7 +288,7 @@ export default function ProductListing({ title, description, categoryId, search,
 
                 {!isBoolean && !isSelect && !attribute.options && (
                   <span className="shop-muted" style={{ fontSize: 12 }}>
-                    No available options
+                    {t('No available options')}
                   </span>
                 )}
               </div>
@@ -302,18 +303,18 @@ export default function ProductListing({ title, description, categoryId, search,
     <div className="shop-container" style={{ paddingTop: 34 }}>
       <div className="listing-head">
         <div>
-          {eyebrow && <span className="listing-eyebrow">{eyebrow}</span>}
+          {eyebrow && <span className="listing-eyebrow">{t(eyebrow)}</span>}
           <h1 className="shop-heading" style={{ fontSize: 38 }}>
-            {title}
+            {t(title)}
           </h1>
           {description && (
             <p className="shop-muted" style={{ maxWidth: 680, marginTop: 10, lineHeight: 1.65 }}>
-              {description}
+              {t(description)}
             </p>
           )}
         </div>
         <span className="listing-count">
-          {meta.total} {meta.total === 1 ? 'product' : 'products'}
+          {t(meta.total === 1 ? '{count} product' : '{count} products', { count: meta.total })}
         </span>
       </div>
 
@@ -324,26 +325,26 @@ export default function ProductListing({ title, description, categoryId, search,
           <div className="shop-toolbar">
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" className="toolbar-pill filter-toggle" onClick={() => setFilterOpen((open) => !open)}>
-                <IconFilter size={16} /> Filters {activeFilters > 0 ? `(${activeFilters})` : ''}
+                <IconFilter size={16} /> {t('Filters')} {activeFilters > 0 ? `(${activeFilters})` : ''}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div className="view-toggle">
-                <button type="button" data-active={view === 'grid'} onClick={() => setView('grid')} aria-label="Grid view">
+                <button type="button" data-active={view === 'grid'} onClick={() => setView('grid')} aria-label={t('Grid view')}>
                   <IconGridDots size={17} />
                 </button>
-                <button type="button" data-active={view === 'list'} onClick={() => setView('list')} aria-label="List view">
+                <button type="button" data-active={view === 'list'} onClick={() => setView('list')} aria-label={t('List view')}>
                   <IconList size={17} />
                 </button>
               </div>
 
               <label className="toolbar-pill" style={{ gap: 8 }}>
-                <span className="shop-muted">Sort by</span>
+                <span className="shop-muted">{t('Sort by')}</span>
                 <select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} className="toolbar-select">
                   {SORTS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {t(option.label)}
                     </option>
                   ))}
                 </select>
@@ -362,11 +363,11 @@ export default function ProductListing({ title, description, categoryId, search,
           ) : products.length === 0 ? (
             <div className="listing-empty">
               <IconSearch size={38} />
-              <h3>No products found</h3>
-              <p>Try adjusting your filters or search for something else.</p>
+              <h3>{t('No products found')}</h3>
+              <p>{t('Try adjusting your filters or search for something else.')}</p>
               {activeFilters > 0 && (
                 <button type="button" className="shop-secondary-button shop-button-sm" onClick={clearFilters}>
-                  Clear filters
+                  {t('Clear filters')}
                 </button>
               )}
             </div>
@@ -385,9 +386,9 @@ export default function ProductListing({ title, description, categoryId, search,
           )}
 
           {meta.last_page > 1 && (
-            <nav className="shop-pagination" aria-label="Pagination">
+            <nav className="shop-pagination" aria-label={t('Pagination')}>
               <button type="button" disabled={meta.current_page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-                Previous
+                {t('Previous')}
               </button>
               {pages.map((value, index) => {
                 const previous = pages[index - 1];
@@ -405,7 +406,7 @@ export default function ProductListing({ title, description, categoryId, search,
                 disabled={meta.current_page >= meta.last_page}
                 onClick={() => setPage((current) => Math.min(meta.last_page, current + 1))}
               >
-                Next
+                {t('Next')}
               </button>
             </nav>
           )}

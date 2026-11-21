@@ -219,6 +219,26 @@ pub async fn context_payload(
         .flatten()
         .unwrap_or(Value::Null);
 
+    // Idioma de la interfaz (tienda + panel). Se configura en
+    // `general.general.locale_options.ui_locale`; si no hay valor se usa el
+    // locale por defecto del canal.
+    let default_locale_code = default_locale(&channel)
+        .await
+        .map(|l| l["code"].clone())
+        .unwrap_or(Value::Null);
+    let ui_locale = get_config_data(
+        "general.general.locale_options.ui_locale",
+        channel["code"].as_str(),
+        locale["code"].as_str(),
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|value| value.as_str().map(|code| code.trim().to_string()))
+    .filter(|code| !code.is_empty())
+    .map(Value::String)
+    .unwrap_or_else(|| default_locale_code.clone());
+
     Ok(json!({
         "channel": {
             "id": channel["id"],
@@ -228,9 +248,10 @@ pub async fn context_payload(
             "logo": channel["logo"],
             "favicon": channel["favicon"],
             "base_currency_code": base_code,
-            "default_locale_code": default_locale(&channel).await.map(|l| l["code"].clone()).unwrap_or(Value::Null),
+            "default_locale_code": default_locale_code,
         },
         "header_offer": header_offer,
+        "ui_locale": ui_locale,
         "locale": locale["code"].clone(),
         "currency": currency["code"].clone(),
         "exchange_rate": exchange_rate,

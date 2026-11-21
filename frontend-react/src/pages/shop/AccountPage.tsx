@@ -18,6 +18,7 @@ import { useAuth, shopQuery } from '../../store';
 import { formatDate, initials, mediaUrl, statusColor } from '../../lib/format';
 import { addToCart } from '../../lib/cart';
 import Stars from '../../components/shop/Stars';
+import { t } from '../../i18n';
 
 const NAV = [
   { path: '/account', label: 'My profile', icon: <IconUser size={16} /> },
@@ -50,16 +51,16 @@ export default function AccountPage() {
   return (
     <div className="shop-container" style={{ paddingTop: 32 }}>
       <div className="shop-breadcrumbs">
-        <Link to="/">Home</Link>
+        <Link to="/">{t('Home')}</Link>
         <span>/</span>
-        <span>My account</span>
+        <span>{t('My account')}</span>
       </div>
 
       <div className="listing-head" style={{ marginBottom: 24 }}>
         <div>
-          <span className="listing-eyebrow">My account</span>
+          <span className="listing-eyebrow">{t('My account')}</span>
           <h1 className="shop-heading" style={{ fontSize: 36 }}>
-            Hello, {customer?.first_name ?? 'there'}
+            {t('Hello, {name}', { name: customer?.first_name ?? t('there') })}
           </h1>
         </div>
       </div>
@@ -79,7 +80,7 @@ export default function AccountPage() {
             {NAV.map((item) => (
               <Link key={item.path} to={item.path} data-active={active === item.path}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  {item.icon} {item.label}
+                  {item.icon} {t(item.label)}
                 </span>
                 <IconChevronRight size={14} />
               </Link>
@@ -92,7 +93,7 @@ export default function AccountPage() {
               }}
             >
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <IconLogout size={16} /> Sign out
+                <IconLogout size={16} /> {t('Sign out')}
               </span>
             </button>
           </nav>
@@ -156,9 +157,9 @@ function ProfilePanel({ onSaved }: { onSaved: (message: string) => void }) {
         new_password: form.new_password,
       });
       await restore();
-      onSaved('Your profile has been updated.');
+      onSaved(t('Your profile has been updated.'));
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update your profile.');
+      setError(requestError?.message ?? t('Unable to update your profile.'));
     } finally {
       setBusy(false);
     }
@@ -166,52 +167,52 @@ function ProfilePanel({ onSaved }: { onSaved: (message: string) => void }) {
 
   return (
     <div className="account-card">
-      <h2 className="account-card-title">Profile information</h2>
+      <h2 className="account-card-title">{t('Profile information')}</h2>
       <form onSubmit={submit}>
         <div className="checkout-form-grid">
           <div>
-            <label className="field-label">First name</label>
+            <label className="field-label">{t('First name')}</label>
             <input className="form-input" value={form.first_name} onChange={(event) => set('first_name', event.target.value)} required />
           </div>
           <div>
-            <label className="field-label">Last name</label>
+            <label className="field-label">{t('Last name')}</label>
             <input className="form-input" value={form.last_name} onChange={(event) => set('last_name', event.target.value)} required />
           </div>
           <div>
-            <label className="field-label">Email</label>
+            <label className="field-label">{t('Email')}</label>
             <input className="form-input" value={customer?.email ?? ''} readOnly />
           </div>
           <div>
-            <label className="field-label">Phone</label>
+            <label className="field-label">{t('Phone')}</label>
             <input className="form-input" value={form.phone} onChange={(event) => set('phone', event.target.value)} />
           </div>
           <div>
-            <label className="field-label">Gender</label>
+            <label className="field-label">{t('Gender')}</label>
             <select className="form-input" value={form.gender} onChange={(event) => set('gender', event.target.value)}>
-              <option value="">Select</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
+              <option value="">{t('Select')}</option>
+              <option value="Male">{t('Male')}</option>
+              <option value="Female">{t('Female')}</option>
+              <option value="Other">{t('Other')}</option>
             </select>
           </div>
           <div>
-            <label className="field-label">Date of birth</label>
+            <label className="field-label">{t('Date of birth')}</label>
             <input type="date" className="form-input" value={form.date_of_birth ?? ''} onChange={(event) => set('date_of_birth', event.target.value)} />
           </div>
         </div>
 
-        <h3 className="account-subtitle">Change password</h3>
+        <h3 className="account-subtitle">{t('Change password')}</h3>
         <div className="checkout-form-grid">
           <div className="span-2">
-            <label className="field-label">Current password</label>
+            <label className="field-label">{t('Current password')}</label>
             <input type="password" className="form-input" value={form.current_password} onChange={(event) => set('current_password', event.target.value)} />
           </div>
           <div>
-            <label className="field-label">New password</label>
+            <label className="field-label">{t('New password')}</label>
             <input type="password" className="form-input" value={form.new_password} onChange={(event) => set('new_password', event.target.value)} />
           </div>
           <div>
-            <label className="field-label">Confirm new password</label>
+            <label className="field-label">{t('Confirm new password')}</label>
             <input type="password" className="form-input" value={form.confirm_password} onChange={(event) => set('confirm_password', event.target.value)} />
           </div>
         </div>
@@ -219,7 +220,7 @@ function ProfilePanel({ onSaved }: { onSaved: (message: string) => void }) {
         {error && <p className="form-error">{error}</p>}
 
         <button type="submit" className="shop-primary-button" style={{ marginTop: 18 }} disabled={busy}>
-          {busy ? 'Saving…' : 'Save changes'}
+          {busy ? t('Saving…') : t('Save changes')}
         </button>
       </form>
     </div>
@@ -267,17 +268,17 @@ function OrdersPanel() {
 
   return (
     <div className="account-card">
-      <h2 className="account-card-title">My orders</h2>
+      <h2 className="account-card-title">{t('My orders')}</h2>
 
       {loading ? (
         <div className="shimmer-line" style={{ height: 80 }} />
       ) : orders.length === 0 ? (
         <div className="account-empty">
           <IconPackage size={34} />
-          <h3>No orders yet</h3>
-          <p>When you place an order it will appear here.</p>
+          <h3>{t('No orders yet')}</h3>
+          <p>{t('When you place an order it will appear here.')}</p>
           <Link to="/search" className="shop-primary-button shop-button-sm">
-            Start shopping
+            {t('Start shopping')}
           </Link>
         </div>
       ) : (
@@ -289,17 +290,17 @@ function OrdersPanel() {
                 <span className="shop-muted">{formatDate(order.created_at)}</span>
               </div>
               <div>
-                <span className="shop-muted">Total</span>
+                <span className="shop-muted">{t('Total')}</span>
                 <strong>{order.formatted_grand_total ?? `€${Number(order.grand_total ?? 0).toFixed(2)}`}</strong>
               </div>
               <div>
-                <span className="shop-muted">Status</span>
+                <span className="shop-muted">{t('Status')}</span>
                 <span className={`status-badge ${statusColor(order.status)}`} style={{ textTransform: 'capitalize' }}>
                   {order.status}
                 </span>
               </div>
               <button type="button" className="shop-secondary-button shop-button-sm" onClick={() => openDetail(order.id)}>
-                View order
+                {t('View order')}
               </button>
             </div>
           ))}
@@ -308,24 +309,24 @@ function OrdersPanel() {
 
       {meta && meta.last_page > 1 && (
         <p className="shop-muted" style={{ fontSize: 12 }}>
-          Page {meta.current_page} of {meta.last_page} · {meta.total} orders
+          {t('Page {page} of {last} · {total} orders', { page: meta.current_page, last: meta.last_page, total: meta.total })}
         </p>
       )}
 
-      <Modal opened={!!detail} onClose={() => setDetail(null)} size="lg" title={`Order #${detail?.increment_id ?? ''}`} centered>
+      <Modal opened={!!detail} onClose={() => setDetail(null)} size="lg" title={t('Order #{id}', { id: detail?.increment_id ?? '' })} centered>
         {detail && (
           <div>
             <div className="order-detail-meta">
               <div>
-                <span>Placed on</span>
+                <span>{t('Placed on')}</span>
                 <strong>{formatDate(detail.created_at, true)}</strong>
               </div>
               <div>
-                <span>Status</span>
+                <span>{t('Status')}</span>
                 <span className={`status-badge ${statusColor(detail.status)}`}>{detail.status}</span>
               </div>
               <div>
-                <span>Total</span>
+                <span>{t('Total')}</span>
                 <strong>€{Number(detail.grand_total ?? 0).toFixed(2)}</strong>
               </div>
             </div>
@@ -333,9 +334,9 @@ function OrdersPanel() {
             <table className="cart-table" style={{ marginTop: 16 }}>
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th>{t('Product')}</th>
+                  <th>{t('Qty')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Total')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +358,7 @@ function OrdersPanel() {
 
             {detail.billing_address && (
               <div style={{ marginTop: 16 }}>
-                <h3 className="account-subtitle">Shipping address</h3>
+                <h3 className="account-subtitle">{t('Shipping address')}</h3>
                 <p className="shop-muted" style={{ fontSize: 13, lineHeight: 1.7 }}>
                   {detail.billing_address.first_name} {detail.billing_address.last_name}
                   <br />
@@ -372,7 +373,7 @@ function OrdersPanel() {
 
             {detail.can_cancel && (
               <button type="button" className="shop-secondary-button" style={{ marginTop: 16 }} onClick={() => cancel(detail.id)}>
-                Cancel order
+                {t('Cancel order')}
               </button>
             )}
           </div>
@@ -494,18 +495,18 @@ function AddressesPanel() {
     <div className="account-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 className="account-card-title" style={{ margin: 0 }}>
-          Address book
+          {t('Address book')}
         </h2>
         <button type="button" className="shop-primary-button shop-button-sm" onClick={startCreate}>
-          <IconPlus size={14} /> Add address
+          <IconPlus size={14} /> {t('Add address')}
         </button>
       </div>
 
       {addresses.length === 0 ? (
         <div className="account-empty">
           <IconMapPin size={34} />
-          <h3>No saved addresses</h3>
-          <p>Save an address to make future checkouts faster.</p>
+          <h3>{t('No saved addresses')}</h3>
+          <p>{t('Save an address to make future checkouts faster.')}</p>
         </div>
       ) : (
         <div className="address-grid">
@@ -515,7 +516,7 @@ function AddressesPanel() {
                 <strong>
                   {address.first_name} {address.last_name}
                 </strong>
-                {address.default_address ? <span className="status-badge green">Default</span> : null}
+                {address.default_address ? <span className="status-badge green">{t('Default')}</span> : null}
               </div>
               <p className="shop-muted">
                 {address.company_name && (
@@ -534,15 +535,15 @@ function AddressesPanel() {
               </p>
               <div className="address-actions">
                 <button type="button" onClick={() => startEdit(address)}>
-                  Edit
+                  {t('Edit')}
                 </button>
                 {!address.default_address && (
                   <button type="button" onClick={() => makeDefault(address.id)}>
-                    Set default
+                    {t('Set default')}
                   </button>
                 )}
                 <button type="button" className="danger" onClick={() => remove(address.id)}>
-                  Delete
+                  {t('Delete')}
                 </button>
               </div>
             </div>
@@ -550,35 +551,35 @@ function AddressesPanel() {
         </div>
       )}
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? 'Edit address' : 'New address'} centered size="lg">
+      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit address') : t('New address')} centered size="lg">
         <form onSubmit={submit}>
           <div className="checkout-form-grid">
             <div>
-              <label className="field-label">First name</label>
+              <label className="field-label">{t('First name')}</label>
               <input className="form-input" value={form.first_name} onChange={(event) => setForm({ ...form, first_name: event.target.value })} required />
             </div>
             <div>
-              <label className="field-label">Last name</label>
+              <label className="field-label">{t('Last name')}</label>
               <input className="form-input" value={form.last_name} onChange={(event) => setForm({ ...form, last_name: event.target.value })} required />
             </div>
             <div className="span-2">
-              <label className="field-label">Street address</label>
+              <label className="field-label">{t('Street address')}</label>
               <input className="form-input" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} required />
             </div>
             <div>
-              <label className="field-label">City</label>
+              <label className="field-label">{t('City')}</label>
               <input className="form-input" value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} required />
             </div>
             <div>
-              <label className="field-label">Postcode</label>
+              <label className="field-label">{t('Postcode')}</label>
               <input className="form-input" value={form.postcode} onChange={(event) => setForm({ ...form, postcode: event.target.value })} required />
             </div>
             <div>
-              <label className="field-label">State</label>
+              <label className="field-label">{t('State')}</label>
               <input className="form-input" value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} />
             </div>
             <div>
-              <label className="field-label">Country</label>
+              <label className="field-label">{t('Country')}</label>
               <select className="form-input" value={form.country} onChange={(event) => setForm({ ...form, country: event.target.value })}>
                 {countries.map((country) => (
                   <option key={country.code} value={country.code}>
@@ -588,17 +589,17 @@ function AddressesPanel() {
               </select>
             </div>
             <div>
-              <label className="field-label">Phone</label>
+              <label className="field-label">{t('Phone')}</label>
               <input className="form-input" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
             </div>
             <div>
-              <label className="field-label">Email</label>
+              <label className="field-label">{t('Email')}</label>
               <input className="form-input" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
             </div>
           </div>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="shop-primary-button" style={{ marginTop: 16 }}>
-            Save address
+            {t('Save address')}
           </button>
         </form>
       </Modal>
@@ -637,14 +638,14 @@ function WishlistPanel() {
 
   return (
     <div className="account-card">
-      <h2 className="account-card-title">My wishlist</h2>
+      <h2 className="account-card-title">{t('My wishlist')}</h2>
       {items.length === 0 ? (
         <div className="account-empty">
           <IconHeart size={34} />
-          <h3>Your wishlist is empty</h3>
-          <p>Save products you love and come back to them later.</p>
+          <h3>{t('Your wishlist is empty')}</h3>
+          <p>{t('Save products you love and come back to them later.')}</p>
           <Link to="/search" className="shop-primary-button shop-button-sm">
-            Discover products
+            {t('Discover products')}
           </Link>
         </div>
       ) : (
@@ -671,9 +672,9 @@ function WishlistPanel() {
                     disabled={busy === item.wishlist_id}
                     onClick={() => moveToCart(item.wishlist_id)}
                   >
-                    <IconShoppingBag size={14} /> Add to cart
+                    <IconShoppingBag size={14} /> {t('Add to cart')}
                   </button>
-                  <button type="button" className="cart-remove" onClick={() => remove(item.wishlist_id)} aria-label="Remove">
+                  <button type="button" className="cart-remove" onClick={() => remove(item.wishlist_id)} aria-label={t('Remove')}>
                     <IconTrash size={16} />
                   </button>
                 </div>

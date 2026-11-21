@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { shopQuery } from '../../store';
 import { useShopReload } from '../../lib/hooks';
+import { t } from '../../i18n';
 import {
   CategoryCarousel,
   HeroCarousel,
@@ -64,38 +65,39 @@ export default function HomePage() {
         <PromoBanner key={section.id} options={section.options} />
       ))}
 
-      <ProductCarousel title="Best Sellers" params={{ sort: 'price_asc' }} href="/search?sort=price_asc" />
+      <ProductCarousel title={t('Best Sellers')} params={{ sort: 'price_asc' }} href="/search?sort=price_asc" />
 
       <section className="shop-section">
         <div className="shop-container">
           <div className="home-editorial">
             <div className="home-editorial-copy">
               <span className="shop-hero-eyebrow" style={{ color: '#c2a26b' }}>
-                The EzCommerce journal
+                {t('The EzCommerce journal')}
               </span>
               <h2 className="shop-heading" style={{ fontSize: 38 }}>
-                Considered design, made to last.
+                {t('Considered design, made to last.')}
               </h2>
               <p className="shop-muted" style={{ lineHeight: 1.7, margin: '16px 0 24px' }}>
-                Every piece in our collection is chosen for its craftsmanship, its materials and the way it fits into
-                everyday life. Discover the stories behind the products and the people who make them.
+                {t(
+                  'Every piece in our collection is chosen for its craftsmanship, its materials and the way it fits into everyday life. Discover the stories behind the products and the people who make them.',
+                )}
               </p>
               <a href="#top" className="shop-secondary-button">
-                Read the journal
+                {t('Read the journal')}
               </a>
             </div>
             <div className="home-editorial-stats">
               <div>
                 <strong>12k+</strong>
-                <span>Happy customers</span>
+                <span>{t('Happy customers')}</span>
               </div>
               <div>
                 <strong>4.8/5</strong>
-                <span>Average rating</span>
+                <span>{t('Average rating')}</span>
               </div>
               <div>
-                <strong>30 days</strong>
-                <span>Free returns</span>
+                <strong>{t('30 days')}</strong>
+                <span>{t('Free returns')}</span>
               </div>
             </div>
           </div>

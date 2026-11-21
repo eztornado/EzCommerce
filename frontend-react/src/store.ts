@@ -3,12 +3,19 @@ import { api, queryString } from './api/client';
 
 export interface ShopContext {
   locale: string;
+  ui_locale?: string;
   currency: string;
   exchange_rate?: number;
   header_offer?: string | null;
   locales: { code: string; name: string; direction?: string }[];
   currencies: { code: string; name: string; symbol: string }[];
-  channel: { code: string; name: string; logo?: string | null; base_currency_code?: string };
+  channel: {
+    code: string;
+    name: string;
+    logo?: string | null;
+    base_currency_code?: string;
+    default_locale_code?: string | null;
+  };
 }
 
 interface ShopState {

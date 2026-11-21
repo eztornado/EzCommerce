@@ -16,6 +16,7 @@ import {
 import { api } from '../../api/client';
 import { formatDate, formatLabel, money, mediaUrl, statusColor } from '../../lib/format';
 import { AdminPageHeader, AdminTabs } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 const TABS = [
   { key: 'items', label: 'Order items' },
@@ -27,7 +28,7 @@ const TABS = [
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="order-field">
-      <span className="order-field-label">{label}</span>
+      <span className="order-field-label">{t(label)}</span>
       <span className="order-field-value">{value || '—'}</span>
     </div>
   );
@@ -37,14 +38,14 @@ function AddressCard({ title, address, email }: { title: string; address: any; e
   if (!address) {
     return (
       <div className="order-card">
-        <h3 className="order-card-title">{title}</h3>
-        <p className="admin-muted">No address on file.</p>
+        <h3 className="order-card-title">{t(title)}</h3>
+        <p className="admin-muted">{t('No address on file.')}</p>
       </div>
     );
   }
   return (
     <div className="order-card">
-      <h3 className="order-card-title">{title}</h3>
+      <h3 className="order-card-title">{t(title)}</h3>
       <p className="order-address-name">
         {address.first_name} {address.last_name}
       </p>
@@ -90,7 +91,7 @@ export default function OrderViewPage() {
     try {
       setOrder(await api.adminGet(`admin/sales/orders/view/${id}`));
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load the order.');
+      setError(requestError?.message ?? t('Unable to load the order.'));
     } finally {
       setLoading(false);
     }
@@ -113,15 +114,15 @@ export default function OrderViewPage() {
       setMessage(success);
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to complete the action.');
+      setError(requestError?.message ?? t('Unable to complete the action.'));
     } finally {
       setBusy('');
     }
   };
 
   const createInvoice = () => {
-    if (!window.confirm('Create an invoice for all invoiceable items?')) return;
-    run('invoice', () => api.adminPost(`admin/sales/invoices/create/${order.id}`, {}), 'The invoice has been created successfully.');
+    if (!window.confirm(t('Create an invoice for all invoiceable items?'))) return;
+    run('invoice', () => api.adminPost(`admin/sales/invoices/create/${order.id}`, {}), t('The invoice has been created successfully.'));
   };
 
   const openShipment = () => {
@@ -144,7 +145,7 @@ export default function OrderViewPage() {
     run(
       'shipment',
       () => api.adminPost(`admin/sales/shipments/create/${order.id}`, { source_id: Number(shipSource), items }),
-      'The shipment has been created successfully.',
+      t('The shipment has been created successfully.'),
     );
   };
 
@@ -174,13 +175,13 @@ export default function OrderViewPage() {
           adjustment_refund: Number(adjustmentRefund || 0),
           adjustment_fee: Number(adjustmentFee || 0),
         }),
-      'The refund has been created successfully.',
+      t('The refund has been created successfully.'),
     );
   };
 
   const cancelOrder = () => {
-    if (!window.confirm('Cancel this order? This action cannot be undone.')) return;
-    run('cancel', () => api.adminPost(`admin/sales/orders/${order.id}/cancel`, {}), 'The order has been canceled.');
+    if (!window.confirm(t('Cancel this order? This action cannot be undone.'))) return;
+    run('cancel', () => api.adminPost(`admin/sales/orders/${order.id}/cancel`, {}), t('The order has been canceled.'));
   };
 
   const addComment = () => {
@@ -195,7 +196,7 @@ export default function OrderViewPage() {
         setComment('');
         setNotify(false);
       },
-      'The comment has been added.',
+      t('The comment has been added.'),
     );
   };
 
@@ -211,7 +212,7 @@ export default function OrderViewPage() {
   if (loading) {
     return (
       <div>
-        <AdminPageHeader title="Loading order…" backTo="/admin/sales/orders" />
+        <AdminPageHeader title={t('Loading order…')} backTo="/admin/sales/orders" />
         <div className="admin-card admin-card-pad">
           {Array.from({ length: 6 }).map((_, index) => (
             <div className="admin-skeleton-row" key={index} />
@@ -224,9 +225,9 @@ export default function OrderViewPage() {
   if (!order) {
     return (
       <div>
-        <AdminPageHeader title="Order" backTo="/admin/sales/orders" />
+        <AdminPageHeader title={t('Order')} backTo="/admin/sales/orders" />
         <div className="admin-card admin-card-pad">
-          <div className="admin-alert danger">{error || 'Order not found.'}</div>
+          <div className="admin-alert danger">{error || t('Order not found.')}</div>
         </div>
       </div>
     );
@@ -241,27 +242,27 @@ export default function OrderViewPage() {
       <AdminPageHeader
         title={`Order #${order.increment_id}`}
         backTo="/admin/sales/orders"
-        subtitle={`Placed ${formatDate(order.created_at, true)} · ${order.customer_email}`}
+        subtitle={`${t('Placed')} ${formatDate(order.created_at, true)} · ${order.customer_email}`}
         actions={
           <div className="order-actions">
             {order.can_invoice && (
               <button type="button" className="admin-button" onClick={createInvoice} disabled={!!busy}>
-                <IconFileInvoice size={15} /> {busy === 'invoice' ? 'Invoicing…' : 'Invoice'}
+                <IconFileInvoice size={15} /> {busy === 'invoice' ? t('Invoicing…') : t('Invoice')}
               </button>
             )}
             {order.can_ship && (
               <button type="button" className="admin-button" onClick={openShipment} disabled={!!busy}>
-                <IconTruckDelivery size={15} /> Ship
+                <IconTruckDelivery size={15} /> {t('Ship')}
               </button>
             )}
             {order.can_refund && (
               <button type="button" className="admin-button" onClick={openRefund} disabled={!!busy}>
-                <IconReceiptRefund size={15} /> Refund
+                <IconReceiptRefund size={15} /> {t('Refund')}
               </button>
             )}
             {order.can_cancel && (
               <button type="button" className="admin-button danger" onClick={cancelOrder} disabled={!!busy}>
-                <IconX size={15} /> {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                <IconX size={15} /> {busy === 'cancel' ? t('Cancelling…') : t('Cancel')}
               </button>
             )}
           </div>
@@ -272,7 +273,7 @@ export default function OrderViewPage() {
       {error && <div className="admin-alert danger">{error}</div>}
 
       <div className="order-meta">
-        <span className={`status-badge ${statusColor(order.status)}`}>{order.status}</span>
+        <span className={`status-badge ${statusColor(order.status)}`}>{t(formatLabel(order.status))}</span>
         <span className="order-meta-item">
           <IconCalendar size={14} /> {formatDate(order.created_at, true)}
         </span>
@@ -280,9 +281,9 @@ export default function OrderViewPage() {
           <IconMail size={14} /> {order.customer_email}
         </span>
         <span className="order-meta-item">
-          <IconPackage size={14} /> {totalRemaining} item(s) to fulfil
+          <IconPackage size={14} /> {t('{count} item(s) to fulfil', { count: totalRemaining })}
         </span>
-        <span className="order-meta-item">{order.is_guest ? 'Guest checkout' : 'Registered customer'}</span>
+        <span className="order-meta-item">{order.is_guest ? t('Guest checkout') : t('Registered customer')}</span>
       </div>
 
       <div className="order-layout">
@@ -308,14 +309,14 @@ export default function OrderViewPage() {
                       <div className="order-item-info">
                         <p className="order-item-name">{item.name}</p>
                         <p className="order-item-meta">
-                          {item.sku} · {money(item.base_price, order.base_currency_code ?? 'EUR')} per unit
+                          {item.sku} · {money(item.base_price, order.base_currency_code ?? 'EUR')} {t('per unit')}
                         </p>
                         <p className="order-item-meta">
-                          Ordered {item.qty_ordered ?? 0}
-                          {item.qty_invoiced ? ` · Invoiced ${item.qty_invoiced}` : ''}
-                          {item.qty_shipped ? ` · Shipped ${item.qty_shipped}` : ''}
-                          {item.qty_refunded ? ` · Refunded ${item.qty_refunded}` : ''}
-                          {item.qty_canceled ? ` · Canceled ${item.qty_canceled}` : ''}
+                          {t('Ordered')} {item.qty_ordered ?? 0}
+                          {item.qty_invoiced ? ` · ${t('Invoiced')} ${item.qty_invoiced}` : ''}
+                          {item.qty_shipped ? ` · ${t('Shipped')} ${item.qty_shipped}` : ''}
+                          {item.qty_refunded ? ` · ${t('Refunded')} ${item.qty_refunded}` : ''}
+                          {item.qty_canceled ? ` · ${t('Canceled')} ${item.qty_canceled}` : ''}
                         </p>
                       </div>
                       <div className="order-item-total">
@@ -328,16 +329,16 @@ export default function OrderViewPage() {
 
               {tab === 'invoices' && (
                 invoices.length === 0 ? (
-                  <div className="admin-empty">No invoices have been raised for this order.</div>
+                  <div className="admin-empty">{t('No invoices have been raised for this order.')}</div>
                 ) : (
                   <table className="admin-table order-subtable">
                     <thead>
                       <tr>
-                        <th>Invoice</th>
-                        <th>State</th>
-                        <th>Total</th>
-                        <th>Date</th>
-                        <th className="actions">Action</th>
+                        <th>{t('Invoice')}</th>
+                        <th>{t('State')}</th>
+                        <th>{t('Total')}</th>
+                        <th>{t('Date')}</th>
+                        <th className="actions">{t('Action')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -345,7 +346,7 @@ export default function OrderViewPage() {
                         <tr key={invoice.id}>
                           <td>{invoice.increment_id}</td>
                           <td>
-                            <span className={`status-badge ${statusColor(invoice.state)}`}>{invoice.state}</span>
+                            <span className={`status-badge ${statusColor(invoice.state)}`}>{t(formatLabel(invoice.state))}</span>
                           </td>
                           <td>{money(invoice.base_grand_total, invoice.base_currency_code ?? 'EUR')}</td>
                           <td>{formatDate(invoice.created_at, true)}</td>
@@ -355,7 +356,7 @@ export default function OrderViewPage() {
                               className="admin-link"
                               onClick={() => api.openAdminDocument(`admin/sales/invoices/print/${invoice.id}`)}
                             >
-                              <IconPrinter size={14} /> Print
+                              <IconPrinter size={14} /> {t('Print')}
                             </button>
                           </td>
                         </tr>
@@ -367,16 +368,16 @@ export default function OrderViewPage() {
 
               {tab === 'shipments' && (
                 shipments.length === 0 ? (
-                  <div className="admin-empty">No shipments have been created for this order.</div>
+                  <div className="admin-empty">{t('No shipments have been created for this order.')}</div>
                 ) : (
                   <table className="admin-table order-subtable">
                     <thead>
                       <tr>
-                        <th>Shipment</th>
-                        <th>Carrier</th>
-                        <th>Tracking</th>
-                        <th>Qty</th>
-                        <th>Date</th>
+                        <th>{t('Shipment')}</th>
+                        <th>{t('Carrier')}</th>
+                        <th>{t('Tracking')}</th>
+                        <th>{t('Qty')}</th>
+                        <th>{t('Date')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -400,29 +401,29 @@ export default function OrderViewPage() {
                     <textarea
                       className="admin-input"
                       rows={3}
-                      placeholder="Add an internal note or notify the customer about this order…"
+                      placeholder={t('Add an internal note or notify the customer about this order…')}
                       value={comment}
                       onChange={(event) => setComment(event.target.value)}
                     />
                     <label className="order-checkbox">
                       <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} />
-                      Notify customer by email
+                      {t('Notify customer by email')}
                     </label>
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <button type="button" className="admin-button primary" onClick={addComment} disabled={busy === 'comment' || !comment.trim()}>
-                        <IconCheck size={15} /> {busy === 'comment' ? 'Adding…' : 'Add comment'}
+                        <IconCheck size={15} /> {busy === 'comment' ? t('Adding…') : t('Add comment')}
                       </button>
                     </div>
                   </div>
                   {comments.length === 0 ? (
-                    <div className="admin-empty">No comments yet.</div>
+                    <div className="admin-empty">{t('No comments yet.')}</div>
                   ) : (
                     <div className="order-comment-list">
                       {comments.map((entry: any) => (
                         <div className="order-comment" key={entry.id}>
                           <div className="order-comment-head">
                             <span>{formatDate(entry.created_at, true)}</span>
-                            {!!entry.customer_notified && <span className="status-badge blue">Customer notified</span>}
+                            {!!entry.customer_notified && <span className="status-badge blue">{t('Customer notified')}</span>}
                           </div>
                           <p>{entry.comment}</p>
                         </div>
@@ -437,63 +438,63 @@ export default function OrderViewPage() {
 
         <aside className="order-side">
           <div className="order-card">
-            <h3 className="order-card-title">Order summary</h3>
+            <h3 className="order-card-title">{t('Order summary')}</h3>
             <div className="order-total-row">
-              <span>Subtotal</span>
+              <span>{t('Subtotal')}</span>
               <span>{money(order.base_sub_total, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row">
-              <span>Shipping</span>
+              <span>{t('Shipping')}</span>
               <span>{money(order.base_shipping_amount, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row">
-              <span>Tax</span>
+              <span>{t('Tax')}</span>
               <span>{money(order.base_tax_amount, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row">
-              <span>Discount</span>
+              <span>{t('Discount')}</span>
               <span>−{money(order.base_discount_amount, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row grand">
-              <span>Grand total</span>
+              <span>{t('Grand total')}</span>
               <span>{money(order.base_grand_total, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row">
-              <span>Total paid</span>
+              <span>{t('Total paid')}</span>
               <span>{money(order.base_grand_total_invoiced, order.base_currency_code ?? 'EUR')}</span>
             </div>
             <div className="order-total-row">
-              <span>Refunded</span>
+              <span>{t('Refunded')}</span>
               <span>{money(order.base_grand_total_refunded, order.base_currency_code ?? 'EUR')}</span>
             </div>
           </div>
 
           <div className="order-card">
-            <h3 className="order-card-title">Customer</h3>
-            <Field label="Name" value={`${order.customer_first_name ?? ''} ${order.customer_last_name ?? ''}`.trim()} />
-            <Field label="Email" value={order.customer_email} />
-            <Field label="Customer ID" value={order.customer_id ? <Link className="admin-link" to={`/admin/customers/view/${order.customer_id}`}>#{order.customer_id}</Link> : 'Guest'} />
-            <Field label="Channel" value={order.channel_name} />
+            <h3 className="order-card-title">{t('Customer')}</h3>
+            <Field label={t('Name')} value={`${order.customer_first_name ?? ''} ${order.customer_last_name ?? ''}`.trim()} />
+            <Field label={t('Email')} value={order.customer_email} />
+            <Field label={t('Customer ID')} value={order.customer_id ? <Link className="admin-link" to={`/admin/customers/view/${order.customer_id}`}>#{order.customer_id}</Link>  : t('Guest')} />
+            <Field label={t('Channel')} value={order.channel_name} />
           </div>
 
-          <AddressCard title="Shipping address" address={order.shipping_address} email={order.customer_email} />
-          <AddressCard title="Billing address" address={order.billing_address} email={order.customer_email} />
+          <AddressCard title={t('Shipping address')} address={order.shipping_address} email={order.customer_email} />
+          <AddressCard title={t('Billing address')} address={order.billing_address} email={order.customer_email} />
 
           <div className="order-card">
-            <h3 className="order-card-title">Payment &amp; shipping</h3>
-            <Field label="Payment method" value={order.payment?.method_title ?? order.payment?.method} />
-            <Field label="Shipping method" value={order.shipping_title ?? (formatLabel(order.shipping_method) || '—')} />
-            <Field label="Currency" value={order.order_currency_code ?? order.currency_code ?? 'EUR'} />
+            <h3 className="order-card-title">{t('Payment & shipping')}</h3>
+            <Field label={t('Payment method')} value={order.payment?.method_title ?? order.payment?.method} />
+            <Field label={t('Shipping method')} value={order.shipping_title ?? (formatLabel(order.shipping_method) || '—')} />
+            <Field label={t('Currency')} value={order.order_currency_code ?? order.currency_code ?? 'EUR'} />
           </div>
         </aside>
       </div>
 
-      <Modal opened={shipOpen} onClose={() => setShipOpen(false)} title={`Create shipment · Order #${order.increment_id}`} size="lg" centered>
+      <Modal opened={shipOpen} onClose={() => setShipOpen(false)} title={t('Create shipment · Order #{id}', { id: order.increment_id })} size="lg" centered>
         <div className="admin-modal-form">
           <label className="admin-field">
-            <span className="admin-field-label">Inventory source</span>
+            <span className="admin-field-label">{t('Inventory source')}</span>
             <select className="admin-input" value={shipSource} onChange={(event) => setShipSource(event.target.value)}>
-              {sources.length === 0 && <option value="1">Default</option>}
+              {sources.length === 0 && <option value="1">{t('Default')}</option>}
               {sources.map((source) => (
                 <option key={source.id} value={source.id}>
                   {source.name} ({source.code})
@@ -504,9 +505,9 @@ export default function OrderViewPage() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Ordered</th>
-                <th>Qty to ship</th>
+                <th>{t('Item')}</th>
+                <th>{t('Ordered')}</th>
+                <th>{t('Qty to ship')}</th>
               </tr>
             </thead>
             <tbody>
@@ -542,23 +543,23 @@ export default function OrderViewPage() {
           </table>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setShipOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" onClick={createShipment}>
-              Create shipment
+              {t('Create shipment')}
             </button>
           </div>
         </div>
       </Modal>
 
-      <Modal opened={refundOpen} onClose={() => setRefundOpen(false)} title={`Create refund · Order #${order.increment_id}`} size="lg" centered>
+      <Modal opened={refundOpen} onClose={() => setRefundOpen(false)} title={t('Create refund · Order #{id}', { id: order.increment_id })} size="lg" centered>
         <div className="admin-modal-form">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Invoiced</th>
-                <th>Qty to refund</th>
+                <th>{t('Item')}</th>
+                <th>{t('Invoiced')}</th>
+                <th>{t('Qty to refund')}</th>
               </tr>
             </thead>
             <tbody>
@@ -594,7 +595,7 @@ export default function OrderViewPage() {
           </table>
           <div className="admin-form-grid">
             <label className="admin-field">
-              <span className="admin-field-label">Adjustment refund</span>
+              <span className="admin-field-label">{t('Adjustment refund')}</span>
               <input
                 className="admin-input"
                 type="number"
@@ -605,7 +606,7 @@ export default function OrderViewPage() {
               />
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Adjustment fee</span>
+              <span className="admin-field-label">{t('Adjustment fee')}</span>
               <input
                 className="admin-input"
                 type="number"
@@ -618,10 +619,10 @@ export default function OrderViewPage() {
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setRefundOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" onClick={createRefund}>
-              Create refund
+              {t('Create refund')}
             </button>
           </div>
         </div>

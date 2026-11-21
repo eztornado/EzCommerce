@@ -5,6 +5,7 @@ import { IconEdit, IconMail, IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { formatDate, money, statusColor } from '../../lib/format';
 import { AdminPageHeader, Badge } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 export default function CustomerViewPage() {
   const { id } = useParams();
@@ -25,7 +26,7 @@ export default function CustomerViewPage() {
       setData(payload);
       setValues(payload.customer ?? {});
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load the customer.');
+      setError(requestError?.message ?? t('Unable to load the customer.'));
     } finally {
       setLoading(false);
     }
@@ -51,30 +52,30 @@ export default function CustomerViewPage() {
         customer_group_id: Number(values.customer_group_id || 1),
         subscribed_to_news_letter: Number(values.subscribed_to_news_letter) ? 1 : 0,
       });
-      setMessage('The customer has been updated successfully.');
+      setMessage(t('The customer has been updated successfully.'));
       setOpen(false);
       await load();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to update the customer.');
+      setError(requestError?.message ?? t('Unable to update the customer.'));
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async () => {
-    if (!window.confirm('Delete this customer account? This action cannot be undone.')) return;
+    if (!window.confirm(t('Delete this customer account? This action cannot be undone.'))) return;
     try {
       await api.adminDelete(`admin/customers/${id}`);
       navigate('/admin/customers');
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the customer.');
+      setError(requestError?.message ?? t('Unable to delete the customer.'));
     }
   };
 
   if (loading) {
     return (
       <div>
-        <AdminPageHeader title="Loading customer…" backTo="/admin/customers" />
+        <AdminPageHeader title={t('Loading customer…')} backTo="/admin/customers" />
         <div className="admin-card admin-card-pad">
           {Array.from({ length: 6 }).map((_, index) => (
             <div className="admin-skeleton-row" key={index} />
@@ -87,9 +88,9 @@ export default function CustomerViewPage() {
   if (!data?.customer) {
     return (
       <div>
-        <AdminPageHeader title="Customer" backTo="/admin/customers" />
+        <AdminPageHeader title={t('Customer')} backTo="/admin/customers" />
         <div className="admin-card admin-card-pad">
-          <div className="admin-alert danger">{error || 'Customer not found.'}</div>
+          <div className="admin-alert danger">{error || t('Customer not found.')}</div>
         </div>
       </div>
     );
@@ -110,10 +111,10 @@ export default function CustomerViewPage() {
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="admin-button" onClick={() => setOpen(true)}>
-              <IconEdit size={15} /> Edit customer
+              <IconEdit size={15} /> {t('Edit customer')}
             </button>
             <button type="button" className="admin-button danger" onClick={remove}>
-              <IconTrash size={15} /> Delete account
+              <IconTrash size={15} /> {t('Delete account')}
             </button>
           </div>
         }
@@ -126,19 +127,19 @@ export default function CustomerViewPage() {
         <div className="customer-view-main">
           <section className="admin-card">
             <div className="customer-card-head">
-              <h2>Orders ({orders.length})</h2>
-              <span>{money(totalSpent)} lifetime value</span>
+              <h2>{t('Orders ({count})', { count: orders.length })}</h2>
+              <span>{t('{amount} lifetime value', { amount: money(totalSpent) })}</span>
             </div>
             {orders.length === 0 ? (
-              <div className="admin-empty">This customer has not placed any orders yet.</div>
+              <div className="admin-empty">{t('This customer has not placed any orders yet.')}</div>
             ) : (
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Order</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                    <th>Date</th>
+                    <th>{t('Order')}</th>
+                    <th>{t('Status')}</th>
+                    <th>{t('Total')}</th>
+                    <th>{t('Date')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,10 +164,10 @@ export default function CustomerViewPage() {
 
           <section className="admin-card">
             <div className="customer-card-head">
-              <h2>Addresses ({addresses.length})</h2>
+              <h2>{t('Addresses ({count})', { count: addresses.length })}</h2>
             </div>
             {addresses.length === 0 ? (
-              <div className="admin-empty">No saved addresses.</div>
+              <div className="admin-empty">{t('No saved addresses.')}</div>
             ) : (
               <div className="customer-address-grid">
                 {addresses.map((address: any) => (
@@ -189,10 +190,10 @@ export default function CustomerViewPage() {
 
           <section className="admin-card">
             <div className="customer-card-head">
-              <h2>Reviews ({reviews.length})</h2>
+              <h2>{t('Reviews ({count})', { count: reviews.length })}</h2>
             </div>
             {reviews.length === 0 ? (
-              <div className="admin-empty">No reviews written by this customer.</div>
+              <div className="admin-empty">{t('No reviews written by this customer.')}</div>
             ) : (
               <div className="customer-review-list">
                 {reviews.map((review: any) => (
@@ -224,59 +225,59 @@ export default function CustomerViewPage() {
                 <h2 className="customer-side-name">
                   {customer.first_name} {customer.last_name}
                 </h2>
-                <Badge status={customer.status} label={customer.status ? 'Active' : 'Inactive'} />
+                <Badge status={customer.status} label={customer.status ? t('Active') : t('Inactive')} />
               </div>
             </div>
             <dl className="customer-details">
               <div>
-                <dt>Email</dt>
+                <dt>{t('Email')}</dt>
                 <dd>{customer.email}</dd>
               </div>
               <div>
-                <dt>Phone</dt>
+                <dt>{t('Phone')}</dt>
                 <dd>{customer.phone || '—'}</dd>
               </div>
               <div>
-                <dt>Group</dt>
+                <dt>{t('Group')}</dt>
                 <dd>{groups.find((group) => group.id === customer.customer_group_id)?.name ?? `#${customer.customer_group_id}`}</dd>
               </div>
               <div>
-                <dt>Gender</dt>
+                <dt>{t('Gender')}</dt>
                 <dd>{customer.gender || '—'}</dd>
               </div>
               <div>
-                <dt>Date of birth</dt>
+                <dt>{t('Date of birth')}</dt>
                 <dd>{customer.date_of_birth || '—'}</dd>
               </div>
               <div>
-                <dt>Newsletter</dt>
-                <dd>{customer.subscribed_to_news_letter ? 'Subscribed' : 'Not subscribed'}</dd>
+                <dt>{t('Newsletter')}</dt>
+                <dd>{customer.subscribed_to_news_letter ? t('Subscribed') : t('Not subscribed')}</dd>
               </div>
               <div>
-                <dt>Wishlist</dt>
-                <dd>{data.wishlist_count ?? 0} item(s)</dd>
+                <dt>{t('Wishlist')}</dt>
+                <dd>{t('{count} item(s)', { count: data.wishlist_count ?? 0 })}</dd>
               </div>
               <div>
-                <dt>Customer since</dt>
+                <dt>{t('Customer since')}</dt>
                 <dd>{formatDate(customer.created_at)}</dd>
               </div>
             </dl>
             <a className="admin-button" href={`mailto:${customer.email}`} style={{ width: '100%', justifyContent: 'center', marginTop: 14 }}>
-              <IconMail size={15} /> Email customer
+              <IconMail size={15} /> {t('Email customer')}
             </a>
           </section>
         </aside>
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Edit customer" size="lg" centered>
+      <Modal opened={open} onClose={() => setOpen(false)} title={t('Edit customer')} size="lg" centered>
         <div className="admin-modal-form">
           <div className="admin-form-grid">
             {[
-              { key: 'first_name', label: 'First name' },
-              { key: 'last_name', label: 'Last name' },
-              { key: 'email', label: 'Email', type: 'email' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'date_of_birth', label: 'Date of birth', type: 'date' },
+              { key: 'first_name', label: t('First name') },
+              { key: 'last_name', label: t('Last name') },
+              { key: 'email', label: t('Email'), type: 'email' },
+              { key: 'phone', label: t('Phone') },
+              { key: 'date_of_birth', label: t('Date of birth'), type: 'date' },
             ].map((field) => (
               <label className="admin-field" key={field.key}>
                 <span className="admin-field-label">{field.label}</span>
@@ -289,20 +290,20 @@ export default function CustomerViewPage() {
               </label>
             ))}
             <label className="admin-field">
-              <span className="admin-field-label">Gender</span>
+              <span className="admin-field-label">{t('Gender')}</span>
               <select
                 className="admin-input"
                 value={values.gender ?? ''}
                 onChange={(event) => setValues((current: any) => ({ ...current, gender: event.target.value }))}
               >
-                <option value="">Select…</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+                <option value="">{t('Select…')}</option>
+                <option value="Male">{t('Male')}</option>
+                <option value="Female">{t('Female')}</option>
+                <option value="Other">{t('Other')}</option>
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Customer group</span>
+              <span className="admin-field-label">{t('Customer group')}</span>
               <select
                 className="admin-input"
                 value={values.customer_group_id ?? 1}
@@ -316,34 +317,34 @@ export default function CustomerViewPage() {
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Status</span>
+              <span className="admin-field-label">{t('Status')}</span>
               <select
                 className="admin-input"
                 value={values.status ? '1' : '0'}
                 onChange={(event) => setValues((current: any) => ({ ...current, status: event.target.value }))}
               >
-                <option value="1">Active</option>
-                <option value="0">Inactive</option>
+                <option value="1">{t('Active')}</option>
+                <option value="0">{t('Inactive')}</option>
               </select>
             </label>
             <label className="admin-field">
-              <span className="admin-field-label">Newsletter</span>
+              <span className="admin-field-label">{t('Newsletter')}</span>
               <select
                 className="admin-input"
                 value={values.subscribed_to_news_letter ? '1' : '0'}
                 onChange={(event) => setValues((current: any) => ({ ...current, subscribed_to_news_letter: event.target.value }))}
               >
-                <option value="1">Subscribed</option>
-                <option value="0">Not subscribed</option>
+                <option value="1">{t('Subscribed')}</option>
+                <option value="0">{t('Not subscribed')}</option>
               </select>
             </label>
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" disabled={saving} onClick={save}>
-              {saving ? 'Saving…' : 'Save customer'}
+              {saving ? t('Saving…') : t('Save customer')}
             </button>
           </div>
         </div>

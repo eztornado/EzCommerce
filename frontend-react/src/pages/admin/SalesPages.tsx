@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import DataGrid from '../../components/admin/DataGrid';
+import { t } from '../../i18n';
 import { AdminPageHeader } from '../../components/admin/ui';
 
 function SalesGrid({
@@ -20,7 +21,7 @@ function SalesGrid({
       <div className="admin-card admin-card-pad">
         <DataGrid
           path={path}
-          emptyLabel={`No ${title.toLowerCase()} found.`}
+          emptyLabel={t('No {items} found.', { items: t(title).toLowerCase() })}
           onRowClick={view ? (record) => navigate(view(record)) : undefined}
         />
       </div>

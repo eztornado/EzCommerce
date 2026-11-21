@@ -8,8 +8,9 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
-import { mediaUrl } from '../../lib/format';
+import { mediaUrl, money } from '../../lib/format';
 import { AdminPageHeader, AdminTabs } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 interface AdminAttribute {
   id: number;
@@ -77,7 +78,7 @@ export default function ProductEditorPage() {
       setVariants(data.variants ?? []);
       setLinks(data.links ?? { related: [], up_sells: [], cross_sells: [] });
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to load the product.');
+      setError(requestError?.message ?? t('Unable to load the product.'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +119,7 @@ export default function ProductEditorPage() {
     setError('');
     setMessage('');
     if (!sku.trim()) {
-      setError('The SKU field is required.');
+      setError(t('The SKU field is required.'));
       setTab('general');
       return;
     }
@@ -143,7 +144,7 @@ export default function ProductEditorPage() {
         inventories,
         links,
       });
-      setMessage('The product has been saved successfully.');
+      setMessage(t('The product has been saved successfully.'));
       if (isCreate && productId) {
         if (redirectAfter) navigate(`/admin/catalog/products/edit/${productId}`);
         else {
@@ -154,7 +155,7 @@ export default function ProductEditorPage() {
         await reload(productId!);
       }
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the product.');
+      setError(requestError?.message ?? t('Unable to save the product.'));
     } finally {
       setSaving(false);
     }
@@ -169,7 +170,7 @@ export default function ProductEditorPage() {
         if (result?.path) setImages((current) => [...current, { path: result.path }]);
         else if (result?.url) setImages((current) => [...current, { path: String(result.url).replace(/^\/?storage\//, '') }]);
       } catch (requestError: any) {
-        setError(requestError?.message ?? 'Unable to upload the image.');
+        setError(requestError?.message ?? t('Unable to upload the image.'));
       }
     }
   };
@@ -177,7 +178,7 @@ export default function ProductEditorPage() {
   const addVariant = async () => {
     setError('');
     if (!variantForm.sku) {
-      setError('The variant SKU is required.');
+      setError(t('The variant SKU is required.'));
       return;
     }
     const variantAttributes: Record<string, any> = {};
@@ -197,24 +198,24 @@ export default function ProductEditorPage() {
       setVariantForm({ sku: '', price: '', qty: '', name: '' });
       await reload();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to add the variant.');
+      setError(requestError?.message ?? t('Unable to add the variant.'));
     }
   };
 
   const deleteVariant = async (variantId: number) => {
-    if (!window.confirm('Delete this variant?')) return;
+    if (!window.confirm(t('Delete this variant?'))) return;
     try {
       await api.adminDelete(`admin/catalog/products/variants/${variantId}`);
       await reload();
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to delete the variant.');
+      setError(requestError?.message ?? t('Unable to delete the variant.'));
     }
   };
 
   if (loading) {
     return (
       <div>
-        <AdminPageHeader title="Edit product" backTo="/admin/catalog/products" />
+        <AdminPageHeader title={t('Edit product')} backTo="/admin/catalog/products" />
         <div className="admin-card admin-card-pad">
           <div className="admin-skeleton-row" style={{ height: 40, marginBottom: 14 }} />
           <div className="admin-skeleton-row" style={{ height: 40, marginBottom: 14 }} />
@@ -227,16 +228,16 @@ export default function ProductEditorPage() {
   return (
     <div>
       <AdminPageHeader
-        title={isCreate ? 'Create product' : attributes.name ?? 'Edit product'}
-        subtitle={isCreate ? 'Add a new product to your catalog.' : `SKU: ${sku} · Type: ${productType}`}
+        title={isCreate ? t('Create product') : attributes.name ?? t('Edit product')}
+        subtitle={isCreate ? t('Add a new product to your catalog.') : t('SKU: {sku} · Type: {type}', { sku, type: t(productType) })}
         backTo="/admin/catalog/products"
         actions={
           <>
             <button type="button" className="admin-button" onClick={() => save(true)} disabled={saving}>
-              Save &amp; continue
+              {t('Save & continue')}
             </button>
             <button type="button" className="admin-button primary" onClick={() => save(false)} disabled={saving}>
-              <IconCheck size={15} /> {saving ? 'Saving…' : 'Save product'}
+              <IconCheck size={15} /> {saving ? t('Saving…') : t('Save product')}
             </button>
           </>
         }
@@ -253,39 +254,39 @@ export default function ProductEditorPage() {
               <div>
                 <div className="admin-form-grid">
                   <label className="admin-field span-2">
-                    <span className="admin-field-label">Product name *</span>
+                    <span className="admin-field-label">{t('Product name')} *</span>
                     <input
                       className="admin-input"
                       value={attributes.name ?? ''}
                       onChange={(event) => setAttribute('name', event.target.value)}
-                      placeholder="e.g. Running Sneaker"
+                      placeholder={t('e.g. Running Sneaker')}
                     />
                   </label>
                   <label className="admin-field">
-                    <span className="admin-field-label">SKU *</span>
+                    <span className="admin-field-label">{t('SKU')} *</span>
                     <input className="admin-input" value={sku} onChange={(event) => setSku(event.target.value)} placeholder="EZ-SKU-01" />
                   </label>
                   <label className="admin-field">
-                    <span className="admin-field-label">URL key</span>
+                    <span className="admin-field-label">{t('URL key')}</span>
                     <input
                       className="admin-input"
                       value={attributes.url_key ?? ''}
                       onChange={(event) => setAttribute('url_key', event.target.value)}
-                      placeholder="product-url-key"
+                      placeholder={t('product-url-key')}
                     />
                   </label>
                   <label className="admin-field">
-                    <span className="admin-field-label">Product type</span>
+                    <span className="admin-field-label">{t('Product type')}</span>
                     <select className="admin-input" value={productType} onChange={(event) => setProductType(event.target.value)} disabled={!isCreate}>
                       {['simple', 'configurable', 'virtual', 'downloadable', 'grouped', 'bundle', 'booking'].map((type) => (
                         <option key={type} value={type} style={{ textTransform: 'capitalize' }}>
-                          {type}
+                          {t(type)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="admin-field">
-                    <span className="admin-field-label">Attribute family</span>
+                    <span className="admin-field-label">{t('Attribute family')}</span>
                     <select className="admin-input" value={familyId} onChange={(event) => setFamilyId(Number(event.target.value))} disabled={!isCreate}>
                       {families.map((family) => (
                         <option key={family.id} value={family.id}>
@@ -297,7 +298,7 @@ export default function ProductEditorPage() {
                 </div>
 
                 <label className="admin-field" style={{ marginTop: 16 }}>
-                  <span className="admin-field-label">Short description</span>
+                  <span className="admin-field-label">{t('Short description')}</span>
                   <textarea
                     className="admin-input"
                     rows={3}
@@ -307,7 +308,7 @@ export default function ProductEditorPage() {
                 </label>
 
                 <label className="admin-field" style={{ marginTop: 16 }}>
-                  <span className="admin-field-label">Description</span>
+                  <span className="admin-field-label">{t('Description')}</span>
                   <textarea
                     className="admin-input"
                     rows={7}
@@ -326,7 +327,7 @@ export default function ProductEditorPage() {
                           value={attributes[attribute.code] ?? ''}
                           onChange={(event) => setAttribute(attribute.code, event.target.value === '' ? null : Number(event.target.value))}
                         >
-                          <option value="">Select {attribute.admin_name}</option>
+                          <option value="">{t('Select {option}', { option: attribute.admin_name })}</option>
                           {(attribute.options ?? []).map((option) => (
                             <option key={option.id} value={option.id}>
                               {option.admin_name}
@@ -347,9 +348,9 @@ export default function ProductEditorPage() {
 
               <aside className="product-editor-side">
                 <div className="admin-side-card">
-                  <h3>Status</h3>
+                  <h3>{t('Status')}</h3>
                   <label className="admin-switch-row">
-                    <span>Active</span>
+                    <span>{t('Active')}</span>
                     <input
                       type="checkbox"
                       checked={Number(attributes.status ?? 1) === 1}
@@ -357,7 +358,7 @@ export default function ProductEditorPage() {
                     />
                   </label>
                   <label className="admin-switch-row">
-                    <span>New</span>
+                    <span>{t('New')}</span>
                     <input
                       type="checkbox"
                       checked={Number(attributes.new ?? 0) === 1}
@@ -365,7 +366,7 @@ export default function ProductEditorPage() {
                     />
                   </label>
                   <label className="admin-switch-row">
-                    <span>Featured</span>
+                    <span>{t('Featured')}</span>
                     <input
                       type="checkbox"
                       checked={Number(attributes.featured ?? 0) === 1}
@@ -373,7 +374,7 @@ export default function ProductEditorPage() {
                     />
                   </label>
                   <label className="admin-switch-row">
-                    <span>Visible individually</span>
+                    <span>{t('Visible individually')}</span>
                     <input
                       type="checkbox"
                       checked={Number(attributes.visible_individually ?? 1) === 1}
@@ -383,9 +384,9 @@ export default function ProductEditorPage() {
                 </div>
 
                 <div className="admin-side-card">
-                  <h3>Shipping</h3>
+                  <h3>{t('Shipping')}</h3>
                   <label className="admin-switch-row">
-                    <span>Manage stock</span>
+                    <span>{t('Manage stock')}</span>
                     <input
                       type="checkbox"
                       checked={Number(attributes.manage_stock ?? 1) === 1}
@@ -394,19 +395,19 @@ export default function ProductEditorPage() {
                   </label>
                   <div className="admin-form-grid">
                     <label className="admin-field">
-                      <span className="admin-field-label">Weight</span>
+                      <span className="admin-field-label">{t('Weight')}</span>
                       <input className="admin-input" value={attributes.weight ?? ''} onChange={(event) => setAttribute('weight', event.target.value)} />
                     </label>
                     <label className="admin-field">
-                      <span className="admin-field-label">Length</span>
+                      <span className="admin-field-label">{t('Length')}</span>
                       <input className="admin-input" value={attributes.length ?? ''} onChange={(event) => setAttribute('length', event.target.value)} />
                     </label>
                     <label className="admin-field">
-                      <span className="admin-field-label">Width</span>
+                      <span className="admin-field-label">{t('Width')}</span>
                       <input className="admin-input" value={attributes.width ?? ''} onChange={(event) => setAttribute('width', event.target.value)} />
                     </label>
                     <label className="admin-field">
-                      <span className="admin-field-label">Height</span>
+                      <span className="admin-field-label">{t('Height')}</span>
                       <input className="admin-input" value={attributes.height ?? ''} onChange={(event) => setAttribute('height', event.target.value)} />
                     </label>
                   </div>
@@ -419,7 +420,7 @@ export default function ProductEditorPage() {
             <div style={{ maxWidth: 640 }}>
               <div className="admin-form-grid">
                 <label className="admin-field">
-                  <span className="admin-field-label">Price *</span>
+                  <span className="admin-field-label">{t('Price')} *</span>
                   <input
                     type="number"
                     step="0.01"
@@ -430,7 +431,7 @@ export default function ProductEditorPage() {
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-field-label">Cost</span>
+                  <span className="admin-field-label">{t('Cost')}</span>
                   <input
                     type="number"
                     step="0.01"
@@ -440,7 +441,7 @@ export default function ProductEditorPage() {
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-field-label">Special price</span>
+                  <span className="admin-field-label">{t('Special price')}</span>
                   <input
                     type="number"
                     step="0.01"
@@ -450,7 +451,7 @@ export default function ProductEditorPage() {
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-field-label">Tax category</span>
+                  <span className="admin-field-label">{t('Tax category')}</span>
                   <input
                     className="admin-input"
                     value={attributes.tax_category_id ?? ''}
@@ -458,7 +459,7 @@ export default function ProductEditorPage() {
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-field-label">Special price from</span>
+                  <span className="admin-field-label">{t('Special price from')}</span>
                   <input
                     type="date"
                     className="admin-input"
@@ -467,7 +468,7 @@ export default function ProductEditorPage() {
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-field-label">Special price to</span>
+                  <span className="admin-field-label">{t('Special price to')}</span>
                   <input
                     type="date"
                     className="admin-input"
@@ -477,7 +478,7 @@ export default function ProductEditorPage() {
                 </label>
               </div>
               <p className="admin-muted" style={{ fontSize: 13, marginTop: 14 }}>
-                When a special price is set, the storefront shows it as a sale price with the regular price struck through.
+                {t('When a special price is set, the storefront shows it as a sale price with the regular price struck through.')}
               </p>
             </div>
           )}
@@ -485,7 +486,7 @@ export default function ProductEditorPage() {
           {tab === 'inventory' && (
             <div style={{ maxWidth: 640 }}>
               <p className="admin-muted" style={{ fontSize: 13, marginTop: 0 }}>
-                Quantities are tracked per inventory source. The default source is used for the storefront availability.
+                {t('Quantities are tracked per inventory source. The default source is used for the storefront availability.')}
               </p>
               <div className="admin-form-grid">
                 {sources.map((source) => (
@@ -499,7 +500,7 @@ export default function ProductEditorPage() {
                         setInventories((current) => ({ ...current, [String(source.id)]: Number(event.target.value) }))
                       }
                     />
-                    <span className="admin-field-hint">Code: {source.code}</span>
+                    <span className="admin-field-hint">{t('Code:')} {source.code}</span>
                   </label>
                 ))}
               </div>
@@ -516,22 +517,22 @@ export default function ProductEditorPage() {
                       type="button"
                       className="admin-upload-remove"
                       onClick={() => setImages((current) => current.filter((_, position) => position !== index))}
-                      aria-label="Remove image"
+                      aria-label={t('Remove image')}
                     >
                       <IconX size={14} />
                     </button>
-                    {index === 0 && <span className="admin-upload-primary">Base</span>}
+                    {index === 0 && <span className="admin-upload-primary">{t('Base')}</span>}
                   </div>
                 ))}
 
                 <label className="admin-upload-add">
                   <IconUpload size={22} />
-                  <span>Upload images</span>
+                  <span>{t('Upload images')}</span>
                   <input type="file" accept="image/*" multiple hidden onChange={(event) => uploadImages(event.target.files)} />
                 </label>
               </div>
               <p className="admin-muted" style={{ fontSize: 12, marginTop: 12 }}>
-                Recommended: square images at least 800×800 px. The first image is used as the base image.
+                {t('Recommended: square images at least 800×800 px. The first image is used as the base image.')}
               </p>
             </div>
           )}
@@ -539,7 +540,7 @@ export default function ProductEditorPage() {
           {tab === 'categories' && (
             <div style={{ maxWidth: 640 }}>
               <p className="admin-muted" style={{ fontSize: 13, marginTop: 0 }}>
-                Assign this product to one or more categories.
+                {t('Assign this product to one or more categories.')}
               </p>
               <div className="admin-category-picker">
                 {categoryTree.map((category) => (
@@ -558,33 +559,33 @@ export default function ProductEditorPage() {
             <div>
               {productType !== 'configurable' ? (
                 <div className="admin-empty">
-                  <h3>This product is not configurable</h3>
-                  <p>Create a configurable product to manage variants such as colours and sizes.</p>
+                  <h3>{t('This product is not configurable')}</h3>
+                  <p>{t('Create a configurable product to manage variants such as colours and sizes.')}</p>
                 </div>
               ) : isCreate ? (
                 <div className="admin-empty">
-                  <h3>Save the product first</h3>
-                  <p>After creating the configurable product you can add variants.</p>
+                  <h3>{t('Save the product first')}</h3>
+                  <p>{t('After creating the configurable product you can add variants.')}</p>
                 </div>
               ) : (
                 <>
                   <table className="admin-table" style={{ minWidth: 620 }}>
                     <thead>
                       <tr>
-                        <th>SKU</th>
+                        <th>{t('SKU')}</th>
                         {superAttributes.map((attribute) => (
                           <th key={attribute.code}>{attribute.admin_name}</th>
                         ))}
-                        <th>Quantity</th>
-                        <th>Price</th>
-                        <th className="actions">Action</th>
+                        <th>{t('Quantity')}</th>
+                        <th>{t('Price')}</th>
+                        <th className="actions">{t('Action')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {variants.length === 0 ? (
                         <tr>
                           <td colSpan={superAttributes.length + 4}>
-                            <div className="admin-empty">No variants yet.</div>
+                            <div className="admin-empty">{t('No variants yet.')}</div>
                           </td>
                         </tr>
                       ) : (
@@ -599,10 +600,10 @@ export default function ProductEditorPage() {
                               return <td key={attribute.code}>{option?.admin_name ?? optionId ?? '—'}</td>;
                             })}
                             <td>{variant.qty ?? 0}</td>
-                            <td>€{Number(variant.attributes?.price ?? 0).toFixed(2)}</td>
+                            <td>{money(Number(variant.attributes?.price ?? 0))}</td>
                             <td className="actions">
                               <button type="button" className="admin-link danger" onClick={() => deleteVariant(variant.id)}>
-                                Delete
+                                {t('Delete')}
                               </button>
                             </td>
                           </tr>
@@ -612,10 +613,10 @@ export default function ProductEditorPage() {
                   </table>
 
                   <div className="admin-inline-form">
-                    <h3>Add variant</h3>
+                    <h3>{t('Add variant')}</h3>
                     <div className="admin-form-grid">
                       <label className="admin-field">
-                        <span className="admin-field-label">SKU *</span>
+                        <span className="admin-field-label">{t('SKU')} *</span>
                         <input
                           className="admin-input"
                           value={variantForm.sku}
@@ -624,12 +625,12 @@ export default function ProductEditorPage() {
                         />
                       </label>
                       <label className="admin-field">
-                        <span className="admin-field-label">Name</span>
+                        <span className="admin-field-label">{t('Name')}</span>
                         <input
                           className="admin-input"
                           value={variantForm.name}
                           onChange={(event) => setVariantForm({ ...variantForm, name: event.target.value })}
-                          placeholder="Optional variant name"
+                          placeholder={t('Optional variant name')}
                         />
                       </label>
                       {superAttributes.map((attribute) => (
@@ -640,7 +641,7 @@ export default function ProductEditorPage() {
                             value={variantForm[attribute.code] ?? ''}
                             onChange={(event) => setVariantForm({ ...variantForm, [attribute.code]: event.target.value })}
                           >
-                            <option value="">Select</option>
+                            <option value="">{t('Select')}</option>
                             {(attribute.options ?? []).map((option: any) => (
                               <option key={option.id} value={option.id}>
                                 {option.admin_name}
@@ -650,7 +651,7 @@ export default function ProductEditorPage() {
                         </label>
                       ))}
                       <label className="admin-field">
-                        <span className="admin-field-label">Price</span>
+                        <span className="admin-field-label">{t('Price')}</span>
                         <input
                           type="number"
                           step="0.01"
@@ -660,7 +661,7 @@ export default function ProductEditorPage() {
                         />
                       </label>
                       <label className="admin-field">
-                        <span className="admin-field-label">Quantity</span>
+                        <span className="admin-field-label">{t('Quantity')}</span>
                         <input
                           type="number"
                           className="admin-input"
@@ -670,7 +671,7 @@ export default function ProductEditorPage() {
                       </label>
                     </div>
                     <button type="button" className="admin-button primary" onClick={addVariant} style={{ marginTop: 14 }}>
-                      <IconPlus size={15} /> Add variant
+                      <IconPlus size={15} /> {t('Add variant')}
                     </button>
                   </div>
                 </>
@@ -681,16 +682,16 @@ export default function ProductEditorPage() {
           {tab === 'seo' && (
             <div style={{ maxWidth: 640 }}>
               <label className="admin-field">
-                <span className="admin-field-label">URL key</span>
+                <span className="admin-field-label">{t('URL key')}</span>
                 <input
                   className="admin-input"
                   value={attributes.url_key ?? ''}
                   onChange={(event) => setAttribute('url_key', event.target.value)}
                 />
-                <span className="admin-field-hint">The storefront path, for example /product/running-sneaker.</span>
+                <span className="admin-field-hint">{t('The storefront path, for example /product/running-sneaker.')}</span>
               </label>
               <label className="admin-field" style={{ marginTop: 16 }}>
-                <span className="admin-field-label">Meta title</span>
+                <span className="admin-field-label">{t('Meta title')}</span>
                 <input
                   className="admin-input"
                   value={attributes.meta_title ?? ''}
@@ -698,7 +699,7 @@ export default function ProductEditorPage() {
                 />
               </label>
               <label className="admin-field" style={{ marginTop: 16 }}>
-                <span className="admin-field-label">Meta description</span>
+                <span className="admin-field-label">{t('Meta description')}</span>
                 <textarea
                   className="admin-input"
                   rows={3}

@@ -1,5 +1,7 @@
 // Utilidades compartidas de formato para la tienda y el panel.
 
+import { intlLocale, t } from '../i18n';
+
 export function mediaUrl(path?: string | null): string {
   if (!path) return '';
   if (/^(https?:|data:|blob:)/.test(path)) return path;
@@ -37,7 +39,7 @@ export function money(value?: number | string | null, currency = 'EUR'): string 
   const number = typeof value === 'string' ? Number(value) : value;
   if (number === null || number === undefined || Number.isNaN(number)) return '';
   try {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat(intlLocale(), {
       style: 'currency',
       currency,
       maximumFractionDigits: 2,
@@ -56,7 +58,7 @@ export function formattedMoney(formatted?: string | null, amount?: number | stri
 export function compactNumber(value?: number | string | null): string {
   const number = typeof value === 'string' ? Number(value) : value;
   if (number === null || number === undefined || Number.isNaN(number)) return '0';
-  return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(number);
+  return new Intl.NumberFormat(intlLocale(), { notation: 'compact', maximumFractionDigits: 1 }).format(number);
 }
 
 export function formatDate(value?: string | null, withTime = false): string {
@@ -64,7 +66,7 @@ export function formatDate(value?: string | null, withTime = false): string {
   const normalized = value.includes('T') ? value : value.replace(' ', 'T');
   const date = new Date(normalized.endsWith('Z') ? normalized : `${normalized}Z`);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(intlLocale(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -86,8 +88,8 @@ export function statusColor(status?: string | number | null): string {
 }
 
 export function statusLabel(status?: string | number | null): string {
-  if (status === 1 || status === '1') return 'Active';
-  if (status === 0 || status === '0') return 'Inactive';
+  if (status === 1 || status === '1') return t('Active');
+  if (status === 0 || status === '0') return t('Inactive');
   return String(status ?? '—');
 }
 

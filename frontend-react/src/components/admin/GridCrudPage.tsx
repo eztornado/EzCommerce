@@ -4,6 +4,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import DataGrid from './DataGrid';
 import { AdminPageHeader } from './ui';
+import { t } from '../../i18n';
 import type { FieldDef } from './ResourcePage';
 
 interface GridCrudPageProps {
@@ -63,7 +64,7 @@ export default function GridCrudPage({
     try {
       const missing = fields.find((field) => field.required && !values[field.name]);
       if (missing) {
-        setError(`The ${missing.label.toLowerCase()} field is required.`);
+        setError(t('The {field} field is required.', { field: t(missing.label).toLowerCase() }));
         setSaving(false);
         return;
       }
@@ -79,7 +80,7 @@ export default function GridCrudPage({
       const detail = requestError?.errors
         ? Object.values(requestError.errors).flat().join(' ')
         : requestError?.message;
-      setError(detail || 'Unable to create the record.');
+      setError(detail || t('Unable to create the record.'));
     } finally {
       setSaving(false);
     }
@@ -95,7 +96,7 @@ export default function GridCrudPage({
             {toolbar}
             {canCreate && (
               <button type="button" className="admin-button primary" onClick={startCreate}>
-                <IconPlus size={15} /> {createLabel}
+                <IconPlus size={15} /> {t(createLabel)}
               </button>
             )}
           </div>
@@ -105,7 +106,7 @@ export default function GridCrudPage({
         <DataGrid
           key={version}
           path={path}
-          emptyLabel={emptyLabel ?? `No ${title.toLowerCase()} found.`}
+          emptyLabel={emptyLabel ?? t('No {items} found.', { items: t(title).toLowerCase() })}
           actions={rowActions ? (record) => rowActions(record, reload) : undefined}
           onRowClick={onRowClick}
           hideColumn={hideColumn}
@@ -113,7 +114,7 @@ export default function GridCrudPage({
         />
       </div>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={createLabel} size="lg" centered>
+      <Modal opened={open} onClose={() => setOpen(false)} title={t(createLabel)} size="lg" centered>
         <div className="admin-modal-form">
           {error && <div className="admin-alert danger">{error}</div>}
           <div className="admin-form-grid">
@@ -124,13 +125,13 @@ export default function GridCrudPage({
                 style={field.colSpan === 2 ? { gridColumn: '1 / -1' } : undefined}
               >
                 <span className="admin-field-label">
-                  {field.label} {field.required && <em>*</em>}
+                  {t(field.label)} {field.required && <em>*</em>}
                 </span>
                 {field.type === 'textarea' ? (
                   <textarea
                     className="admin-input"
                     rows={4}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholder ? t(field.placeholder) : undefined}
                     value={values[field.name] ?? ''}
                     onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
                   />
@@ -140,10 +141,10 @@ export default function GridCrudPage({
                     value={values[field.name] ?? ''}
                     onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
                   >
-                    <option value="">{field.placeholder ?? 'Select…'}</option>
+                    <option value="">{field.placeholder ? t(field.placeholder) : t('Select…')}</option>
                     {(field.options ?? []).map((option) => (
                       <option key={String(option.value)} value={option.value}>
-                        {option.label}
+                        {t(option.label)}
                       </option>
                     ))}
                   </select>
@@ -154,29 +155,29 @@ export default function GridCrudPage({
                       checked={!!values[field.name]}
                       onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.checked }))}
                     />
-                    <span>{values[field.name] ? 'Active' : 'Inactive'}</span>
+                    <span>{values[field.name] ? t('Active') : t('Inactive')}</span>
                   </span>
                 ) : (
                   <input
                     className="admin-input"
                     type={field.type ?? 'text'}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholder ? t(field.placeholder) : undefined}
                     min={field.min}
                     step={field.step}
                     value={values[field.name] ?? ''}
                     onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
                   />
                 )}
-                {field.hint && <span className="admin-field-hint">{field.hint}</span>}
+                {field.hint && <span className="admin-field-hint">{t(field.hint)}</span>}
               </label>
             ))}
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button" onClick={() => setOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="admin-button primary" onClick={submit} disabled={saving}>
-              {saving ? 'Saving…' : createLabel}
+              {saving ? t('Saving…') : t(createLabel)}
             </button>
           </div>
         </div>

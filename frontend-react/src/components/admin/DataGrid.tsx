@@ -12,7 +12,8 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
-import { formatDate, money, statusColor, statusLabel } from '../../lib/format';
+import { formatDate, formatLabel, money, statusColor, statusLabel } from '../../lib/format';
+import { t } from '../../i18n';
 
 export interface GridColumn {
   index: string;
@@ -119,7 +120,7 @@ export default function DataGrid({
       })
       .catch((requestError) => {
         if (cancelled) return;
-        setError(requestError?.message ?? 'Unable to load the data grid.');
+        setError(requestError?.message ?? t('Unable to load the data grid.'));
         setRecords([]);
       })
       .finally(() => {
@@ -167,7 +168,7 @@ export default function DataGrid({
         try {
           await api.openAdminDocument(action.url);
         } catch (requestError: any) {
-          setError(requestError?.message ?? 'Unable to open the document.');
+          setError(requestError?.message ?? t('Unable to open the document.'));
         }
         return;
       }
@@ -175,12 +176,12 @@ export default function DataGrid({
       return;
     }
     if (method === 'DELETE') {
-      if (!window.confirm(`Delete this record? This action cannot be undone.`)) return;
+      if (!window.confirm(t('Delete this record? This action cannot be undone.'))) return;
       try {
         await api.delete(url, true);
         setRefreshKey((key) => key + 1);
       } catch (requestError: any) {
-        setError(requestError?.message ?? 'Unable to delete the record.');
+        setError(requestError?.message ?? t('Unable to delete the record.'));
       }
       return;
     }
@@ -188,19 +189,19 @@ export default function DataGrid({
       await api.adminPost(url, { indices: [record?.__primary ?? record?.id].filter(Boolean) });
       setRefreshKey((key) => key + 1);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to complete the action.');
+      setError(requestError?.message ?? t('Unable to complete the action.'));
     }
   };
 
   const runMassAction = async (action: GridAction) => {
     if (!selected.length) return;
-    if (action.action === 'delete' && !window.confirm(`Delete ${selected.length} selected record(s)?`)) return;
+    if (action.action === 'delete' && !window.confirm(t('Delete {count} selected record(s)?', { count: selected.length }))) return;
     try {
       await api.adminPost(resolveUrl(action.url), { indices: selected });
       setSelected([]);
       setRefreshKey((key) => key + 1);
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to complete the action.');
+      setError(requestError?.message ?? t('Unable to complete the action.'));
     }
   };
 
@@ -217,7 +218,7 @@ export default function DataGrid({
         pagination: { page: 1, per_page: 10000 },
       });
     } catch {
-      setError('Unable to export the CSV.');
+      setError(t('Unable to export the CSV.'));
     }
   };
 
@@ -250,12 +251,12 @@ export default function DataGrid({
     }
     const option = column.filterable_options?.find((entry) => String(entry.value) === String(value));
     if (column.index === 'status') {
-      const label = option?.label ?? (column.type === 'boolean' ? statusLabel(value) : String(value));
+      const label = option?.label ? t(option.label) : column.type === 'boolean' ? statusLabel(value) : t(formatLabel(String(value)));
       const active = value === 1 || value === '1' || ['active', 'enabled', 'approved', 'completed', 'processing'].includes(label.toLowerCase());
       return <span className={`status-badge ${active ? statusColor(value) : 'gray'}`}>{label}</span>;
     }
     if (column.filterable_options?.length) {
-      return <span className="admin-pill">{option?.label ?? String(value)}</span>;
+      return <span className="admin-pill">{option?.label ? t(option.label) : t(formatLabel(String(value)))}</span>;
     }
     if (column.type === 'boolean') {
       const active = value === 1 || value === '1' || value === true;
@@ -265,7 +266,7 @@ export default function DataGrid({
       return <span className="admin-code">{String(value)}</span>;
     }
     if (column.index === 'type') {
-      return <span className="admin-pill">{String(value)}</span>;
+      return <span className="admin-pill">{t(formatLabel(String(value)))}</span>;
     }
     if (column.type === 'decimal' && typeof value === 'number') {
       return money(value);
@@ -290,11 +291,11 @@ export default function DataGrid({
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search..."
-            aria-label="Search records"
+            placeholder={t('Search...')}
+            aria-label={t('Search records')}
           />
           {search && (
-            <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label="Clear search">
+            <button type="button" className="admin-input-clear" onClick={() => setSearch('')} aria-label={t('Clear search')}>
               <IconX size={13} />
             </button>
           )}
@@ -306,7 +307,7 @@ export default function DataGrid({
           data-active={filterOpen || activeFilterCount > 0}
           onClick={() => setFilterOpen((open) => !open)}
         >
-          <IconFilter size={15} /> Filters
+          <IconFilter size={15} /> {t('Filters')}
           {activeFilterCount > 0 && <span className="admin-toolbar-count">{activeFilterCount}</span>}
         </button>
 
@@ -318,7 +319,7 @@ export default function DataGrid({
             disabled={!selected.length}
             onClick={() => runMassAction(action)}
           >
-            <IconTrash size={15} /> {action.title}
+            <IconTrash size={15} /> {t(action.title)}
             {selected.length > 0 && ` (${selected.length})`}
           </button>
         ))}
@@ -328,11 +329,11 @@ export default function DataGrid({
         {toolbar}
 
         <button type="button" className="admin-toolbar-button" onClick={() => setRefreshKey((key) => key + 1)}>
-          <IconRefresh size={15} /> Refresh
+          <IconRefresh size={15} /> {t('Refresh')}
         </button>
 
         <button type="button" className="admin-toolbar-button" onClick={exportCsv}>
-          <IconDownload size={15} /> Export
+          <IconDownload size={15} /> {t('Export')}
         </button>
       </div>
 
@@ -341,7 +342,7 @@ export default function DataGrid({
           <div className="admin-filter-grid">
             {filterColumns.map((column) => (
               <div key={column.index}>
-                <label className="admin-filter-label">{column.label}</label>
+                <label className="admin-filter-label">{t(column.label)}</label>
                 {column.filterable_options ? (
                   <select
                     className="admin-input"
@@ -355,10 +356,10 @@ export default function DataGrid({
                       })
                     }
                   >
-                    <option value="">All</option>
+                    <option value="">{t('All')}</option>
                     {column.filterable_options.map((option) => (
                       <option key={String(option.value)} value={option.value}>
-                        {option.label}
+                        {t(option.label)}
                       </option>
                     ))}
                   </select>
@@ -399,7 +400,7 @@ export default function DataGrid({
                         return next;
                       })
                     }
-                    placeholder={`Filter by ${column.label.toLowerCase()}`}
+                    placeholder={t('Filter by {column}', { column: t(column.label).toLowerCase() })}
                   />
                 )}
               </div>
@@ -415,10 +416,10 @@ export default function DataGrid({
                 setDateFilters({});
               }}
             >
-              Clear filters
+              {t('Clear filters')}
             </button>
             <button type="button" className="admin-button primary" onClick={() => setFilterOpen(false)}>
-              Apply filters
+              {t('Apply filters')}
             </button>
           </div>
         </div>
@@ -435,7 +436,7 @@ export default function DataGrid({
                   type="checkbox"
                   checked={records.length > 0 && selected.length === records.length}
                   onChange={toggleAll}
-                  aria-label="Select all"
+                  aria-label={t('Select all')}
                 />
               </th>
               {visibleColumns.map((column) => (
@@ -444,13 +445,13 @@ export default function DataGrid({
                   className={column.sortable ? 'sortable' : undefined}
                   onClick={() => sortBy(column)}
                 >
-                  {column.label}
+                  {t(column.label)}
                   {sort.column === column.index && (
                     <span style={{ marginLeft: 6, fontSize: 10 }}>{sort.order === 'asc' ? '▲' : '▼'}</span>
                   )}
                 </th>
               ))}
-              {(visibleRowActions.length > 0 || actions) && <th className="actions">Action</th>}
+              {(visibleRowActions.length > 0 || actions) && <th className="actions">{t('Action')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -465,7 +466,7 @@ export default function DataGrid({
             ) : records.length === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length + 2}>
-                  <div className="admin-empty">{emptyLabel}</div>
+                  <div className="admin-empty">{t(emptyLabel)}</div>
                 </td>
               </tr>
             ) : (
@@ -486,7 +487,7 @@ export default function DataGrid({
                             current.includes(primary) ? current.filter((value) => value !== primary) : [...current, primary],
                           )
                         }
-                        aria-label="Select row"
+                        aria-label={t('Select row')}
                       />
                     </td>
                     {visibleColumns.map((column) => (
@@ -503,7 +504,7 @@ export default function DataGrid({
                               className={action.method.toUpperCase() === 'DELETE' ? 'admin-link danger' : 'admin-link'}
                               onClick={() => runAction(action, record)}
                             >
-                              {action.title}
+                              {t(action.title)}
                             </button>
                           ))}
                         </div>
@@ -520,7 +521,7 @@ export default function DataGrid({
       <div className="admin-pagination">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>
-            Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total ?? 0} records
+            {t('Showing {from}–{to} of {total} records', { from: meta.from ?? 0, to: meta.to ?? 0, total: meta.total ?? 0 })}
           </span>
           <select
             className="admin-input"
@@ -545,7 +546,7 @@ export default function DataGrid({
             className="admin-page-button"
             disabled={(meta.current_page ?? 1) <= 1}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
-            aria-label="Previous page"
+            aria-label={t('Previous page')}
           >
             <IconChevronLeft size={15} />
           </button>
@@ -567,12 +568,12 @@ export default function DataGrid({
             className="admin-page-button"
             disabled={(meta.current_page ?? 1) >= Math.max(1, meta.last_page ?? 1)}
             onClick={() => setPage((current) => Math.min(Math.max(1, meta.last_page ?? 1), current + 1))}
-            aria-label="Next page"
+            aria-label={t('Next page')}
           >
             <IconChevronRight size={15} />
           </button>
           <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <IconChevronDown size={13} /> page {meta.current_page ?? 1} / {Math.max(1, meta.last_page ?? 1)}
+            <IconChevronDown size={13} /> {t('Page {page} / {last}', { page: meta.current_page ?? 1, last: Math.max(1, meta.last_page ?? 1) })}
           </span>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
+import { t } from '../../i18n';
 import { money } from '../../lib/format';
 
 type Module = 'sales' | 'products' | 'customers';
@@ -67,7 +68,7 @@ export default function ReportingPage() {
       })
       .catch((requestError) => {
         if (!cancelled) {
-          setError(requestError?.message ?? 'Unable to load the report.');
+          setError(requestError?.message ?? t('Unable to load the report.'));
           setRows([]);
           setSales(null);
         }
@@ -87,7 +88,7 @@ export default function ReportingPage() {
         `${module}-report.csv`,
       );
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to export the report.');
+      setError(requestError?.message ?? t('Unable to export the report.'));
     }
   };
 
@@ -110,11 +111,11 @@ export default function ReportingPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Reporting"
-        subtitle="Analyse sales performance, best selling products and top customers."
+        title={t('Reporting')}
+        subtitle={t('Analyse sales performance, best selling products and top customers.')}
         actions={
           <button type="button" className="admin-button" onClick={exportCsv}>
-            <IconDownload size={15} /> Export CSV
+            <IconDownload size={15} /> {t('Export CSV')}
           </button>
         }
       />
@@ -128,7 +129,7 @@ export default function ReportingPage() {
               className="admin-tab"
               data-active={module === tab.key}
             >
-              {tab.label}
+              {t(tab.label)}
             </Link>
           ))}
         </div>
@@ -136,22 +137,22 @@ export default function ReportingPage() {
           <select className="admin-input admin-input-inline" value={range} onChange={(event) => setRange(event.target.value)}>
             {RANGES.map((entry) => (
               <option key={entry.key} value={entry.key}>
-                {entry.label}
+                {t(entry.label)}
               </option>
             ))}
           </select>
           {module === 'sales' && (
             <select className="admin-input admin-input-inline" value={granularity} onChange={(event) => setGranularity(event.target.value as any)}>
-              <option value="day">Daily</option>
-              <option value="week">Weekly</option>
-              <option value="month">Monthly</option>
+              <option value="day">{t('Daily')}</option>
+              <option value="week">{t('Weekly')}</option>
+              <option value="month">{t('Monthly')}</option>
             </select>
           )}
         </div>
       </div>
 
       <p className="admin-muted report-period">
-        Showing data from <strong>{start}</strong> to <strong>{end}</strong>.
+        {t('Showing data from')} <strong>{start}</strong> {t('to')} <strong>{end}</strong>.
       </p>
 
       {error && <div className="admin-alert danger">{error}</div>}
@@ -163,7 +164,7 @@ export default function ReportingPage() {
               <div className="report-metric" key={metric.key}>
                 <span className="report-metric-icon">{metric.icon}</span>
                 <div>
-                  <p>{metric.label}</p>
+                  <p>{t(metric.label)}</p>
                   <strong>{loading ? '—' : metric.value}</strong>
                 </div>
               </div>
@@ -173,17 +174,17 @@ export default function ReportingPage() {
           <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
             <div className="admin-card-head" style={{ padding: 0, marginBottom: 18 }}>
               <div>
-                <h2 className="admin-card-title">Sales over time</h2>
-                <p className="admin-card-subtitle">Net invoiced sales grouped by {granularity}.</p>
+                <h2 className="admin-card-title">{t('Sales over time')}</h2>
+                <p className="admin-card-subtitle">{t('Net invoiced sales grouped by {granularity}.', { granularity: t(granularity === 'day' ? 'day' : granularity === 'week' ? 'week' : 'month') })}</p>
               </div>
-              <span className="admin-pill">{series.length} buckets</span>
+              <span className="admin-pill">{t('{count} buckets', { count: series.length })}</span>
             </div>
             {loading ? (
               <div className="admin-skeleton-row" style={{ height: 220 }} />
             ) : series.length === 0 ? (
               <div className="admin-empty">
-                <h3>No sales in this period</h3>
-                <p>Try widening the date range or selecting a different granularity.</p>
+                <h3>{t('No sales in this period')}</h3>
+                <p>{t('Try widening the date range or selecting a different granularity.')}</p>
               </div>
             ) : (
               <>
@@ -194,7 +195,7 @@ export default function ReportingPage() {
                       <div className="report-bar-wrap" key={`${point.label}-${index}`}>
                         <div className="report-bar" style={{ height: `${height}%` }}>
                           <span className="report-bar-tooltip">
-                            {point.label}: {money(point.sales)} · {point.orders} orders
+                            {point.label}: {money(point.sales)} · {t('{count} orders', { count: point.orders })}
                           </span>
                         </div>
                         <span className="report-bar-label">
@@ -213,20 +214,20 @@ export default function ReportingPage() {
           </div>
 
           <div className="admin-card admin-card-pad" style={{ marginTop: 16 }}>
-            <h2 className="admin-card-title">Breakdown</h2>
+            <h2 className="admin-card-title">{t('Breakdown')}</h2>
             <div className="report-table">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Period</th>
-                    <th>Orders</th>
-                    <th>Sales</th>
+                    <th>{t('Period')}</th>
+                    <th>{t('Orders')}</th>
+                    <th>{t('Sales')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {series.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="admin-muted">No data available for the selected period.</td>
+                      <td colSpan={3} className="admin-muted">{t('No data available for the selected period.')}</td>
                     </tr>
                   ) : (
                     [...series].reverse().map((point, index) => (
@@ -248,21 +249,21 @@ export default function ReportingPage() {
             <div className="report-metric">
               <span className="report-metric-icon"><IconChartBar size={17} /></span>
               <div>
-                <p>{module === 'products' ? 'Products sold' : 'Top customers'}</p>
+                <p>{module === 'products' ? t('Products sold') : t('Top customers')}</p>
                 <strong>{loading ? '—' : rows.length}</strong>
               </div>
             </div>
             <div className="report-metric">
               <span className="report-metric-icon"><IconTrendingUp size={17} /></span>
               <div>
-                <p>Revenue in report</p>
+                <p>{t('Revenue in report')}</p>
                 <strong>{loading ? '—' : money(totalRevenue)}</strong>
               </div>
             </div>
             <div className="report-metric">
               <span className="report-metric-icon"><IconShoppingBag size={17} /></span>
               <div>
-                <p>{module === 'products' ? 'Units sold' : 'Orders placed'}</p>
+                <p>{module === 'products' ? t('Units sold') : t('Orders placed')}</p>
                 <strong>
                   {loading ? '—' : rows.reduce((sum, row) => sum + Number(row.qty ?? row.orders ?? 0), 0)}
                 </strong>
@@ -274,9 +275,9 @@ export default function ReportingPage() {
             <div className="admin-card-head" style={{ padding: 0, marginBottom: 14 }}>
               <div>
                 <h2 className="admin-card-title">
-                  {module === 'products' ? 'Top selling products' : 'Top customers'}
+                  {module === 'products' ? t('Top selling products') : t('Top customers')}
                 </h2>
-                <p className="admin-card-subtitle">Ordered by revenue within the selected period.</p>
+                <p className="admin-card-subtitle">{t('Ordered by revenue within the selected period.')}</p>
               </div>
             </div>
             <div className="report-table">
@@ -284,10 +285,10 @@ export default function ReportingPage() {
                 <thead>
                   <tr>
                     <th style={{ width: 60 }}>#</th>
-                    <th>{module === 'products' ? 'Product' : 'Customer'}</th>
-                    <th>{module === 'products' ? 'SKU' : 'Email'}</th>
-                    <th>{module === 'products' ? 'Units' : 'Orders'}</th>
-                    <th>Revenue</th>
+                    <th>{module === 'products' ? t('Product') : t('Customer')}</th>
+                    <th>{module === 'products' ? t('SKU') : t('Email')}</th>
+                    <th>{module === 'products' ? t('Units') : t('Orders')}</th>
+                    <th>{t('Revenue')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -299,7 +300,7 @@ export default function ReportingPage() {
                     ))
                   ) : rows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="admin-muted">No records for the selected period.</td>
+                      <td colSpan={5} className="admin-muted">{t('No records for the selected period.')}</td>
                     </tr>
                   ) : (
                     rows.map((row, index) => (
@@ -310,7 +311,7 @@ export default function ReportingPage() {
                         <td>
                           {module === 'products'
                             ? row.name
-                            : `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || 'Guest'}
+                            : `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || t('Guest')}
                         </td>
                         <td>{module === 'products' ? row.sku : row.email}</td>
                         <td>{row.qty ?? row.orders ?? 0}</td>

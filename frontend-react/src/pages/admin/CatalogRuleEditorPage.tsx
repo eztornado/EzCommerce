@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader, AdminTabs } from '../../components/admin/ui';
+import { t } from '../../i18n';
 
 const ACTION_TYPES = [
   { value: 'by_percent', label: 'By percent of product price' },
@@ -75,7 +76,7 @@ export default function CatalogRuleEditorPage() {
           conditions: Array.isArray(data?.conditions) ? data.conditions : [],
         });
       } catch (requestError: any) {
-        setError(requestError?.message ?? 'Unable to load the catalog rule.');
+        setError(requestError?.message ?? t('Unable to load the catalog rule.'));
       } finally {
         setLoading(false);
       }
@@ -94,7 +95,7 @@ export default function CatalogRuleEditorPage() {
     setError('');
     setMessage('');
     if (!String(rule.name ?? '').trim()) {
-      setError('The name field is required.');
+      setError(t('The name field is required.'));
       setTab('information');
       return;
     }
@@ -119,10 +120,10 @@ export default function CatalogRuleEditorPage() {
         if (created?.id) navigate(`/admin/marketing/promotions/catalog-rules/edit/${created.id}`);
       } else {
         await api.adminPut(`admin/marketing/catalog-rules/edit/${id}`, payload);
-        setMessage('The catalog rule has been saved and prices reindexed.');
+        setMessage(t('The catalog rule has been saved and prices reindexed.'));
       }
     } catch (requestError: any) {
-      setError(requestError?.message ?? 'Unable to save the catalog rule.');
+      setError(requestError?.message ?? t('Unable to save the catalog rule.'));
     } finally {
       setSaving(false);
     }
@@ -131,7 +132,7 @@ export default function CatalogRuleEditorPage() {
   if (loading) {
     return (
       <div>
-        <AdminPageHeader title="Loading catalog rule…" backTo="/admin/marketing/promotions/catalog-rules" />
+        <AdminPageHeader title={t('Loading catalog rule…')} backTo="/admin/marketing/promotions/catalog-rules" />
         <div className="admin-card admin-card-pad">
           {Array.from({ length: 5 }).map((_, index) => (
             <div className="admin-skeleton-row" key={index} />
@@ -144,12 +145,12 @@ export default function CatalogRuleEditorPage() {
   return (
     <div>
       <AdminPageHeader
-        title={isCreate ? 'Create catalog rule' : `Edit catalog rule · ${rule.name}`}
-        subtitle="Apply automatic price changes to matching products."
+        title={isCreate ? t('Create catalog rule') : t('Edit catalog rule · {name}', { name: rule.name })}
+        subtitle={t('Apply automatic price changes to matching products.')}
         backTo="/admin/marketing/promotions/catalog-rules"
         actions={
           <button type="button" className="admin-button primary" onClick={save} disabled={saving}>
-            <IconCheck size={15} /> {saving ? 'Saving…' : 'Save catalog rule'}
+            <IconCheck size={15} /> {saving ? t('Saving…') : t('Save catalog rule')}
           </button>
         }
       />
@@ -171,35 +172,35 @@ export default function CatalogRuleEditorPage() {
             <div className="admin-form-grid">
               <label className="admin-field" style={{ gridColumn: '1 / -1' }}>
                 <span className="admin-field-label">
-                  Name <em>*</em>
+                  {t('Name')} <em>*</em>
                 </span>
-                <input className="admin-input" value={rule.name ?? ''} onChange={(event) => set('name', event.target.value)} placeholder="Summer catalog sale" />
+                <input className="admin-input" value={rule.name ?? ''} onChange={(event) => set('name', event.target.value)} placeholder={t('Summer catalog sale')} />
               </label>
               <label className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Description</span>
+                <span className="admin-field-label">{t('Description')}</span>
                 <textarea className="admin-input" rows={3} value={rule.description ?? ''} onChange={(event) => set('description', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Status</span>
+                <span className="admin-field-label">{t('Status')}</span>
                 <select className="admin-input" value={rule.status ? '1' : '0'} onChange={(event) => set('status', event.target.value)}>
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
+                  <option value="1">{t('Active')}</option>
+                  <option value="0">{t('Inactive')}</option>
                 </select>
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Priority</span>
+                <span className="admin-field-label">{t('Priority')}</span>
                 <input className="admin-input" type="number" value={rule.sort_order ?? 0} onChange={(event) => set('sort_order', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Start date</span>
+                <span className="admin-field-label">{t('Start date')}</span>
                 <input className="admin-input" type="date" value={(rule.starts_from ?? '').slice(0, 10)} onChange={(event) => set('starts_from', event.target.value)} />
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">End date</span>
+                <span className="admin-field-label">{t('End date')}</span>
                 <input className="admin-input" type="date" value={(rule.ends_till ?? '').slice(0, 10)} onChange={(event) => set('ends_till', event.target.value)} />
               </label>
               <div className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Channels</span>
+                <span className="admin-field-label">{t('Channels')}</span>
                 <div className="admin-check-grid">
                   {channels.map((channel) => (
                     <label key={channel.id} className="admin-check-row">
@@ -221,7 +222,7 @@ export default function CatalogRuleEditorPage() {
                 </div>
               </div>
               <div className="admin-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="admin-field-label">Customer groups</span>
+                <span className="admin-field-label">{t('Customer groups')}</span>
                 <div className="admin-check-grid">
                   {groups.map((group) => (
                     <label key={group.id} className="admin-check-row">
@@ -249,32 +250,32 @@ export default function CatalogRuleEditorPage() {
             <div>
               <div className="admin-form-grid" style={{ marginBottom: 18 }}>
                 <label className="admin-field">
-                  <span className="admin-field-label">Condition combination</span>
+                  <span className="admin-field-label">{t('Condition combination')}</span>
                   <select className="admin-input" value={rule.condition_type ?? 1} onChange={(event) => set('condition_type', event.target.value)}>
-                    <option value="1">All conditions must be true (AND)</option>
-                    <option value="2">Any condition must be true (OR)</option>
+                    <option value="1">{t('All conditions must be true (AND)')}</option>
+                    <option value="2">{t('Any condition must be true (OR)')}</option>
                   </select>
                 </label>
               </div>
               <div className="admin-condition-list">
-                {(rule.conditions ?? []).length === 0 && <p className="admin-muted">No conditions. The rule applies to every product.</p>}
+                {(rule.conditions ?? []).length === 0 && <p className="admin-muted">{t('No conditions. The rule applies to every product.')}</p>}
                 {(rule.conditions ?? []).map((condition: any, index: number) => (
                   <div className="admin-condition-row" key={index}>
                     <select className="admin-input" value={condition.attribute ?? ''} onChange={(event) => updateCondition(index, 'attribute', event.target.value)}>
                       {ATTRIBUTES.map((attribute) => (
                         <option key={attribute.value} value={attribute.value}>
-                          {attribute.label}
+                          {t(attribute.label)}
                         </option>
                       ))}
                     </select>
                     <select className="admin-input" value={condition.operator ?? '=='} onChange={(event) => updateCondition(index, 'operator', event.target.value)}>
                       {OPERATORS.map((operator) => (
                         <option key={operator.value} value={operator.value}>
-                          {operator.label}
+                          {t(operator.label)}
                         </option>
                       ))}
                     </select>
-                    <input className="admin-input" value={condition.value ?? ''} onChange={(event) => updateCondition(index, 'value', event.target.value)} placeholder="Value" />
+                    <input className="admin-input" value={condition.value ?? ''} onChange={(event) => updateCondition(index, 'value', event.target.value)} placeholder={t('Value')} />
                     <button
                       type="button"
                       className="admin-icon-action danger"
@@ -291,7 +292,7 @@ export default function CatalogRuleEditorPage() {
                 style={{ marginTop: 12 }}
                 onClick={() => set('conditions', [...(rule.conditions ?? []), { attribute: 'product::price', operator: '>=', value: '' }])}
               >
-                <IconPlus size={15} /> Add condition
+                <IconPlus size={15} /> {t('Add condition')}
               </button>
             </div>
           )}
@@ -299,22 +300,22 @@ export default function CatalogRuleEditorPage() {
           {tab === 'actions' && (
             <div className="admin-form-grid">
               <label className="admin-field">
-                <span className="admin-field-label">Action type</span>
+                <span className="admin-field-label">{t('Action type')}</span>
                 <select className="admin-input" value={rule.action_type ?? 'by_percent'} onChange={(event) => set('action_type', event.target.value)}>
                   {ACTION_TYPES.map((action) => (
                     <option key={action.value} value={action.value}>
-                      {action.label}
+                      {t(action.label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="admin-field">
-                <span className="admin-field-label">Discount amount</span>
+                <span className="admin-field-label">{t('Discount amount')}</span>
                 <input className="admin-input" type="number" step="0.01" value={rule.discount_amount ?? 0} onChange={(event) => set('discount_amount', event.target.value)} />
               </label>
               <label className="admin-check-row">
                 <input type="checkbox" checked={!!rule.end_other_rules} onChange={(event) => set('end_other_rules', event.target.checked)} />
-                <span>Stop further rules from processing</span>
+                <span>{t('Stop further rules from processing')}</span>
               </label>
             </div>
           )}
