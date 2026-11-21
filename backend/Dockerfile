@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 COPY --from=build /app/target/release/ezcommerce-api /usr/local/bin/ezcommerce-api
 COPY --from=build /app/database /app/database
+COPY --from=build /app/public/demo /app/public/demo
 
 # SQLite de desarrollo (en producción se usa MySQL via DB_CONNECTION).
 ENV APP_PORT=34187
