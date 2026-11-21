@@ -1,5 +1,184 @@
 # EzCommerce
 
+Full-stack e-commerce platform: a responsive online store and an admin panel,
+built with a **Rust API backend** (Larust framework) and a **React web
+frontend with Mantine**.
+
+Designed to be deployed with Docker (Docker Compose / Coolify) using
+**MySQL/MariaDB** in production and SQLite as the development database.
+
+## Features
+
+### Storefront (React, responsive web)
+
+- Configurable home page with sections (image carousels, products and
+  categories, content banners)
+- Catalog with search, attribute and price filters, sorting
+- Product detail page with gallery, configurable variants with color swatches
+  and grouped products
+- Guest cart (signed cart token) and registered customer cart, coupons and
+  shipping estimation
+- One-page checkout: address, shipping method, payment method, review and
+  confirmation
+- Customer account: profile, orders (detail, cancel, reorder), addresses,
+  wishlist, product reviews
+- Full authentication: register, login, password reset
+- Language and channel currency selector in the header
+
+### Admin Panel (React)
+
+- Dashboard with sales metrics, orders, customers and a 30-day chart
+- Generic DataGrid with search, filters, sorting, pagination, bulk actions and
+  CSV export
+- Products: creation by type (simple, virtual, configurable, grouped, bundle,
+  downloadable), tabbed editor with special prices by date range, linked
+  products, variants, inventory by warehouse, images and product copy
+- Categories (hierarchical tree), attributes with families and groups
+- Orders with full lifecycle: invoices, shipments (multi-warehouse), refunds and
+  cancellation, with derived states from quantities and stock deduction
+- Customers: profile with orders, addresses, reviews and wishlist; customer
+  groups and review moderation
+- Marketing: cart rules with coupons (percentage, fixed amount, buy X get Y,
+  proportional split) and catalog rules with price reindexing
+- Communications: email templates, events and campaigns with sending to
+  subscribers
+- Search SEO: URL rewrites, search terms and synonyms
+- CMS, localization (channels, currencies, languages), users and roles with ACL
+- Reporting by date ranges with CSV export
+
+### Backend API (Rust)
+
+- JSON API for store and admin with JWT (Laravel-style claims, token blacklist
+  and refresh)
+- Cart engine with total calculation, taxes by zone, scheduled and free
+  shipping rates, and inventory reservation
+- Materialized prices (`product_flat`, price and inventory indexes) in the
+  style of Bagisto
+- Localization by language and currency conversion with exchange rates
+- Bookings by slots for booking-type products
+- SQL migrations with dual dialect (SQLite/MySQL) and idempotent seeders
+- Service health at `/up` and image storage with static serving
+
+## Repository Structure
+
+```
+backend/         Rust API (Larust): controllers, cart/sales engine,
+                 SQL migrations and seeders
+frontend-react/  React web app (Mantine): store and admin panel
+```
+
+## Requirements
+
+- Stable Rust (backend)
+- Node 20+ (frontend)
+- MariaDB/MySQL 10.4+ in production; SQLite for local development
+
+## Demo Data
+
+With `SEED_DEMO_DATA=true` the seeder generates a complete package to test
+the platform: 11 catalog products (including a configurable with three color
+variants), home sections, coupons (10% automatic and `WELCOME10`), catalog
+rule, customers, orders with invoices and shipments (real derived states:
+pending, processing, completed), approved reviews and wishlist. The seeder is
+idempotent: re-running it does not duplicate data.
+
+Demo credentials:
+
+| Role | Identifier | Password |
+|---|---|---|
+| Admin | value of `ADMIN_EMAIL` (default `admin@example.com`) | value of `ADMIN_PASSWORD` (default `admin123`) |
+| Customer | `customer@example.com` | `customer123` |
+| Customer 2 | `marc@example.com` | `customer123` |
+| Customer 3 | `laura@example.com` | `customer123` |
+
+## Getting Started (Development)
+
+Backend:
+
+```bash
+cd backend
+cp .env.example .env
+cargo run -- migrate:fresh --seed   # full schema + initial data
+cargo run                           # API at http://127.0.0.1:34187
+```
+
+Frontend:
+
+```bash
+cd frontend-react
+npm install
+npm run dev   # Vite with proxy /api -> http://127.0.0.1:34187
+```
+
+The API URL is configured with `VITE_API_BASE` in `frontend-react` (empty by
+default: relative `/api` routes on the same domain, with Vite proxy in
+development). Admin credentials and other parameters are defined in
+`backend/.env` (see `.env.example`).
+
+## Deployment with Docker Compose
+
+```bash
+JWT_SECRET=<secret> DB_PASSWORD=<password> docker compose up -d
+```
+
+Services:
+
+- `api` — Rust binary; runs migrations and seeders before serving
+  (healthcheck at `/up`, volume `api_storage` for uploaded images)
+- `db` — MariaDB 11 with persistent volume
+- `web` — nginx serving the compiled React SPA and proxying `/api` and
+  `/storage` to the API (same origin, no CORS)
+
+Main variables (see `docker-compose.yml`): `JWT_SECRET`, `DB_*`,
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SEED_DEMO_DATA`, `FRONTEND_URL`.
+
+## Deployment on Coolify
+
+1. Create the project from the Git repository choosing **Docker Compose**
+   (`docker-compose.yml` at the root)
+2. Define the required variables (`JWT_SECRET`, `DB_PASSWORD`,
+   `DB_ROOT_PASSWORD`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) and the recommended
+   ones (`APP_URL`, `FRONTEND_URL` for CORS, `SEED_DEMO_DATA=false`)
+3. Assign domains in Coolify: `web` service → public store domain (the nginx
+   service proxies `/api` and `/storage` to the API, no CORS); the `api`
+   service does not need a public domain (healthcheck `/up`)
+4. Mount persistent volumes: `db_data` (database) and `api_storage`
+   (product images)
+5. Deploy: the API migrates and seeds automatically on first startup
+
+Services use `expose` instead of published `ports`: Coolify manages access
+through its domains and proxy. If direct port access is desired (e.g., for
+testing without a domain), add the desired mapping in the service UI or
+replace `expose` with `ports` in the compose (`"8080:80"` for the store,
+`"34187:34187"` for the API).
+
+The SPA is built with `API_BASE_URL=SAME_ORIGIN` (relative `/api` calls on
+the same domain). If the API is published on another domain, change that
+build-arg.
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) validates on every push:
+
+- Backend: `cargo check` + migrations and seeders on SQLite
+- Frontend: `npm install` + `npm run build` (TypeScript + Vite)
+- Docker image builds (API and web)
+
+## API
+
+JSON API for store (`/api/...`) and admin (`/api/admin/...`) with JWT
+authentication via `Authorization: Bearer` header. Errors follow the Laravel
+format (`{message}` and 422 validation with `{message, errors}`); paginated
+collections use the standard form `{data, links, meta}`.
+
+## License
+
+Internal use. Contact the repository owner before reusing.
+
+---
+
+# EzCommerce
+
 Plataforma de comercio electrónico de código completo: una tienda online
 responsive y un panel de administración, construidos con un **backend API en
 Rust** (framework Larust) y un **frontend web en React con Mantine**.
@@ -177,3 +356,154 @@ colecciones paginadas usan la forma estándar `{data, links, meta}`.
 ## Licencia
 
 Uso interno. Consulta con el propietario del repositorio antes de reutilizar.
+
+---
+
+# EzCommerce
+
+フルスタックのeコマースプラットフォーム：**Rust APIバックエンド**（Larustフレームワーク）と**Reactウェブフロントエンド（Mantine）**で構築された、レスポンシブなオンラインストアと管理パネル。
+
+Docker（Docker Compose / Coolify）でデプロイ可能で、本番環境では**MySQL/MariaDB**、開発環境ではSQLiteを使用します。
+
+## 機能
+
+### ストアフロント（React、レスポンシブウェブ）
+
+- セクション（画像カルーセル、商品・カテゴリ、コンテンツバナー）で構成可能なホーム画面
+- 検索、属性・価格フィルター、ソート機能付きカタログ
+- ギャラリー、カラーバッチ付き設定可能なバリエーション、グループ化商品を含む商品詳細ページ
+- ゲストカート（署名付きカートトークン）と登録顧客カート、クーポン、送料見積もり
+- ワンページチェックアウト：住所、配送方法、支払い方法、確認・完了
+- 顧客アカウント：プロフィール、注文（詳細、キャンセル、再注文）、住所、ウィッシュリスト、商品レビュー
+- 完全な認証機能：登録、ログイン、パスワードリセット
+- ヘッダーの言語とチャネル通貨セレクター
+
+### 管理パネル（React）
+
+- 売上メトリクス、注文、顧客、過去30日間のグラフを含むダッシュボード
+- 検索、フィルター、ソート、ページネーション、一括アクション、CSVエクスポート機能付き汎用DataGrid
+- 商品：タイプ別作成（シンプル、バーチャル、設定可能、グループ化、バンドル、ダウンロード可能）、日付範囲による特別価格、リンク商品、バリエーション、倉庫別在庫、画像、商品コピーを含むタブ付きエディター
+- カテゴリ（階層ツリー）、ファミリーとグループ付き属性
+- 注文の完全なライフサイクル：請求書、配送（マルチ倉庫）、返金・キャンセル、数量と在庫引下げに基づく派生ステータス
+- 顧客：注文、住所、レビュー、ウィッシュリストを含むプロフィール；顧客グループとレビューモデレーション
+- マーケティング：クーポン（パーセンテージ、固定額、X個購入でY個プレゼント、比例配分）付きカートルールと価格再インデックス付きカタログルール
+- コミュニケーション：メールテンプレート、イベント、購読者への送信キャンペーン
+- 検索SEO：URL書き換え、検索用語とシノニム
+- CMS、ローカライゼーション（チャネル、通貨、言語）、ACL付きユーザーとロール
+- 日付範囲別レポート、CSVエクスポート
+
+### バックエンドAPI（Rust）
+
+- JWT（Laravelスタイルのクレーム、トークンブラックリスト、リフレッシュ）によるストアと管理用JSON API
+- 合計計算、ゾーン別税金、スケジュール送料と無料送料、在庫予約を含むカートエンジン
+- Bagistoスタイルの物化された価格（`product_flat`、価格・在庫インデックス）
+- 言語別ローカライゼーションと為替レート付き通貨変換
+- ブッキングタイプ商品のスロット別予約
+- SQLite/MySQLの二重ダイアレクト対応SQLマイグレーションと冪等なシーダー
+- `/up`でのサービスヘルスチェックと静的配信付き画像ストレージ
+
+## リポジトリ構造
+
+```
+backend/         Rust API（Larust）：コントローラー、カート/セールスエンジン、
+                 SQLマイグレーションとシーダー
+frontend-react/  Reactウェブアプリ（Mantine）：ストアと管理パネル
+```
+
+## 要件
+
+- Stable Rust（バックエンド）
+- Node 20+（フロントエンド）
+- MariaDB/MySQL 10.4+（本番環境）；SQLite（ローカル開発）
+
+## デモデータ
+
+`SEED_DEMO_DATA=true`を設定すると、プラットフォームのテスト用完全パッケージが生成されます：11個のカタログ商品（3色のバリエーションを含む設定可能商品）、ホームセクション、クーポン（10%自動適用と`WELCOME10`）、カタログルール、顧客、請求書と配送付き注文（実際の派生ステータス：保留中、処理中、完了）、承認済みレビュー、ウィッシュリスト。シーダーは冪等であり、再実行してもデータが重複しません。
+
+デモ認証情報：
+
+| ロール | 識別子 | パスワード |
+|---|---|---|
+| 管理者 | `ADMIN_EMAIL`の値（デフォルト `admin@example.com`） | `ADMIN_PASSWORD`の値（デフォルト `admin123`） |
+| 顧客 | `customer@example.com` | `customer123` |
+| 顧客2 | `marc@example.com` | `customer123` |
+| 顧客3 | `laura@example.com` | `customer123` |
+
+## スタートガイド（開発）
+
+バックエンド：
+
+```bash
+cd backend
+cp .env.example .env
+cargo run -- migrate:fresh --seed   # 完全なスキーマ + 初期データ
+cargo run                           # APIが http://127.0.0.1:34187 で起動
+```
+
+フロントエンド：
+
+```bash
+cd frontend-react
+npm install
+npm run dev   # Vite、プロキシ /api -> http://127.0.0.1:34187
+```
+
+API URLは`frontend-react`の`VITE_API_BASE`で設定します（デフォルトは空：同じドメインの相対`/api`ルート、開発中はViteプロキシ）。管理者認証情報とその他のパラメータは`backend/.env`で定義します（`.env.example`を参照）。
+
+## Docker Composeでのデプロイ
+
+```bash
+JWT_SECRET=<秘密> DB_PASSWORD=<パスワード> docker compose up -d
+```
+
+サービス：
+
+- `api` — Rustバイナリ；サービング前にマイグレーションとシーダーを実行
+  （`/up`でヘルスチェック、アップロード画像用ボリューム`api_storage`）
+- `db` — 永続ボリューム付きMariaDB 11
+- `web` — コンパイル済みReact SPAを配信し、`/api`と`/storage`をAPIにプロキシするnginx
+  （同じオリジン、CORS不要）
+
+主要変数（`docker-compose.yml`を参照）：`JWT_SECRET`、`DB_*`、
+`ADMIN_EMAIL`、`ADMIN_PASSWORD`、`SEED_DEMO_DATA`、`FRONTEND_URL`。
+
+## Coolifyでのデプロイ
+
+1. Gitリポジトリからプロジェクトを作成し、**Docker Compose**を選択
+   （ルートに`docker-compose.yml`）
+2. 必須変数（`JWT_SECRET`、`DB_PASSWORD`、`DB_ROOT_PASSWORD`、
+   `ADMIN_EMAIL`、`ADMIN_PASSWORD`）と推奨変数（`APP_URL`、CORS用の
+   `FRONTEND_URL`、`SEED_DEMO_DATA=false`）を定義
+3. Coolifyでドメインを割り当て：`web`サービス → ストアの公開ドメイン
+   （nginxサービスが`/api`と`/storage`をAPIにプロキシ、CORS不要）；
+   `api`サービスは公開ドメイン不要（ヘルスチェック`/up`）
+4. 永続ボリュームをマウント：`db_data`（データベース）と`api_storage`
+   （商品画像）
+5. デプロイ：APIは初回起動時に自動的にマイグレーションとシーディングを実行
+
+サービスは公開`ports`の代わりに`expose`を使用します：Coolifyはドメインと
+プロキシ経由でアクセスを管理します。ポート直接アクセスが必要な場合（ドメイン
+なしのテストなど）、サービスUIでマッピングを追加するか、composeで`expose`を
+`ports`に置き換えます（ストアは`"8080:80"`、APIは`"34187:34187"`）。
+
+SPAは`API_BASE_URL=SAME_ORIGIN`でビルドされます（同じドメインの相対`/api`
+呼び出し）。APIを別のドメインで公開する場合は、そのビルド引数を変更します。
+
+## CI
+
+GitHub Actions（`.github/workflows/ci.yml`）は各プッシュ時に検証します：
+
+- バックエンド：`cargo check` + SQLite上のマイグレーションとシーダー
+- フロントエンド：`npm install` + `npm run build`（TypeScript + Vite）
+- Dockerイメージのビルド（APIとウェブ）
+
+## API
+
+`Authorization: Bearer`ヘッダーによるJWT認証付き、ストア用（`/api/...`）と
+管理用（`/api/admin/...`）のJSON API。エラーはLaravel形式（`{message}`と
+422バリデーションの`{message, errors}`）に従います；ページネーション付き
+コレクションは標準形式`{data, links, meta}`を使用します。
+
+## ライセンス
+
+内部使用。再利用する前にリポジトリ所有者にお問い合わせください。
