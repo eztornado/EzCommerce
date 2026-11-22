@@ -774,7 +774,7 @@ const ja: Record<string, string> = {
   "{email} has been unsubscribed.": "{email}の購読を解除しました。",
   "{percent}% vs last period": "前期比 {percent}%",
   "{processed} rows imported, {invalid} invalid.": "{processed}行をインポート、{invalid}行が無効。",
-  "© {year} EzCommerce. All rights reserved.": "© {year} EzCommerce. All rights reserved.",
+  "© {year} EzCommerce. All rights reserved.": "© {year} EzCommerce. 無断転載を禁じます。",
 
   // 管理画面のテーブルにバックエンドから届くラベルとステータス。
   "First Name": "名",

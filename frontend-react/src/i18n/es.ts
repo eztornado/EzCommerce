@@ -978,7 +978,7 @@ const es: Record<string, string> = {
   "datetime": "fecha y hora",
   "image": "imagen",
   "file": "archivo",
-  "The Autumn Edit": "The Autumn Edit",
+  "The Autumn Edit": "La edición de otoño",
   "Considered essentials for the season ahead.": "Esenciales cuidados para la temporada que viene.",
   "Get ready for the new season": "Prepárate para la nueva temporada",
   "Shop the collection": "Comprar la colección",
