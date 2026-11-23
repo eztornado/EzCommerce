@@ -13,6 +13,7 @@ export interface ShopContext {
     code: string;
     name: string;
     logo?: string | null;
+    favicon?: string | null;
     base_currency_code?: string;
     default_locale_code?: string | null;
   };

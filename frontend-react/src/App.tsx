@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useShop, useAuth } from './store';
 import I18nBridge from './i18n/I18nBridge';
+import { mediaUrl } from './lib/format';
 
 import ShopLayout from './components/shop/ShopLayout';
 import HomePage from './pages/shop/HomePage';
@@ -56,12 +57,24 @@ import ReportingPage from './pages/admin/ReportingPage';
 
 export default function App() {
   const loadContext = useShop((state) => state.loadContext);
+  const favicon = useShop((state) => state.context?.channel?.favicon);
   const restore = useAuth((state) => state.restore);
 
   useEffect(() => {
     loadContext();
     restore();
   }, [loadContext, restore]);
+
+  useEffect(() => {
+    if (!favicon) return;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = mediaUrl(favicon);
+  }, [favicon]);
 
   return (
     <I18nBridge>

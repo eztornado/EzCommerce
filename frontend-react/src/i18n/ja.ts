@@ -1140,6 +1140,17 @@ const ja: Record<string, string> = {
   "Black": "黒",
   "White": "白",
   "Storefront language, measurement units and breadcrumb defaults.": "ストアの言語、測定単位、パンくずリストのデフォルト設定。",
+
+  // Recursos de marca en Configuración → Diseño.
+  "Logo": "ロゴ",
+  "Favicon": "ファビコン",
+  "Upload image": "画像をアップロード",
+  "Replace image": "画像を差し替え",
+  "Uploading…": "アップロード中…",
+  "No image selected": "画像が選択されていません",
+  "Upload the storefront and admin logo. PNG, JPG, SVG or WebP. Max 8 MB.": "ストアと管理パネルのロゴをアップロードします。PNG、JPG、SVG、WebP。最大8MB。",
+  "Upload the browser favicon. ICO, PNG or SVG. Max 8 MB.": "ブラウザのファビコンをアップロードします。ICO、PNG、SVG。最大8MB。",
+  "Image uploaded": "アップロード済み",
 };
 
 export default ja;

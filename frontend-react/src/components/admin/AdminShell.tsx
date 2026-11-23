@@ -42,8 +42,8 @@ import {
   IconUsersGroup,
   IconWorld,
 } from '@tabler/icons-react';
-import { useAdminAuth } from '../../store';
-import { initials } from '../../lib/format';
+import { useAdminAuth, useShop } from '../../store';
+import { initials, mediaUrl } from '../../lib/format';
 import { t } from '../../i18n';
 
 interface MenuChild {
@@ -158,6 +158,7 @@ export default function AdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const loggedIn = useAdminAuth((state) => state.loggedIn);
+  const brandLogo = useShop((state) => state.context?.channel?.logo);
   const user = useAdminAuth((state) => state.user);
   const logout = useAdminAuth((state) => state.logout);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('admin_collapsed') === '1');
@@ -230,8 +231,14 @@ export default function AdminShell() {
             <IconMenu2 size={19} />
           </button>
           <Link to="/admin" className="admin-logo">
-            <span className="admin-logo-mark">E</span>
-            {!collapsed && <span>EzCommerce</span>}
+            {brandLogo ? (
+              <img src={mediaUrl(brandLogo)} alt="EzCommerce" style={{ height: 28, maxWidth: 168, objectFit: 'contain' }} />
+            ) : (
+              <>
+                <span className="admin-logo-mark">E</span>
+                {!collapsed && <span>EzCommerce</span>}
+              </>
+            )}
           </Link>
         </div>
 

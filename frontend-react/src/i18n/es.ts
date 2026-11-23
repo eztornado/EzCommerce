@@ -1140,6 +1140,17 @@ const es: Record<string, string> = {
   "Black": "Negro",
   "White": "Blanco",
   "Storefront language, measurement units and breadcrumb defaults.": "Idioma de la tienda, unidades de medida y valores de las migas de pan.",
+
+  // Recursos de marca en Configuración → Diseño.
+  "Logo": "Logotipo",
+  "Favicon": "Favicon",
+  "Upload image": "Subir imagen",
+  "Replace image": "Reemplazar imagen",
+  "Uploading…": "Subiendo…",
+  "No image selected": "Ninguna imagen seleccionada",
+  "Upload the storefront and admin logo. PNG, JPG, SVG or WebP. Max 8 MB.": "Sube el logotipo de la tienda y del panel. PNG, JPG, SVG o WebP. Máx. 8 MB.",
+  "Upload the browser favicon. ICO, PNG or SVG. Max 8 MB.": "Sube el favicon del navegador. ICO, PNG o SVG. Máx. 8 MB.",
+  "Image uploaded": "Imagen cargada",
 };
 
 export default es;

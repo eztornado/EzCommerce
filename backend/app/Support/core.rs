@@ -239,14 +239,51 @@ pub async fn context_payload(
     .map(Value::String)
     .unwrap_or_else(|| default_locale_code.clone());
 
+    // Recursos de marca configurados en `general.design.admin_logo`. Si no
+    // hay valor se conserva el logo/favicon del canal.
+    let brand_logo = get_config_data(
+        "general.design.admin_logo.logo_image",
+        channel["code"].as_str(),
+        locale["code"].as_str(),
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|value| {
+        value
+            .as_str()
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+    });
+    let brand_favicon = get_config_data(
+        "general.design.admin_logo.favicon",
+        channel["code"].as_str(),
+        locale["code"].as_str(),
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|value| {
+        value
+            .as_str()
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+    });
+
     Ok(json!({
         "channel": {
             "id": channel["id"],
             "code": channel["code"],
             "name": channel_name(&channel).await,
             "theme": channel["theme"],
-            "logo": channel["logo"],
-            "favicon": channel["favicon"],
+            "logo": brand_logo
+                .map(Value::String)
+                .unwrap_or_else(|| channel["logo"].clone()),
+            "favicon": brand_favicon
+                .map(Value::String)
+                .unwrap_or_else(|| channel["favicon"].clone()),
             "base_currency_code": base_code,
             "default_locale_code": default_locale_code,
         },

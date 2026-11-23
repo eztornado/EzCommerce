@@ -112,6 +112,14 @@ a {
   color: #c2a26b;
 }
 
+.shop-logo img {
+  display: block;
+  width: auto;
+  height: 30px;
+  max-width: 180px;
+  object-fit: contain;
+}
+
 .shop-nav {
   display: flex;
   align-items: center;
@@ -3769,6 +3777,65 @@ a {
   border-color: var(--admin-blue);
   color: var(--admin-blue);
   background: var(--admin-blue-soft);
+}
+
+.admin-image-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-image-field-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 92px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background:
+    repeating-conic-gradient(#f3f4f6 0% 25%, #fff 0% 50%) 50% / 14px 14px;
+  color: #9ca3af;
+  overflow: hidden;
+}
+
+.admin-image-field-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.admin-image-field-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.admin-image-field-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-image-field-actions .admin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.admin-image-field-actions .admin-button.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-image-field-name {
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-all;
 }
 
 .admin-table-clip {

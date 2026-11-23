@@ -6,13 +6,17 @@ import {
   IconShoppingCart,
   IconCreditCard,
   IconCheck,
+  IconPhoto,
+  IconTrash,
+  IconUpload,
 } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { AdminPageHeader } from '../../components/admin/ui';
 import { useShop } from '../../store';
 import { t } from '../../i18n';
+import { mediaUrl } from '../../lib/format';
 
-type FieldType = 'text' | 'number' | 'select' | 'boolean' | 'textarea';
+type FieldType = 'text' | 'number' | 'select' | 'boolean' | 'textarea' | 'image';
 
 interface ConfigField {
   code: string;
@@ -21,6 +25,7 @@ interface ConfigField {
   options?: { label: string; value: string }[];
   placeholder?: string;
   hint?: string;
+  accept?: string;
 }
 
 interface ConfigGroup {
@@ -98,8 +103,20 @@ const SECTIONS: ConfigSection[] = [
         title: 'Design',
         info: 'Brand assets used by the storefront and the admin panel.',
         fields: [
-          { code: 'general.design.admin_logo.logo_image', label: 'Logo image path', type: 'text', placeholder: '/storage/logo.svg' },
-          { code: 'general.design.admin_logo.favicon', label: 'Favicon path', type: 'text', placeholder: '/storage/favicon.ico' },
+          {
+            code: 'general.design.admin_logo.logo_image',
+            label: 'Logo',
+            type: 'image',
+            accept: '.svg,.png,.jpg,.jpeg,.webp',
+            hint: 'Upload the storefront and admin logo. PNG, JPG, SVG or WebP. Max 8 MB.',
+          },
+          {
+            code: 'general.design.admin_logo.favicon',
+            label: 'Favicon',
+            type: 'image',
+            accept: '.ico,.png,.svg',
+            hint: 'Upload the browser favicon. ICO, PNG or SVG. Max 8 MB.',
+          },
         ],
       },
     ],
@@ -314,6 +331,7 @@ export default function ConfigurationPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   const section = SECTIONS.find((entry) => entry.key === active) ?? SECTIONS[0];
 
@@ -362,6 +380,22 @@ export default function ConfigurationPage() {
   const setValue = (code: string, value: string) => {
     setSaved(false);
     setValues((current) => ({ ...current, [code]: value }));
+  };
+
+  const uploadImage = async (field: ConfigField, file: File | null) => {
+    if (!file) return;
+    setUploading(field.code);
+    setError('');
+    try {
+      const result = await api.upload(file, 'brand');
+      const path = result?.path ?? String(result?.url ?? '').replace(/^\/?storage\//, '');
+      if (!path) throw new Error(t('Unable to upload the image.'));
+      setValue(field.code, String(path));
+    } catch (requestError: any) {
+      setError(requestError?.message ?? t('Unable to upload the image.'));
+    } finally {
+      setUploading(null);
+    }
   };
 
   const save = async () => {
@@ -416,6 +450,45 @@ export default function ConfigurationPage() {
             </option>
           ))}
         </select>
+      );
+    }
+
+    if (field.type === 'image') {
+      const preview = value ? mediaUrl(value) : '';
+      const busy = uploading === field.code;
+      return (
+        <div className="admin-image-field">
+          <div className="admin-image-field-preview">
+            {preview ? <img src={preview} alt={t(field.label)} /> : <IconPhoto size={26} />}
+          </div>
+          <div className="admin-image-field-body">
+            <div className="admin-image-field-actions">
+              <label className={`admin-button${busy ? ' is-disabled' : ''}`}>
+                <IconUpload size={15} />
+                {busy ? t('Uploading…') : value ? t('Replace image') : t('Upload image')}
+                <input
+                  id={field.code}
+                  type="file"
+                  accept={field.accept ?? 'image/*'}
+                  hidden
+                  disabled={busy}
+                  onChange={(event) => {
+                    void uploadImage(field, event.target.files?.[0] ?? null);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+              {value && (
+                <button type="button" className="admin-button" onClick={() => setValue(field.code, '')} disabled={busy}>
+                  <IconTrash size={15} /> {t('Remove')}
+                </button>
+              )}
+            </div>
+            <span className="admin-image-field-name">
+              {value ? t('Image uploaded') : t('No image selected')}
+            </span>
+          </div>
+        </div>
       );
     }
 

@@ -154,7 +154,7 @@ export const api = {
         const result = String(reader.result ?? '');
         const base64 = result.includes(',') ? result.split(',')[1] : result;
         try {
-          resolve(await api.adminPost('admin/upload', { filename: file.name, folder, content: base64 }));
+          resolve(await api.adminPost('admin/upload', { filename: file.name, folder, data: base64 }));
         } catch (error) {
           reject(error);
         }

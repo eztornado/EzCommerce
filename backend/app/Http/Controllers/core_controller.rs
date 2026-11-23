@@ -191,7 +191,10 @@ impl CoreController {
                 "The filename field is required.".into(),
             )]);
         };
-        let Some(data_b64) = body["data"].as_str() else {
+        let Some(data_b64) = body["data"]
+            .as_str()
+            .or_else(|| body["content"].as_str())
+        else {
             return crate::support::response::validation_error(vec![(
                 "data".into(),
                 "The data field is required.".into(),
@@ -220,7 +223,7 @@ impl CoreController {
             .and_then(|e| e.to_str())
             .map(|e| e.to_ascii_lowercase())
             .unwrap_or_else(|| "bin".to_string());
-        let allowed = ["png", "jpg", "jpeg", "webp", "gif", "svg", "pdf", "mp4"];
+        let allowed = ["png", "jpg", "jpeg", "webp", "gif", "svg", "ico", "pdf", "mp4"];
         if !allowed.contains(&extension.as_str()) {
             return crate::support::response::validation_error(vec![(
                 "filename".into(),
