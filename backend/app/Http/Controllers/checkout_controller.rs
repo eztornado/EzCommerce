@@ -15,8 +15,40 @@ use crate::support::core;
 use crate::support::db;
 use crate::support::response::{message, resource, validation_error};
 use crate::support::sales;
+use crate::support::stripe;
 
 pub struct CheckoutController;
+
+/// Origin used for Stripe return URLs. The storefront may run on a different
+/// port than the API in development, so `Origin`/`Referer` win over `APP_URL`.
+fn request_origin(headers: &HeaderMap) -> String {
+    if let Some(origin) = headers.get("origin").and_then(|value| value.to_str().ok()) {
+        let origin = origin.trim().trim_end_matches('/');
+        if origin.starts_with("http://") || origin.starts_with("https://") {
+            return origin.to_string();
+        }
+    }
+    if let Some(referer) = headers.get("referer").and_then(|value| value.to_str().ok()) {
+        if let Some(scheme_end) = referer.find("://") {
+            let rest = &referer[scheme_end + 3..];
+            let authority = rest.split('/').next().unwrap_or(rest);
+            if !authority.is_empty() {
+                return format!("{}://{}", &referer[..scheme_end], authority);
+            }
+        }
+    }
+    if let Ok(frontend) = std::env::var("FRONTEND_URL") {
+        let frontend = frontend.trim().trim_end_matches('/');
+        if !frontend.is_empty() {
+            return frontend.to_string();
+        }
+    }
+    crate::config::app::config()["app_url"]
+        .as_str()
+        .unwrap_or("http://localhost:8000")
+        .trim_end_matches('/')
+        .to_string()
+}
 
 async fn active_cart(
     headers: &HeaderMap,
@@ -257,18 +289,56 @@ impl CheckoutController {
         if cart.is_empty() {
             return message(StatusCode::NOT_FOUND, "Cart not found.");
         }
-        match sales::create_order_from_cart(cart["id"].as_i64().unwrap_or(0)).await {
-            Ok(order) => resource(
-                json!({
-                    "redirect": false,
-                    "order": order,
-                    "order_id": order["id"],
-                    "increment_id": order["increment_id"],
-                }),
-                "The order has been placed successfully.",
-            ),
-            Err(error) => error.into(),
+        let order = match sales::create_order_from_cart(cart["id"].as_i64().unwrap_or(0)).await {
+            Ok(order) => order,
+            Err(error) => return error.into(),
+        };
+
+        // Redirect-based gateways: create the hosted Stripe Checkout Session
+        // and send the browser there. The order stays `pending` until the
+        // webhook (or the return verification) confirms the payment.
+        if order["payment"]["method"].as_str() == Some("stripe") {
+            let origin = request_origin(&headers);
+            return match stripe::create_checkout_session(&order, &origin).await {
+                Ok(session) => resource(
+                    json!({
+                        "redirect": true,
+                        "redirect_url": session["url"],
+                        "session_id": session["id"],
+                        "order_id": order["id"],
+                        "increment_id": order["increment_id"],
+                    }),
+                    "Redirecting to Stripe Checkout.",
+                ),
+                Err(error) => {
+                    // The order was already created and the cart deactivated:
+                    // roll both back so the customer can retry the payment.
+                    let order_id = order["id"].as_i64().unwrap_or(0);
+                    let cart_id = order["cart_id"].as_i64().unwrap_or(0);
+                    let _ = sales::cancel_order(order_id).await;
+                    let _ = sales::mark_payment_failed(order_id, &error.message).await;
+                    if cart_id > 0 {
+                        let _ = db::update(
+                            "cart",
+                            cart_id,
+                            &json!({"is_active": 1, "updated_at": db::now_db()}),
+                        )
+                        .await;
+                    }
+                    error.into()
+                }
+            };
         }
+
+        resource(
+            json!({
+                "redirect": false,
+                "order": order,
+                "order_id": order["id"],
+                "increment_id": order["increment_id"],
+            }),
+            "The order has been placed successfully.",
+        )
     }
 
     /// `GET /api/checkout/onepage/success/{orderId}` - order payload for the
@@ -296,7 +366,10 @@ impl CheckoutController {
                 }
             }
         }
-        resource(order, Value::Null)
+        match sales::order_resource(order_id).await {
+            Ok(order) => resource(order, Value::Null),
+            Err(error) => error.into(),
+        }
     }
 }
 

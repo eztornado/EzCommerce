@@ -10,3 +10,4 @@ pub mod products;
 pub mod response;
 pub mod sales;
 pub mod slug;
+pub mod stripe;

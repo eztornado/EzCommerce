@@ -20,6 +20,7 @@ pub mod core_controller;
 pub mod customer_controller;
 pub mod product_controller;
 pub mod rma_gdpr_controller;
+pub mod stripe_controller;
 
 pub use admin_appearance_controller::AdminAppearanceController;
 pub use admin_communication_controller::AdminCommunicationController;
@@ -43,3 +44,4 @@ pub use core_controller::CoreController;
 pub use customer_controller::CustomerController;
 pub use product_controller::ProductController;
 pub use rma_gdpr_controller::RmaGdprController;
+pub use stripe_controller::StripeController;

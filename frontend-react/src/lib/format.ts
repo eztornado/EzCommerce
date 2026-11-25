@@ -76,14 +76,16 @@ export function formatDate(value?: string | null, withTime = false): string {
 
 export function statusColor(status?: string | number | null): string {
   const value = String(status ?? '').toLowerCase();
-  if (['1', 'active', 'enabled', 'approved', 'completed', 'processing', 'paid', 'delivered', 'success'].includes(value)) {
+  if (['1', 'active', 'enabled', 'approved', 'authorized', 'completed', 'processing', 'paid', 'delivered', 'success', 'won'].includes(value)) {
     return 'green';
   }
-  if (['pending', 'new', 'draft', 'on hold', 'on_hold', 'in process'].includes(value)) return 'yellow';
-  if (['0', 'inactive', 'disabled', 'canceled', 'cancelled', 'closed', 'failed', 'refunded', 'disapproved', 'suspended'].includes(value)) {
+  if (['pending', 'pending_payment', 'new', 'draft', 'on hold', 'on_hold', 'in process', 'needs_response', 'warning_needs_response', 'under_review', 'warning_under_review'].includes(value)) {
+    return 'yellow';
+  }
+  if (['0', 'inactive', 'disabled', 'canceled', 'cancelled', 'closed', 'failed', 'refunded', 'disputed', 'disapproved', 'suspended', 'lost', 'charge_refunded'].includes(value)) {
     return 'red';
   }
-  if (['shipped', 'invoiced', 'in transit'].includes(value)) return 'blue';
+  if (['shipped', 'invoiced', 'in transit', 'partially_refunded'].includes(value)) return 'blue';
   return 'gray';
 }
 

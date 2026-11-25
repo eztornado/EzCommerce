@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   IconArrowLeft,
   IconCheck,
@@ -127,6 +127,8 @@ function AddressFields({
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const paymentCanceled = new URLSearchParams(location.search).get('canceled') === '1';
   const customer = useAuth((state) => state.customer);
   const loggedIn = useAuth((state) => state.loggedIn);
   const refreshCart = useCart((state) => state.refresh);
@@ -272,9 +274,15 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
       });
       const data = await api.post(`checkout/onepage/orders${shopQuery()}`, {});
-      localStorage.removeItem('cart_token');
       await refreshCart();
       notifyCart();
+      if (data?.redirect && data?.redirect_url) {
+        // Keep the cart token: if the customer cancels on Stripe, the backend
+        // restores the same cart and the browser must still identify it.
+        window.location.assign(String(data.redirect_url));
+        return;
+      }
+      localStorage.removeItem('cart_token');
       const orderId = data?.order_id ?? data?.order?.id;
       navigate(`/checkout/success/${orderId}`);
     } catch (requestError: any) {
@@ -327,6 +335,12 @@ export default function CheckoutPage() {
           <IconArrowLeft size={14} /> {t('Back to cart')}
         </Link>
       </div>
+
+      {paymentCanceled && (
+        <div className="admin-alert danger" style={{ marginBottom: 18 }}>
+          {t('Payment was canceled. Your cart has been restored.')}
+        </div>
+      )}
 
       <div className="checkout-steps">
         <span className="checkout-step" data-active={step === 1} data-done={step > 1}>

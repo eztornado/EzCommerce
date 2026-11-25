@@ -5,6 +5,7 @@ import {
   IconArrowLeft,
   IconCalendar,
   IconCheck,
+  IconCreditCard,
   IconFileInvoice,
   IconMail,
   IconPackage,
@@ -21,6 +22,8 @@ import { t } from '../../i18n';
 const TABS = [
   { key: 'items', label: 'Order items' },
   { key: 'invoices', label: 'Invoices' },
+  { key: 'refunds', label: 'Refunds' },
+  { key: 'transactions', label: 'Transactions' },
   { key: 'shipments', label: 'Shipments' },
   { key: 'comments', label: 'Comments' },
 ];
@@ -123,6 +126,11 @@ export default function OrderViewPage() {
   const createInvoice = () => {
     if (!window.confirm(t('Create an invoice for all invoiceable items?'))) return;
     run('invoice', () => api.adminPost(`admin/sales/invoices/create/${order.id}`, {}), t('The invoice has been created successfully.'));
+  };
+
+  const capturePayment = () => {
+    if (!window.confirm(t('Capture this authorized Stripe payment?'))) return;
+    run('capture', () => api.adminPost(`admin/sales/orders/${order.id}/capture`, {}), t('The payment has been captured successfully.'));
   };
 
   const openShipment = () => {
@@ -234,8 +242,21 @@ export default function OrderViewPage() {
   }
 
   const invoices = order.invoices ?? [];
+  const refunds = order.refunds ?? [];
   const shipments = order.shipments ?? [];
   const comments = order.comments ?? [];
+  const transactions = order.transactions ?? [];
+  const payment = order.payment ?? {};
+  const paymentDetails = payment.additional ?? {};
+  const latestTransaction = transactions[0];
+  const transactionId =
+    paymentDetails.payment_intent_id ??
+    paymentDetails.transaction_id ??
+    latestTransaction?.transaction_id;
+  const cardBrand = paymentDetails.brand;
+  const cardLast4 = paymentDetails.last4;
+  const receiptUrl = paymentDetails.receipt_url;
+  const paymentStatus = order.payment_status ?? (payment.method ? 'pending' : null);
 
   return (
     <div>
@@ -248,6 +269,11 @@ export default function OrderViewPage() {
             {order.can_invoice && (
               <button type="button" className="admin-button" onClick={createInvoice} disabled={!!busy}>
                 <IconFileInvoice size={15} /> {busy === 'invoice' ? t('Invoicing…') : t('Invoice')}
+              </button>
+            )}
+            {order.can_capture && (
+              <button type="button" className="admin-button" onClick={capturePayment} disabled={!!busy}>
+                <IconCreditCard size={15} /> {busy === 'capture' ? t('Capturing…') : t('Capture payment')}
               </button>
             )}
             {order.can_ship && (
@@ -274,6 +300,11 @@ export default function OrderViewPage() {
 
       <div className="order-meta">
         <span className={`status-badge ${statusColor(order.status)}`}>{t(formatLabel(order.status))}</span>
+        {paymentStatus && (
+          <span className={`status-badge ${statusColor(paymentStatus)}`}>
+            {t('Payment')}: {t(formatLabel(paymentStatus))}
+          </span>
+        )}
         <span className="order-meta-item">
           <IconCalendar size={14} /> {formatDate(order.created_at, true)}
         </span>
@@ -291,7 +322,18 @@ export default function OrderViewPage() {
           <div className="admin-card">
             <AdminTabs tabs={TABS.map((item) => ({
               ...item,
-              count: item.key === 'invoices' ? invoices.length : item.key === 'shipments' ? shipments.length : item.key === 'comments' ? comments.length : order.items?.length,
+              count:
+                item.key === 'invoices'
+                  ? invoices.length
+                  : item.key === 'refunds'
+                    ? refunds.length
+                    : item.key === 'transactions'
+                      ? transactions.length
+                      : item.key === 'shipments'
+                        ? shipments.length
+                        : item.key === 'comments'
+                          ? comments.length
+                          : order.items?.length,
             }))} active={tab} onChange={setTab} />
 
             <div className="admin-card-pad">
@@ -358,6 +400,94 @@ export default function OrderViewPage() {
                             >
                               <IconPrinter size={14} /> {t('Print')}
                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              )}
+
+              {tab === 'refunds' && (
+                refunds.length === 0 ? (
+                  <div className="admin-empty">{t('No refunds have been issued for this order.')}</div>
+                ) : (
+                  <table className="admin-table order-subtable">
+                    <thead>
+                      <tr>
+                        <th>{t('Refund')}</th>
+                        <th>{t('State')}</th>
+                        <th>{t('Total')}</th>
+                        <th>{t('Transaction ID')}</th>
+                        <th>{t('Date')}</th>
+                        <th className="actions">{t('Action')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {refunds.map((refund: any) => (
+                        <tr key={refund.id}>
+                          <td>{refund.increment_id}</td>
+                          <td>
+                            <span className={`status-badge ${statusColor(refund.state)}`}>
+                              {t(formatLabel(refund.state))}
+                            </span>
+                          </td>
+                          <td>{money(refund.base_grand_total, refund.base_currency_code ?? order.base_currency_code ?? 'EUR')}</td>
+                          <td>{refund.transaction_id || '—'}</td>
+                          <td>{formatDate(refund.created_at, true)}</td>
+                          <td className="actions">
+                            {refund.transaction_id?.startsWith('re_') && (
+                              <a
+                                className="admin-link"
+                                href={`https://dashboard.stripe.com/refunds/${encodeURIComponent(refund.transaction_id)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {t('Open in Stripe')}
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              )}
+
+              {tab === 'transactions' && (
+                transactions.length === 0 ? (
+                  <div className="admin-empty">{t('No payment transactions have been recorded for this order.')}</div>
+                ) : (
+                  <table className="admin-table order-subtable">
+                    <thead>
+                      <tr>
+                        <th>{t('Date')}</th>
+                        <th>{t('Type')}</th>
+                        <th>{t('Status')}</th>
+                        <th>{t('Transaction ID')}</th>
+                        <th>{t('Method')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('Amount')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.map((transaction: any) => (
+                        <tr key={transaction.id}>
+                          <td>{formatDate(transaction.created_at, true)}</td>
+                          <td>{t(formatLabel(transaction.type) || '—')}</td>
+                          <td>
+                            <span className={`status-badge ${statusColor(transaction.status)}`}>
+                              {t(formatLabel(transaction.status) || '—')}
+                            </span>
+                          </td>
+                          <td>
+                            <code>{transaction.transaction_id || '—'}</code>
+                          </td>
+                          <td>{transaction.payment_method || '—'}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            {money(
+                              transaction.base_amount ?? transaction.amount,
+                              transaction.currency_code ?? order.base_currency_code ?? 'EUR',
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -482,7 +612,67 @@ export default function OrderViewPage() {
 
           <div className="order-card">
             <h3 className="order-card-title">{t('Payment & shipping')}</h3>
-            <Field label={t('Payment method')} value={order.payment?.method_title ?? order.payment?.method} />
+            <Field label={t('Payment method')} value={payment.method_title ?? payment.method ?? '—'} />
+            <Field
+              label={t('Payment status')}
+              value={
+                paymentStatus ? (
+                  <span className={`status-badge ${statusColor(paymentStatus)}`}>{t(formatLabel(paymentStatus))}</span>
+                ) : (
+                  '—'
+                )
+              }
+            />
+            {(cardBrand || cardLast4) && (
+              <Field
+                label={t('Card')}
+                value={[cardBrand ? formatLabel(cardBrand) : '', cardLast4 ? `•••• ${cardLast4}` : ''].filter(Boolean).join(' ')}
+              />
+            )}
+            {transactionId && (
+              <Field label={t('Transaction ID')} value={<code>{transactionId}</code>} />
+            )}
+            {receiptUrl && (
+              <Field
+                label={t('Receipt')}
+                value={
+                  <a className="admin-link" href={receiptUrl} target="_blank" rel="noreferrer">
+                    {t('View receipt')}
+                  </a>
+                }
+              />
+            )}
+            {transactionId && (
+              <Field
+                label={t('Stripe')}
+                value={
+                  <a
+                    className="admin-link"
+                    href={`https://dashboard.stripe.com/payments/${encodeURIComponent(transactionId)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t('Open in Stripe')}
+                  </a>
+                }
+              />
+            )}
+            {paymentDetails.dispute_status && (
+              <Field
+                label={t('Dispute status')}
+                value={
+                  <span className={`status-badge ${statusColor(paymentDetails.dispute_status)}`}>
+                    {t(formatLabel(paymentDetails.dispute_status))}
+                  </span>
+                }
+              />
+            )}
+            {paymentDetails.dispute_reason && (
+              <Field label={t('Dispute reason')} value={formatLabel(paymentDetails.dispute_reason)} />
+            )}
+            {paymentDetails.dispute_id && (
+              <Field label={t('Dispute ID')} value={<code>{paymentDetails.dispute_id}</code>} />
+            )}
             <Field label={t('Shipping method')} value={order.shipping_title ?? (formatLabel(order.shipping_method) || '—')} />
             <Field label={t('Currency')} value={order.order_currency_code ?? order.currency_code ?? 'EUR'} />
           </div>

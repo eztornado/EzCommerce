@@ -1,22 +1,41 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { IconCircleCheck, IconTruck, IconMail, IconArrowRight } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { shopQuery } from '../../store';
-import { formatDate, formatLabel } from '../../lib/format';
+import { formatDate, formatLabel, statusColor } from '../../lib/format';
 import { t } from '../../i18n';
 
 export default function SuccessPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
-    api
-      .get(`checkout/onepage/success/${id}${shopQuery()}`)
-      .then((data) => setOrder(data))
-      .catch(() => setOrder(null));
-  }, [id]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        if (sessionId) {
+          // Confirm the Checkout Session before rendering (fallback for local
+          // environments where the Stripe webhook has not arrived yet).
+          await api
+            .get(`checkout/onepage/stripe/verify/${id}?session_id=${encodeURIComponent(sessionId)}`)
+            .catch(() => null);
+        }
+        const data = await api.get(`checkout/onepage/success/${id}${shopQuery()}`);
+        localStorage.removeItem('cart_token');
+        if (!cancelled) setOrder(data);
+      } catch {
+        if (!cancelled) setOrder(null);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, sessionId]);
 
   return (
     <div className="shop-container">
@@ -50,7 +69,15 @@ export default function SuccessPage() {
             </div>
             <div className="success-row">
               <span>{t('Payment')}</span>
-              <strong style={{ textTransform: 'capitalize' }}>{order.payment_method_title ?? order.payment_method ?? t('Cash on delivery')}</strong>
+              <strong style={{ textTransform: 'capitalize' }}>
+                {order.payment?.method_title ?? order.payment?.method ?? t('Cash on delivery')}
+              </strong>
+            </div>
+            <div className="success-row">
+              <span>{t('Payment status')}</span>
+              <span className={`status-badge ${statusColor(order.payment_status ?? 'pending')}`}>
+                {t(formatLabel(order.payment_status ?? 'pending'))}
+              </span>
             </div>
             <div className="success-row">
               <span>{t('Shipping')}</span>
@@ -61,6 +88,14 @@ export default function SuccessPage() {
               <strong>€{Number(order.grand_total ?? 0).toFixed(2)}</strong>
             </div>
           </div>
+        )}
+
+        {order?.payment_status && order.payment_status !== 'paid' && (
+          <p className="shop-muted" style={{ maxWidth: 540, margin: '14px auto 0', lineHeight: 1.6 }}>
+            {order.payment_status === 'failed'
+              ? t('The payment could not be completed. Please try again from your cart.')
+              : t('We are confirming your payment. You will receive an email as soon as it is confirmed.')}
+          </p>
         )}
 
         <div className="success-actions">

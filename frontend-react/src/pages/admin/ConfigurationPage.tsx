@@ -16,7 +16,7 @@ import { useShop } from '../../store';
 import { t } from '../../i18n';
 import { mediaUrl } from '../../lib/format';
 
-type FieldType = 'text' | 'number' | 'select' | 'boolean' | 'textarea' | 'image';
+type FieldType = 'text' | 'number' | 'select' | 'boolean' | 'textarea' | 'image' | 'password';
 
 interface ConfigField {
   code: string;
@@ -319,6 +319,49 @@ const SECTIONS: ConfigSection[] = [
           { code: 'sales.payment_methods.moneytransfer.description', label: 'Description', type: 'textarea', placeholder: 'Transfer the total to our bank account.' },
         ],
       },
+      {
+        title: 'Stripe',
+        info: 'Credentials for Stripe Checkout (redirect). Stripe is offered at checkout when active and a secret key is configured. Webhook endpoint: /api/webhooks/stripe.',
+        fields: [
+          { code: 'sales.payment_methods.stripe.active', label: 'Active', type: 'boolean' },
+          { code: 'sales.payment_methods.stripe.title', label: 'Title', type: 'text', placeholder: 'Card payment (Stripe)' },
+          { code: 'sales.payment_methods.stripe.description', label: 'Description', type: 'textarea', placeholder: 'Pay securely with your credit or debit card.' },
+          {
+            code: 'sales.payment_methods.stripe.mode',
+            label: 'Mode',
+            type: 'select',
+            options: [
+              { label: 'Test', value: 'test' },
+              { label: 'Live', value: 'live' },
+            ],
+          },
+          { code: 'sales.payment_methods.stripe.publishable_key', label: 'Publishable key', type: 'text', placeholder: 'pk_test_…' },
+          {
+            code: 'sales.payment_methods.stripe.secret_key',
+            label: 'Secret key',
+            type: 'password',
+            placeholder: 'sk_test_…',
+            hint: 'In production use the STRIPE_SECRET_KEY environment variable instead of storing it in the database.',
+          },
+          {
+            code: 'sales.payment_methods.stripe.webhook_secret',
+            label: 'Webhook secret',
+            type: 'password',
+            placeholder: 'whsec_…',
+            hint: 'In production use the STRIPE_WEBHOOK_SECRET environment variable.',
+          },
+          {
+            code: 'sales.payment_methods.stripe.capture_method',
+            label: 'Capture method',
+            type: 'select',
+            options: [
+              { label: 'Automatic', value: 'automatic' },
+              { label: 'Manual (authorize only)', value: 'manual' },
+            ],
+          },
+          { code: 'sales.payment_methods.stripe.statement_descriptor', label: 'Statement descriptor', type: 'text', placeholder: 'EZCOMMERCE' },
+        ],
+      },
     ],
   },
 ];
@@ -489,6 +532,20 @@ export default function ConfigurationPage() {
             </span>
           </div>
         </div>
+      );
+    }
+
+    if (field.type === 'password') {
+      return (
+        <input
+          id={field.code}
+          className="admin-input"
+          type="password"
+          autoComplete="new-password"
+          value={value}
+          placeholder={field.placeholder ? t(field.placeholder) : undefined}
+          onChange={(event) => setValue(field.code, event.target.value)}
+        />
       );
     }
 

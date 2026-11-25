@@ -15,6 +15,7 @@ use super::auth;
 use super::core;
 use super::db::{self, RowMap};
 use super::response::{ApiError, ApiResult};
+use super::stripe;
 
 const CART_TTL_DAYS: i64 = 30;
 
@@ -841,6 +842,14 @@ pub async fn supported_payment_methods(channel_code: &str) -> Vec<RowMap> {
             })));
         }
     }
+    if let Some(config) = stripe::available(channel_code).await {
+        methods.push(db::to_map(json!({
+            "method": "stripe",
+            "method_title": config.title,
+            "description": config.description,
+            "sort": 3,
+        })));
+    }
     methods
 }
 
@@ -849,11 +858,28 @@ pub async fn save_payment_method(cart_id: i64, method: &str) -> ApiResult<()> {
         ("cashondelivery", "Cash On Delivery"),
         ("moneytransfer", "Money Transfer"),
     ];
-    let title = titles
+    let mut title = titles
         .iter()
         .find(|(code, _)| *code == method)
-        .map(|(_, title)| *title)
-        .unwrap_or(method);
+        .map(|(_, title)| title.to_string())
+        .unwrap_or_else(|| method.to_string());
+    if method == "stripe" {
+        let channel_code = match db::find_by_id("cart", cart_id)
+            .await
+            .ok()
+            .flatten()
+            .and_then(|cart| cart["channel_id"].as_i64())
+        {
+            Some(channel_id) => db::find_by_id("channels", channel_id)
+                .await
+                .ok()
+                .flatten()
+                .and_then(|channel| channel["code"].as_str().map(str::to_string))
+                .unwrap_or_else(|| "default".to_string()),
+            None => "default".to_string(),
+        };
+        title = stripe::load(&channel_code).await.title;
+    }
     let existing = db::select_one(
         "SELECT `id` FROM `cart_payment` WHERE `cart_id` = ? LIMIT 1",
         &[Value::from(cart_id)],

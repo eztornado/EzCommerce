@@ -250,7 +250,7 @@ export default function DataGrid({
       return <span style={{ color: '#9ca3af' }}>—</span>;
     }
     const option = column.filterable_options?.find((entry) => String(entry.value) === String(value));
-    if (column.index === 'status') {
+    if (column.index === 'status' || column.index === 'payment_status') {
       const label = option?.label ? t(option.label) : column.type === 'boolean' ? statusLabel(value) : t(formatLabel(String(value)));
       const active = value === 1 || value === '1' || ['active', 'enabled', 'approved', 'completed', 'processing'].includes(label.toLowerCase());
       return <span className={`status-badge ${active ? statusColor(value) : 'gray'}`}>{label}</span>;

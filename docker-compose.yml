@@ -36,6 +36,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
       MAIL_MAILER: log
+      # Stripe (opcional): si se dejan vacías, se usan los valores de core_config.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     # Larust enlaza el API a 127.0.0.1 dentro del contenedor; socat lo
     # publica en 0.0.0.0:34188 para que el proxy de `web` lo alcance.
     command: ["sh", "-c", "mkdir -p /app/public/storage && cp -rn /app/public/demo/. /app/public/storage/ 2>/dev/null; socat TCP-LISTEN:34188,bind=0.0.0.0,reuseaddr,fork TCP:127.0.0.1:34187 & ezcommerce-api migrate && ezcommerce-api db:seed && exec ezcommerce-api"]

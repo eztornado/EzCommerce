@@ -8,6 +8,7 @@ use crate::controllers::{
     AdminAppearanceController, AdminAuthController, AdminCommunicationController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
     AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, ProductController, RmaGdprController,
+    StripeController,
 };
 
 pub fn routes() -> Router {
@@ -22,6 +23,7 @@ pub fn routes() -> Router {
         .get("/core/states", CoreController::states)
         .get("/core/currencies", CoreController::currencies)
         .post("/newsletter/subscribe", CoreController::newsletter_subscribe)
+        .post("/webhooks/stripe", StripeController::webhook)
         // ------------------------------------------------------------------
         // Categories
         // ------------------------------------------------------------------
@@ -96,6 +98,8 @@ pub fn routes() -> Router {
         .post("/checkout/onepage/payment-methods", CheckoutController::save_payment_method)
         .post("/checkout/onepage/orders", CheckoutController::store_order)
         .get("/checkout/onepage/success/{order_id}", CheckoutController::success)
+        .get("/checkout/onepage/stripe/verify/{order_id}", StripeController::verify)
+        .get("/checkout/onepage/stripe/cancel/{order_id}", StripeController::cancel)
         // ------------------------------------------------------------------
         // Admin
         // ------------------------------------------------------------------
@@ -201,6 +205,7 @@ pub fn routes() -> Router {
         .post("/admin/sales/orders", AdminSalesController::orders_grid)
         .get("/admin/sales/orders/view/{id}", AdminSalesController::order_view)
         .post("/admin/sales/orders/{id}/cancel", AdminSalesController::order_cancel)
+        .post("/admin/sales/orders/{id}/capture", AdminSalesController::order_capture)
         .post("/admin/sales/orders/comment/{order_id}", AdminSalesController::order_comment)
         .get("/admin/sales/orders/search", AdminSalesController::order_search)
         .post("/admin/sales/invoices/create/{order_id}", AdminSalesController::invoice_create)
