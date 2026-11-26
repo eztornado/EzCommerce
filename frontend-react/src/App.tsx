@@ -57,7 +57,7 @@ import ReportingPage from './pages/admin/ReportingPage';
 
 export default function App() {
   const loadContext = useShop((state) => state.loadContext);
-  const favicon = useShop((state) => state.context?.channel?.favicon);
+  const favicon = useShop((state) => state.context?.channel?.favicon ?? state.brand?.favicon);
   const restore = useAuth((state) => state.restore);
 
   useEffect(() => {

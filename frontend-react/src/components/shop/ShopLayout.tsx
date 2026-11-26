@@ -18,7 +18,9 @@ import { t, setLocale, uiLocaleName, useLocale, type UiLocale } from '../../i18n
 import type { Category } from '../../types';
 
 export default function ShopLayout() {
-  const { context, changeLocale, changeCurrency } = useShop();
+  const { context, brand, changeLocale, changeCurrency } = useShop();
+  const brandLogo = context?.channel?.logo || brand?.logo || null;
+  const brandName = context?.channel?.name || brand?.name || 'EzCommerce';
   const cartCount = useCart((state) => state.count);
   const refreshCart = useCart((state) => state.refresh);
   const loggedIn = useAuth((state) => state.loggedIn);
@@ -135,12 +137,17 @@ export default function ShopLayout() {
           </button>
 
           <Link to="/" className="shop-logo">
-            {context?.channel?.logo ? (
-              <img src={mediaUrl(context.channel.logo)} alt={context.channel.name} style={{ height: 30 }} />
-            ) : (
+            {brandLogo ? (
+              <img src={mediaUrl(brandLogo)} alt={brandName} style={{ height: 30 }} />
+            ) : brand ? (
               <>
-                Ez<span>Commerce</span>
+                {brandName.slice(0, 2)}
+                <span>{brandName.slice(2)}</span>
               </>
+            ) : (
+              // Primer arranque sin caché: evita mostrar la marca por defecto
+              // mientras llega /core/context (y el posible logo configurado).
+              <span aria-hidden="true" style={{ display: 'inline-block', width: 120, height: 30 }} />
             )}
           </Link>
 

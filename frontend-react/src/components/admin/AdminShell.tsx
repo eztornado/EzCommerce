@@ -158,7 +158,11 @@ export default function AdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const loggedIn = useAdminAuth((state) => state.loggedIn);
-  const brandLogo = useShop((state) => state.context?.channel?.logo);
+  const brand = useShop((state) => state.brand);
+  const brandLogo = useShop((state) => state.context?.channel?.logo ?? state.brand?.logo);
+  const brandName = useShop(
+    (state) => state.context?.channel?.name ?? state.brand?.name ?? 'EzCommerce',
+  );
   const user = useAdminAuth((state) => state.user);
   const logout = useAdminAuth((state) => state.logout);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('admin_collapsed') === '1');
@@ -232,12 +236,17 @@ export default function AdminShell() {
           </button>
           <Link to="/admin" className="admin-logo">
             {brandLogo ? (
-              <img src={mediaUrl(brandLogo)} alt="EzCommerce" style={{ height: 28, maxWidth: 168, objectFit: 'contain' }} />
-            ) : (
+              <img src={mediaUrl(brandLogo)} alt={brandName} style={{ height: 28, maxWidth: 168, objectFit: 'contain' }} />
+            ) : brand ? (
               <>
-                <span className="admin-logo-mark">E</span>
-                {!collapsed && <span>EzCommerce</span>}
+                <span className="admin-logo-mark">{brandName.slice(0, 1).toUpperCase()}</span>
+                {!collapsed && <span>{brandName}</span>}
               </>
+            ) : (
+              <span
+                aria-hidden="true"
+                style={{ display: 'inline-block', width: collapsed ? 32 : 150, height: 28 }}
+              />
             )}
           </Link>
         </div>

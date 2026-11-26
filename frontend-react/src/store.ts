@@ -19,8 +19,46 @@ export interface ShopContext {
   };
 }
 
+export interface ShopBrand {
+  name?: string;
+  logo?: string | null;
+  favicon?: string | null;
+}
+
+const BRAND_CACHE_KEY = 'shop_brand';
+
+function normalizeAsset(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+/** Marca cacheada para pintar el header antes de que responda /core/context. */
+function readBrandCache(): ShopBrand | null {
+  try {
+    const raw = localStorage.getItem(BRAND_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      name: typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name : undefined,
+      logo: normalizeAsset(parsed.logo),
+      favicon: normalizeAsset(parsed.favicon),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeBrandCache(brand: ShopBrand): void {
+  try {
+    localStorage.setItem(BRAND_CACHE_KEY, JSON.stringify(brand));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
+
 interface ShopState {
   context: ShopContext | null;
+  brand: ShopBrand | null;
   loading: boolean;
   loadContext: () => Promise<void>;
   changeLocale: (code: string) => Promise<void>;
@@ -29,12 +67,19 @@ interface ShopState {
 
 export const useShop = create<ShopState>((set) => ({
   context: null,
+  brand: readBrandCache(),
   loading: false,
   loadContext: async () => {
     try {
       set({ loading: true });
       const context = await api.get(`core/context${shopQuery()}`);
-      set({ context, loading: false });
+      const brand: ShopBrand = {
+        name: context?.channel?.name || undefined,
+        logo: normalizeAsset(context?.channel?.logo),
+        favicon: normalizeAsset(context?.channel?.favicon),
+      };
+      writeBrandCache(brand);
+      set({ context, brand, loading: false });
     } catch {
       set({ loading: false });
     }
