@@ -9,7 +9,7 @@
 //! JSON.
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
-use larust_support::orm::{backend, pool, Backend};
+use larust_support::orm::{backend, pool, read_pool, Backend};
 use larust_support::serde_json::{Map, Number, Value};
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
@@ -65,7 +65,7 @@ fn quote_table(name: &str) -> ApiResult<String> {
 
 /// `true` when the table exists in the active database.
 pub async fn table_exists(table: &str) -> ApiResult<bool> {
-    let db_pool = pool()?;
+    let db_pool = read_pool()?;
     let exists: Option<String> = match backend() {
         Backend::Sqlite => {
             let row = sqlx::query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
@@ -94,7 +94,7 @@ pub async fn table_exists(table: &str) -> ApiResult<bool> {
 
 /// Column names of a table, in database order.
 pub async fn columns(table: &str) -> ApiResult<Vec<String>> {
-    let db_pool = pool()?;
+    let db_pool = read_pool()?;
     let names: Vec<String> = match backend() {
         Backend::Sqlite => {
             let sql = format!("PRAGMA table_info({})", quote_table(table)?);
@@ -270,7 +270,7 @@ fn bind_value<'q>(
 
 /// Runs a `SELECT` and decodes every row into a JSON object.
 pub async fn select(sql: &str, binds: &[Value]) -> ApiResult<Vec<RowMap>> {
-    let db_pool = pool()?;
+    let db_pool = read_pool()?;
     let mut query = sqlx::query(sql);
     for value in binds {
         query = bind_value(query, value);
@@ -280,7 +280,7 @@ pub async fn select(sql: &str, binds: &[Value]) -> ApiResult<Vec<RowMap>> {
 }
 
 pub async fn select_one(sql: &str, binds: &[Value]) -> ApiResult<Option<RowMap>> {
-    let db_pool = pool()?;
+    let db_pool = read_pool()?;
     let mut query = sqlx::query(sql);
     for value in binds {
         query = bind_value(query, value);
@@ -290,7 +290,7 @@ pub async fn select_one(sql: &str, binds: &[Value]) -> ApiResult<Option<RowMap>>
 }
 
 pub async fn scalar_i64(sql: &str, binds: &[Value]) -> ApiResult<i64> {
-    let db_pool = pool()?;
+    let db_pool = read_pool()?;
     let mut query = sqlx::query(sql);
     for value in binds {
         query = bind_value(query, value);

@@ -590,6 +590,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98b0cc327b5bc766e7fda9c9260cc0fa81b43a8e240440422dff70788e3f9ef1"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1565,9 +1574,9 @@ dependencies = [
 
 [[package]]
 name = "larust-auth"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49fffe05fec4b1dc25664e29dcf50fbeccb5e61a3a38ccf2ec748b5676183db1"
+checksum = "11ce85a1fec47e202857f0006b233d1a618891f39254563dd49898297da31290"
 dependencies = [
  "argon2",
  "axum",
@@ -1578,9 +1587,9 @@ dependencies = [
 
 [[package]]
 name = "larust-cache"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d061bc5c5700122ebaa8d603f136e9033bd977f972d40a66596df168ef9536c"
+checksum = "156a7d0da48f0f83afd48c3bdb354e1bf671ac1f201209c6f9fe76b47bd01a66"
 dependencies = [
  "larust-core",
  "larust-orm",
@@ -1594,18 +1603,18 @@ dependencies = [
 
 [[package]]
 name = "larust-console"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5f617d8c48e2d15473cf7b50715fbd11d3ba4643a561e198f3f73e165419fb4"
+checksum = "7c7cb87b09347e46ff172c593e8b915cbe41a7d6fb82c8c3ee4246d5e5de02b6"
 dependencies = [
  "larust-core",
 ]
 
 [[package]]
 name = "larust-core"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb9adb064d5646265d34f127669f24fc495d3cbbace53a4ba8872b6d670acc84"
+checksum = "94cbae4ba54f4758c28781a3422dbf1f4e79cb8cbf1df9db5fe9b6aabe37a958"
 dependencies = [
  "axum",
  "dotenvy",
@@ -1620,15 +1629,16 @@ dependencies = [
  "tower",
  "tower-http 0.7.1",
  "tracing",
+ "tracing-appender",
  "tracing-subscriber",
  "windows-sys 0.59.0",
 ]
 
 [[package]]
 name = "larust-db"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54f8b6f37a2eae887a9e6d9cf8d720dc37e91e69d2c11e3b68b2de684977077b"
+checksum = "14fccbf80355505a0b286831bc5b036096973a1ecff454a74b675b07e9dc1432"
 dependencies = [
  "axum",
  "form_urlencoded",
@@ -1647,18 +1657,18 @@ dependencies = [
 
 [[package]]
 name = "larust-events"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "122c6d887da582891b60276b79b1f2768cce57f1d3c5aaace99a6716778ca51b"
+checksum = "e32111028690fa18b22023269cf0a98f972aad6d96a33020849176546835aa26"
 dependencies = [
  "tracing",
 ]
 
 [[package]]
 name = "larust-http"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84f757e34a1cfdb9bbc66f51160ae1528f589c0e61152e3d758f3911937f9c61"
+checksum = "3714243a3e8380ff37772f40b835f28bcdbae1694afd54fb87161d5f9c6d6093"
 dependencies = [
  "async-trait",
  "axum",
@@ -1681,9 +1691,9 @@ dependencies = [
 
 [[package]]
 name = "larust-image"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bfacfd0b2abebef501d10896cea799f4c9ca82a459d26cd4bf7a268c1d82eeb"
+checksum = "35ac7fd8d02a3cedb07d9043854625f4994573f2148a80898f7c2df45be6c5a8"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1700,9 +1710,9 @@ dependencies = [
 
 [[package]]
 name = "larust-lang"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b051b42c5e79d1e38d453fd021e078bd878233a75055d1ab9989fd54ef73e9"
+checksum = "ca2e28717527d0b01e5cb8375031318c5ce429c826b7b08913cf52cf87a4d3bf"
 dependencies = [
  "larust-core",
  "serde_json",
@@ -1711,9 +1721,9 @@ dependencies = [
 
 [[package]]
 name = "larust-live"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04bedb449cc77c6ef32f8015903f7a602eecf75e19b9e74babe78d67c261ac34"
+checksum = "ea477f15197cf2f796218dd921c99aecd4e732c6e35563476e2dd70e09cd3dbb"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1728,9 +1738,9 @@ dependencies = [
 
 [[package]]
 name = "larust-macros"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa0d1c2d8580c70d5b0d8b1acf823d3f7071af10498f6d12e219e0b8997150cd"
+checksum = "baf98df8e851cf0431f7a95e5aa47a7ee2ae24c8b8b84278e84d8226d1217116"
 dependencies = [
  "larust-view",
  "proc-macro2",
@@ -1740,9 +1750,9 @@ dependencies = [
 
 [[package]]
 name = "larust-mail"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00cd0733f7d3b40029f4c6f03e4b2479b08e9ccc9412d766e8e5c4d783c5b36b"
+checksum = "442e6337291aaa1402700f87886e7ffa688a5e14e1dfc9c37e348b682e117406"
 dependencies = [
  "larust-core",
  "larust-queue",
@@ -1753,9 +1763,9 @@ dependencies = [
 
 [[package]]
 name = "larust-notifications"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e278e4412da8233a24f5664c90394525d2d23732e148f6fe52ca2288c85e81"
+checksum = "d0cd84c9dfed8edb432063fe050eb5905b34268e3b4db462a90d352d6d68583c"
 dependencies = [
  "larust-auth",
  "larust-core",
@@ -1770,9 +1780,9 @@ dependencies = [
 
 [[package]]
 name = "larust-orm"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaf1c6a4a192f7a95991e8fb2bd742e4d86d56d8d0982f5e8f059a4763fa2724"
+checksum = "323996914e42e0a19efdb4a2646fc0ab14afe8b81bf11de48dcc22745aa4c6a8"
 dependencies = [
  "larust-core",
  "sha2",
@@ -1782,9 +1792,9 @@ dependencies = [
 
 [[package]]
 name = "larust-queue"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cc6081c8777c37027c11cf61cade4d74654cdbd4ba944cb082c2b19fac5ccea"
+checksum = "228b7c67d785abb239fc44de283c4dc7e9de2f61bfefcf4875661291e912570d"
 dependencies = [
  "larust-core",
  "larust-orm",
@@ -1798,18 +1808,18 @@ dependencies = [
 
 [[package]]
 name = "larust-repository"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6de8d796c71fa7e719c34020d1ece1af5c3e71c8033e05b01aaf124b14088456"
+checksum = "6f1e2c3ab979634c2417331d1281d66b07fbe3c5703e8ebecc69f21d31127d05"
 dependencies = [
  "larust-core",
 ]
 
 [[package]]
 name = "larust-scheduler"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e3d361b8e0e5b0bd29bf4451684bcdb893c02b7f6fc3fbbd93ffc9c3a367b01"
+checksum = "78228c120edbc75c314640c8fbb93cf11e70c5e0b7fd601422227edfa6e78cc7"
 dependencies = [
  "chrono",
  "cron",
@@ -1822,9 +1832,9 @@ dependencies = [
 
 [[package]]
 name = "larust-spa"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ef843c890d3458da35c0f5cab8d68041d46094bd2a83ee3f754e44e05d5d822"
+checksum = "6b13b5d2449a869b6dbafc87dfd1268f9447d66cb2d468092c09830ebc886309"
 dependencies = [
  "axum",
  "larust-http",
@@ -1832,9 +1842,9 @@ dependencies = [
 
 [[package]]
 name = "larust-storage"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5a6a8f50f7ba85d08f9d00408527e67e4300609047dbcf8d66dfc8f0ec654c1"
+checksum = "30413fa0d399f793b2ade497a8bfe7feb12d6f9c6e8c713128a3ad3490322924"
 dependencies = [
  "larust-core",
  "tokio",
@@ -1842,9 +1852,9 @@ dependencies = [
 
 [[package]]
 name = "larust-support"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbc289155e33428526560cdb3f0d338e814f6c74316c8826ed6b3445e4e48a0"
+checksum = "b13b2c048199e596406c0f09aa977d16a140ef36a4dfffa2294394320fa04c7d"
 dependencies = [
  "ammonia",
  "axum",
@@ -1877,9 +1887,9 @@ dependencies = [
 
 [[package]]
 name = "larust-testing"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04d116b36641ddd24430000451cf93ec28af0eedc3d94ecbe6b328e84a2ab2fa"
+checksum = "eb2bc4c39deb2d8d98282deaa99a7177cc1386c876d26ffd8e8c9107b62a4759"
 dependencies = [
  "axum",
  "form_urlencoded",
@@ -1899,9 +1909,9 @@ dependencies = [
 
 [[package]]
 name = "larust-validation"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3cc81a98114d2351632a54fd196a95296c1485c54e6d61cbc3955f80ec21539"
+checksum = "6f52fb44d4aa6422f12df54892d942cada58befc32ad23193d3bd6142822d1b4"
 dependencies = [
  "axum",
  "form_urlencoded",
@@ -1911,9 +1921,9 @@ dependencies = [
 
 [[package]]
 name = "larust-view"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "054d392ead2b70de29d3b4720a24c8089c29f3f69c0de81fb9fa4c22b40c7ed2"
+checksum = "3a47e73e6cd81dfffc6027e8e8977c8c3dcbdceb090fed5cbd3fda4eda8e9924"
 dependencies = [
  "axum",
  "serde",
@@ -3609,6 +3619,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
+name = "symlink"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7973cce6668464ea31f176d85b13c7ab3bba2cb3b77a2ed26abd7801688010a"
+
+[[package]]
 name = "syn"
 version = "2.0.119"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4066,6 +4082,19 @@ dependencies = [
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "050686193eb999b4bb3bc2acfa891a13da00f79734704c4b8b4ef1a10b368a3c"
+dependencies = [
+ "crossbeam-channel",
+ "symlink",
+ "thiserror 2.0.21",
+ "time",
+ "tracing-subscriber",
 ]
 
 [[package]]
