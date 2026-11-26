@@ -66,6 +66,8 @@ pub fn application() -> Result<larust_core::Application, larust_core::AppError> 
 
 pub fn router(app: &larust_core::Application) -> larust_http::Router {
     let api = routes::api::routes();
+    // OpenAPI is built from the live route registry (docs + MCP included).
+    crate::support::openapi::capture_routes(api.routes());
     let cors = cors_layer();
     let api = api.middleware(cors);
     routes::web::routes().merge(&app.config().api_prefix, api)
@@ -125,6 +127,8 @@ fn cors_layer() -> CorsLayer {
             larust_support::axum::http::header::ACCEPT,
             larust_support::axum::http::HeaderName::from_static("x-requested-with"),
             larust_support::axum::http::header::HeaderName::from_static("x-cart-token"),
+            larust_support::axum::http::HeaderName::from_static("mcp-session-id"),
+            larust_support::axum::http::HeaderName::from_static("mcp-protocol-version"),
         ])
         .max_age(std::time::Duration::from_secs(86400))
 }

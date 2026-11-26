@@ -62,6 +62,7 @@ Designed to be deployed with Docker (Docker Compose / Coolify) using
 - Localization by language and currency conversion with exchange rates
 - Bookings by slots for booking-type products
 - SQL migrations with dual dialect (SQLite/MySQL) and idempotent seeders
+- OpenAPI 3.0 document, Swagger UI and a JWT-protected MCP tool server
 - Service health at `/up` and image storage with static serving
 
 ## Repository Structure
@@ -282,6 +283,26 @@ authentication via `Authorization: Bearer` header. Errors follow the Laravel
 format (`{message}` and 422 validation with `{message, errors}`); paginated
 collections use the standard form `{data, links, meta}`.
 
+### API documentation and MCP
+
+- Swagger UI: `http://<host>/api/docs` (public). `/docs` redirects there.
+- OpenAPI 3.0 JSON: `http://<host>/api/openapi.json`.
+- MCP server: `POST /api/mcp`, JSON-RPC 2.0 over HTTP, authenticated with the
+  same admin JWT as the admin API (`Authorization: Bearer <token>`). Supports
+  `initialize`, `tools/list` and `tools/call`; it is documented in the OpenAPI
+  document with its tools and JWT security scheme.
+
+MCP tools: `list_products`, `get_product`, `list_orders`, `get_order`,
+`create_invoice`, `cancel_order`, `list_customers`, `list_transactions`,
+`list_refunds` and `sales_summary`.
+
+```bash
+curl -X POST http://<host>/api/mcp \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
 ## License
 
 Internal use. Contact the repository owner before reusing.
@@ -356,6 +377,8 @@ Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
 - Localización por idioma y conversión de moneda con tasas de cambio
 - Reservas (bookings) por slots para productos de tipo booking
 - Migraciones SQL con doble dialecto (SQLite/MySQL) y seeders idempotentes
+- Documento OpenAPI 3.0, Swagger UI y servidor de herramientas MCP protegido
+  por JWT
 - Salud del servicio en `/up` y almacenamiento de imágenes con servir estático
 
 ## Estructura del repositorio
@@ -582,6 +605,26 @@ autenticación JWT por cabecera `Authorization: Bearer`. Los errores siguen el
 formato Laravel (`{message}` y validación 422 con `{message, errors}`); las
 colecciones paginadas usan la forma estándar `{data, links, meta}`.
 
+### Documentación del API y MCP
+
+- Swagger UI: `http://<host>/api/docs` (pública). `/docs` redirige allí.
+- OpenAPI 3.0 JSON: `http://<host>/api/openapi.json`.
+- Servidor MCP: `POST /api/mcp`, JSON-RPC 2.0 sobre HTTP, autenticado con el
+  mismo JWT de administración que el API (`Authorization: Bearer <token>`).
+  Soporta `initialize`, `tools/list` y `tools/call`; aparece documentado en el
+  OpenAPI con sus herramientas y el esquema de seguridad JWT.
+
+Herramientas MCP: `list_products`, `get_product`, `list_orders`, `get_order`,
+`create_invoice`, `cancel_order`, `list_customers`, `list_transactions`,
+`list_refunds` y `sales_summary`.
+
+```bash
+curl -X POST http://<host>/api/mcp \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
 ## Licencia
 
 Uso interno. Consulta con el propietario del repositorio antes de reutilizar.
@@ -632,6 +675,7 @@ Docker（Docker Compose / Coolify）でデプロイ可能で、本番環境で�
 - 言語別ローカライゼーションと為替レート付き通貨変換
 - ブッキングタイプ商品のスロット別予約
 - SQLite/MySQLの二重ダイアレクト対応SQLマイグレーションと冪等なシーダー
+- OpenAPI 3.0ドキュメント、Swagger UI、JWTで保護されたMCPツールサーバー
 - `/up`でのサービスヘルスチェックと静的配信付き画像ストレージ
 
 ## リポジトリ構造
@@ -815,6 +859,23 @@ GitHub Actions（`.github/workflows/ci.yml`）は各プッシュ時に検証し�
 管理用（`/api/admin/...`）のJSON API。エラーはLaravel形式（`{message}`と
 422バリデーションの`{message, errors}`）に従います；ページネーション付き
 コレクションは標準形式`{data, links, meta}`を使用します。
+
+### APIドキュメントとMCP
+
+- Swagger UI：`http://<host>/api/docs`（公開）。`/docs`はそこへリダイレクトします。
+- OpenAPI 3.0 JSON：`http://<host>/api/openapi.json`。
+- MCPサーバー：`POST /api/mcp`、HTTP上のJSON-RPC 2.0。管理APIと同じ管理者JWTで認証します（`Authorization: Bearer <token>`）。`initialize`、`tools/list`、`tools/call`に対応し、OpenAPIドキュメントにツールとJWTセキュリティスキームが記載されます。
+
+MCPツール：`list_products`、`get_product`、`list_orders`、`get_order`、
+`create_invoice`、`cancel_order`、`list_customers`、`list_transactions`、
+`list_refunds`、`sales_summary`。
+
+```bash
+curl -X POST http://<host>/api/mcp \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
 
 ## ライセンス
 

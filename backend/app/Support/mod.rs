@@ -6,6 +6,8 @@ pub mod core;
 pub mod datagrid;
 pub mod db;
 pub mod mailer;
+pub mod mcp;
+pub mod openapi;
 pub mod products;
 pub mod response;
 pub mod sales;

@@ -658,6 +658,28 @@ pub async fn cancel_order(order_id: i64) -> ApiResult<()> {
         .await?
         .ok_or_else(|| ApiError::not_found("Order not found"))?;
 
+    // Un cobro Stripe ya capturado debe devolverse con un reembolso; cancelar
+    // el pedido dejaría el dinero retenido sin contrapartida.
+    let payment_method = db::select_one(
+        "SELECT `method` FROM `order_payment` WHERE `order_id` = ? ORDER BY `id` DESC LIMIT 1",
+        &[Value::from(order_id)],
+    )
+    .await
+    .ok()
+    .flatten()
+    .and_then(|row| row["method"].as_str().map(str::to_string))
+    .unwrap_or_default();
+    if payment_method == "stripe"
+        && matches!(
+            order["payment_status"].as_str().unwrap_or(""),
+            "paid" | "partially_refunded"
+        )
+    {
+        return Err(ApiError::unprocessable(
+            "Paid Stripe orders must be refunded instead of canceled.",
+        ));
+    }
+
     for item in &items {
         let qty_to_cancel = item["qty_ordered"].as_i64().unwrap_or(0)
             - item["qty_canceled"].as_i64().unwrap_or(0)

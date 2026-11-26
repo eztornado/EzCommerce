@@ -7,8 +7,8 @@ use larust_http::{Route, Router};
 use crate::controllers::{
     AdminAppearanceController, AdminAuthController, AdminCommunicationController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
     AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
-    CategoryController, CheckoutController, CoreController, CustomerController, ProductController, RmaGdprController,
-    StripeController,
+    CategoryController, CheckoutController, CoreController, CustomerController, DocsController, McpController, ProductController,
+    RmaGdprController, StripeController,
 };
 
 pub fn routes() -> Router {
@@ -23,6 +23,10 @@ pub fn routes() -> Router {
         .get("/core/states", CoreController::states)
         .get("/core/currencies", CoreController::currencies)
         .post("/newsletter/subscribe", CoreController::newsletter_subscribe)
+        .get("/docs", DocsController::swagger_ui)
+        .get("/docs/openapi.json", DocsController::openapi)
+        .get("/openapi.json", DocsController::openapi)
+        .post("/mcp", McpController::handle)
         .post("/webhooks/stripe", StripeController::webhook)
         // ------------------------------------------------------------------
         // Categories
