@@ -66,6 +66,18 @@ impl AdminCustomerController {
     }
 
 
+    /// `POST /api/admin/customers/store` - create a customer from the panel.
+    pub async fn store(admin: auth::Admin, Json(body): Json<Value>) -> Response {
+        let _ = admin;
+        match crate::support::admin_crud::create_customer(&body).await {
+            Ok(id) => resource(
+                json!({"id": id}),
+                "The customer has been created successfully.",
+            ),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `GET /api/admin/customers/view/{id}` - 360º view.
     pub async fn view(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         let _ = admin;

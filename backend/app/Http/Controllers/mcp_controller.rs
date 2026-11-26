@@ -41,7 +41,7 @@ fn tool_error(message: String) -> Value {
     })
 }
 
-async fn call_tool(params: &Value) -> Result<Value, (i64, String)> {
+async fn call_tool(params: &Value, admin_id: i64) -> Result<Value, (i64, String)> {
     let name = params["name"]
         .as_str()
         .map(str::trim)
@@ -63,13 +63,13 @@ async fn call_tool(params: &Value) -> Result<Value, (i64, String)> {
         .cloned()
         .filter(Value::is_object)
         .unwrap_or_else(|| json!({}));
-    match mcp::call_tool(name, &arguments).await {
+    match mcp::call_tool(name, &arguments, admin_id).await {
         Ok(result) => Ok(tool_result(result)),
         Err(error) => Ok(tool_error(error.message)),
     }
 }
 
-async fn process_request(request: Value) -> Option<Value> {
+async fn process_request(request: Value, admin_id: i64) -> Option<Value> {
     let id = request.get("id").cloned();
     let notification = id.is_none();
     let Some(object) = request.as_object() else {
@@ -131,7 +131,7 @@ async fn process_request(request: Value) -> Option<Value> {
         "notifications/initialized" => Ok(json!({})),
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": mcp::tools() })),
-        "tools/call" => call_tool(&params).await,
+        "tools/call" => call_tool(&params, admin_id).await,
         "resources/list" | "resources/templates/list" => {
             Ok(json!({ "resources": [], "resourceTemplates": [] }))
         }
@@ -162,7 +162,7 @@ impl McpController {
         if let Value::Array(requests) = payload {
             let mut responses = Vec::new();
             for request in requests {
-                if let Some(response) = process_request(request).await {
+                if let Some(response) = process_request(request, admin.id).await {
                     responses.push(response);
                 }
             }
@@ -172,7 +172,7 @@ impl McpController {
             return Json(Value::Array(responses)).into_response();
         }
 
-        match process_request(payload).await {
+        match process_request(payload, admin.id).await {
             Some(response) => Json(response).into_response(),
             None => StatusCode::ACCEPTED.into_response(),
         }

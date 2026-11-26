@@ -99,53 +99,13 @@ impl AdminCatalogController {
     /// `POST /api/admin/catalog/products/create` - `{sku, type, attribute_family_id?}`.
     pub async fn store_product(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;
-        let Some(sku) = body["sku"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
-            return validation_error(vec![("sku".into(), "The sku field is required.".into())]);
-        };
-        let product_type = body["type"].as_str().unwrap_or("simple").to_string();
-        let family = body["attribute_family_id"].as_i64().unwrap_or_else(|| 1);
-
-        let exists = db::select_one(
-            "SELECT `id` FROM `products` WHERE `sku` = ? LIMIT 1",
-            &[Value::String(sku.to_string())],
-        )
-        .await
-        .ok()
-        .flatten();
-        if exists.is_some() {
-            return validation_error(vec![("sku".into(), "The sku has already been taken.".into())]);
+        match crate::support::admin_crud::create_product(&body).await {
+            Ok(product_id) => resource(
+                json!({"id": product_id}),
+                "The product has been created successfully.",
+            ),
+            Err(error) => error.into(),
         }
-
-        let product_id = match db::insert(
-            "products",
-            &json!({
-                "sku": sku,
-                "type": product_type,
-                "attribute_family_id": family,
-                "created_at": now(),
-                "updated_at": now(),
-            })
-            ,
-        )
-        .await
-        {
-            Ok(id) => id,
-            Err(error) => return error.into(),
-        };
-
-        // Super attributes de los configurables ({super_attributes: [id...]}).
-        for attribute_id in body["super_attributes"].as_array().cloned().unwrap_or_default() {
-            if let Some(attribute_id) = attribute_id.as_i64() {
-                let _ = db::execute(
-                    "INSERT OR IGNORE INTO `product_super_attributes` (`product_id`, `attribute_id`) VALUES (?, ?)",
-                    &[Value::from(product_id), Value::from(attribute_id)],
-                )
-                .await;
-            }
-        }
-
-        crate::support::products::refresh_flat(product_id).await;
-        resource(json!({"id": product_id}), "The product has been created successfully.")
     }
 
     /// `GET /api/admin/catalog/attributes/configurable` - atributos que pueden
@@ -422,154 +382,23 @@ impl AdminCatalogController {
         Json(body): Json<Value>,
     ) -> Response {
         let _ = admin;
-        let exists = db::find_by_id("products", id).await.ok().flatten();
-        if exists.is_none() {
-            return message(StatusCode::NOT_FOUND, "Product not found.");
+        match crate::support::admin_crud::update_product(id, &body).await {
+            Ok(_) => resource(
+                json!({"id": id}),
+                "The product has been updated successfully.",
+            ),
+            Err(error) => error.into(),
         }
-
-        if let Some(sku) = body["sku"].as_str() {
-            let _ = db::execute(
-                "UPDATE `products` SET `sku` = ?, `updated_at` = ? WHERE `id` = ?",
-                &[Value::String(sku.to_string()), Value::String(now()), Value::from(id)],
-            )
-            .await;
-        }
-
-        // Attributes payload: {attributes: {code: value}, locale?}. Con
-        // `locale` los atributos traducibles se escriben para ese idioma.
-        let locale = body["locale"].as_str();
-        if let Some(attributes) = body["attributes"].as_object() {
-            for (code, value) in attributes {
-                crate::support::products::set_attribute_in(id, code, value, locale).await;
-            }
-        }
-
-        // Categories: replace pivots.
-        if let Some(categories) = body["categories"].as_array() {
-            let _ = db::execute(
-                "DELETE FROM `product_categories` WHERE `product_id` = ?",
-                &[Value::from(id)],
-            )
-            .await;
-            for category in categories {
-                if let Some(category_id) = category.as_i64().or_else(|| category["id"].as_i64()) {
-                    let _ = db::execute(
-                        "INSERT OR IGNORE INTO `product_categories` (`product_id`, `category_id`) VALUES (?, ?)",
-                        &[Value::from(id), Value::from(category_id)],
-                    )
-                    .await;
-                }
-            }
-        }
-
-        // Images: {images: [{path: "product/uuid.png"}]} -> replace all.
-        if let Some(images) = body["images"].as_array() {
-            let _ = db::execute(
-                "DELETE FROM `product_images` WHERE `product_id` = ?",
-                &[Value::from(id)],
-            )
-            .await;
-            for (position, image) in images.iter().enumerate() {
-                let path = image
-                    .as_str()
-                    .map(str::to_string)
-                    .or_else(|| image["path"].as_str().map(str::to_string));
-                let Some(path) = path else { continue };
-                let _ = db::insert(
-                    "product_images",
-                    &json!({
-                        "product_id": id,
-                        "type": "image",
-                        "path": path,
-                        "position": position as i64,
-                        "created_at": now(),
-                        "updated_at": now(),
-                    })
-                    ,
-                )
-                .await;
-            }
-        }
-
-        // Linked products: {links: {related: [id], up_sells: [id], cross_sells: [id]}}.
-        if let Some(links) = body["links"].as_object() {
-            for (kind, ids) in links {
-                let table = match kind.as_str() {
-                    "related" => "product_relations",
-                    "up_sells" => "product_up_sells",
-                    "cross_sells" => "product_cross_sells",
-                    _ => continue,
-                };
-                let _ = db::execute(
-                    &format!("DELETE FROM `{table}` WHERE `parent_id` = ?"),
-                    &[Value::from(id)],
-                )
-                .await;
-                for child in ids.as_array().cloned().unwrap_or_default() {
-                    if let Some(child_id) = child.as_i64() {
-                        if child_id == id {
-                            continue;
-                        }
-                        let _ = db::execute(
-                            &format!(
-                                "INSERT OR IGNORE INTO `{table}` (`parent_id`, `child_id`) VALUES (?, ?)"
-                            ),
-                            &[Value::from(id), Value::from(child_id)],
-                        )
-                        .await;
-                    }
-                }
-            }
-        }
-
-        // Inventories: {inventories: {source_id: qty}}.
-        if let Some(inventories) = body["inventories"].as_object() {
-            for (source, qty) in inventories {
-                let Some(source_id) = source.parse::<i64>().ok() else { continue };
-                let quantity = qty.as_i64().unwrap_or(0);
-                let existing = db::select_one(
-                    "SELECT `id` FROM `product_inventories` WHERE `product_id` = ? AND `inventory_source_id` = ? LIMIT 1",
-                    &[Value::from(id), Value::from(source_id)],
-                )
-                .await
-                .ok()
-                .flatten();
-                match existing {
-                    Some(row) => {
-                        let _ = db::update(
-                            "product_inventories",
-                            row["id"].as_i64().unwrap_or(0),
-                            &json!({"qty": quantity, "updated_at": now()}),
-                        )
-                        .await;
-                    }
-                    None => {
-                        let _ = db::insert(
-                            "product_inventories",
-                            &json!({
-                                "product_id": id,
-                                "inventory_source_id": source_id,
-                                "qty": quantity,
-                                "created_at": now(),
-                                "updated_at": now(),
-                            })
-                            ,
-                        )
-                        .await;
-                    }
-                }
-            }
-        }
-
-        crate::support::products::refresh_flat(id).await;
-        resource(json!({"id": id}), "The product has been updated successfully.")
     }
 
     /// `DELETE /api/admin/catalog/products/{id}`.
     pub async fn delete_product(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         let _ = admin;
-        match db::delete("products", id).await {
-            Ok(_) => resource(Value::Array(Vec::new()), "The product has been deleted successfully."),
+        match crate::support::admin_crud::delete_product(id).await {
+            Ok(_) => resource(
+                Value::Array(Vec::new()),
+                "The product has been deleted successfully.",
+            ),
             Err(error) => error.into(),
         }
     }
@@ -895,68 +724,13 @@ impl AdminCatalogController {
     /// `POST /api/admin/catalog/categories/store` - create with translation.
     pub async fn store_category(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;
-        let Some(name) = body["name"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
-            return validation_error(vec![("name".into(), "The name field is required.".into())]);
-        };
-        let parent_id = body["parent_id"].as_i64().unwrap_or(1);
-        let parent = db::find_by_id("categories", parent_id).await.ok().flatten();
-        let parent_rgt = parent
-            .as_ref()
-            .and_then(|row| row["_rgt"].as_i64())
-            .unwrap_or(1);
-
-        // Nested-set insert: shift right boundary.
-        let _ = db::execute(
-            "UPDATE `categories` SET `_lft` = `_lft` + 2 WHERE `_lft` >= ?",
-            &[Value::from(parent_rgt)],
-        )
-        .await;
-        let _ = db::execute(
-            "UPDATE `categories` SET `_rgt` = `_rgt` + 2 WHERE `_rgt` >= ?",
-            &[Value::from(parent_rgt)],
-        )
-        .await;
-
-        let slug = crate::support::slug::slugify(name);
-        let category_id = match db::insert(
-            "categories",
-            &json!({
-                "parent_id": parent_id,
-                "position": body["position"].as_i64().unwrap_or(0),
-                "status": body["status"].as_i64().unwrap_or(1),
-                "_lft": parent_rgt,
-                "_rgt": parent_rgt + 1,
-                "display_mode": body["display_mode"].as_str().unwrap_or("products_and_description"),
-                "created_at": now(),
-                "updated_at": now(),
-            })
-            ,
-        )
-        .await
-        {
-            Ok(id) => id,
-            Err(error) => return error.into(),
-        };
-
-        let _ = db::insert(
-            "category_translations",
-            &json!({
-                "category_id": category_id,
-                "locale": body["locale"].as_str().unwrap_or("en"),
-                "name": name,
-                "slug": slug,
-                "url_path": slug,
-                "description": body["description"].clone(),
-                "meta_title": body["meta_title"].clone(),
-                "meta_description": body["meta_description"].clone(),
-                "created_at": now(),
-                "updated_at": now(),
-            })
-            ,
-        )
-        .await;
-
-        resource(json!({"id": category_id}), "The category has been created successfully.")
+        match crate::support::admin_crud::create_category(&body).await {
+            Ok(category_id) => resource(
+                json!({"id": category_id}),
+                "The category has been created successfully.",
+            ),
+            Err(error) => error.into(),
+        }
     }
 
     /// `PUT /api/admin/catalog/categories/edit/{id}`.
@@ -968,59 +742,23 @@ impl AdminCatalogController {
     ) -> Response {
         let _ = admin;
         let locale = query.get("locale").cloned().unwrap_or_else(|| "en".to_string());
-        let _ = db::execute(
-            "UPDATE `categories` SET `position` = ?, `status` = ?, `updated_at` = ? WHERE `id` = ?",
-            &[
-                Value::from(body["position"].as_i64().unwrap_or(0)),
-                Value::from(body["status"].as_i64().unwrap_or(1)),
-                Value::String(now()),
-                Value::from(id),
-            ],
-        )
-        .await;
-        let translation = json!({
-            "name": body["name"].clone(),
-            "slug": crate::support::slug::slugify(body["name"].as_str().unwrap_or_default()),
-            "description": body["description"].clone(),
-            "meta_title": body["meta_title"].clone(),
-            "meta_description": body["meta_description"].clone(),
-            "updated_at": now(),
-        });
-        let existing = db::select_one(
-            "SELECT `id` FROM `category_translations` WHERE `category_id` = ? AND `locale` = ? LIMIT 1",
-            &[Value::from(id), Value::String(locale.clone())],
-        )
-        .await
-        .ok()
-        .flatten();
-        match existing {
-            Some(row) => {
-                let _ = db::update(
-                    "category_translations",
-                    row["id"].as_i64().unwrap_or(0),
-                    &translation,
-                )
-                .await;
-            }
-            None => {
-                let mut translation = db::to_map(translation);
-                translation.insert("category_id".into(), json!(id));
-                translation.insert("locale".into(), json!(locale));
-                translation.insert("created_at".into(), json!(now()));
-                let _ = db::insert("category_translations", &translation).await;
-            }
+        match crate::support::admin_crud::update_category(id, &locale, &body).await {
+            Ok(_) => resource(
+                json!({"id": id}),
+                "The category has been updated successfully.",
+            ),
+            Err(error) => error.into(),
         }
-        resource(json!({"id": id}), "The category has been updated successfully.")
     }
 
     /// `DELETE /api/admin/catalog/categories/{id}` (root protected).
     pub async fn delete_category(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         let _ = admin;
-        if id == 1 {
-            return message(StatusCode::FORBIDDEN, "The root category cannot be deleted.");
-        }
-        match db::delete("categories", id).await {
-            Ok(_) => resource(Value::Array(Vec::new()), "The category has been deleted successfully."),
+        match crate::support::admin_crud::delete_category(id).await {
+            Ok(_) => resource(
+                Value::Array(Vec::new()),
+                "The category has been deleted successfully.",
+            ),
             Err(error) => error.into(),
         }
     }

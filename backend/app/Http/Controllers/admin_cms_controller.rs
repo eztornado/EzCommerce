@@ -1,8 +1,6 @@
 //! CMS: shop page by url_key + admin CRUD (translations + channels).
 
-use std::collections::HashMap;
-
-use larust_support::axum::extract::{Path, Query};
+use larust_support::axum::extract::Path;
 use larust_support::axum::http::StatusCode;
 use larust_support::axum::response::Response;
 use larust_support::axum::Json;
@@ -11,7 +9,7 @@ use larust_support::serde_json::{json, Value};
 use crate::support::auth;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{message, resource, validation_error};
+use crate::support::response::{message, resource};
 
 pub struct AdminCmsController;
 
@@ -82,21 +80,13 @@ impl AdminCmsController {
     /// `POST /api/admin/cms/pages/store` - `{page_title, url_key, html_content, meta_*}`.
     pub async fn store(admin: auth::Admin, Json(body): Json<Value>) -> Response {
         let _ = admin;
-        let errors = validate(&body);
-        if !errors.is_empty() {
-            return validation_error(errors);
+        match crate::support::admin_crud::create_cms_page(&body).await {
+            Ok(page_id) => resource(
+                json!({"id": page_id}),
+                "The page has been created successfully.",
+            ),
+            Err(error) => error.into(),
         }
-        let page_id = match db::insert("cms_pages", &json!({"created_at": db::now_db(), "updated_at": db::now_db()})).await {
-            Ok(id) => id,
-            Err(error) => return error.into(),
-        };
-        save_translation(page_id, &body).await;
-        let _ = db::execute(
-            "INSERT OR IGNORE INTO `cms_page_channels` (`cms_page_id`, `channel_id`) VALUES (?, 1)",
-            &[Value::from(page_id)],
-        )
-        .await;
-        resource(json!({"id": page_id}), "The page has been created successfully.")
     }
 
     /// `PUT /api/admin/cms/pages/edit/{id}`.
@@ -106,71 +96,24 @@ impl AdminCmsController {
         Json(body): Json<Value>,
     ) -> Response {
         let _ = admin;
-        let exists = db::find_by_id("cms_pages", id).await.ok().flatten();
-        if exists.is_none() {
-            return message(StatusCode::NOT_FOUND, "Page not found.");
+        match crate::support::admin_crud::update_cms_page(id, &body).await {
+            Ok(_) => resource(
+                json!({"id": id}),
+                "The page has been updated successfully.",
+            ),
+            Err(error) => error.into(),
         }
-        let errors = validate(&body);
-        if !errors.is_empty() {
-            return validation_error(errors);
-        }
-        save_translation(id, &body).await;
-        resource(json!({"id": id}), "The page has been updated successfully.")
     }
 
     /// `DELETE /api/admin/cms/pages/{id}`.
     pub async fn destroy(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         let _ = admin;
-        match db::delete("cms_pages", id).await {
-            Ok(_) => resource(Value::Array(Vec::new()), "The page has been deleted successfully."),
+        match crate::support::admin_crud::delete_cms_page(id).await {
+            Ok(_) => resource(
+                Value::Array(Vec::new()),
+                "The page has been deleted successfully.",
+            ),
             Err(error) => error.into(),
-        }
-    }
-}
-
-fn validate(body: &Value) -> Vec<(String, String)> {
-    let mut errors = Vec::new();
-    if body["page_title"].as_str().map(str::trim).unwrap_or_default().is_empty() {
-        errors.push(("page_title".into(), "The title field is required.".into()));
-    }
-    if body["url_key"].as_str().map(str::trim).unwrap_or_default().is_empty() {
-        errors.push(("url_key".into(), "The URL key field is required.".into()));
-    }
-    errors
-}
-
-async fn save_translation(page_id: i64, body: &Value) {
-    let translation = json!({
-        "cms_page_id": page_id,
-        "locale": body["locale"].as_str().unwrap_or("en"),
-        "page_title": body["page_title"].clone(),
-        "url_key": crate::support::slug::slugify(body["url_key"].as_str().unwrap_or_default()),
-        "html_content": body["html_content"].clone(),
-        "meta_title": body["meta_title"].clone(),
-        "meta_description": body["meta_description"].clone(),
-        "updated_at": db::now_db(),
-    });
-    let locale = body["locale"].as_str().unwrap_or("en").to_string();
-    let existing = db::select_one(
-        "SELECT `id` FROM `cms_page_translations` WHERE `cms_page_id` = ? AND `locale` = ? LIMIT 1",
-        &[Value::from(page_id), Value::String(locale)],
-    )
-    .await
-    .ok()
-    .flatten();
-    match existing {
-        Some(row) => {
-            let _ = db::update(
-                "cms_page_translations",
-                row["id"].as_i64().unwrap_or(0),
-                &translation,
-            )
-            .await;
-        }
-        None => {
-            let mut translation = db::to_map(translation);
-            translation.insert("created_at".into(), json!(db::now_db()));
-            let _ = db::insert("cms_page_translations", &translation).await;
         }
     }
 }

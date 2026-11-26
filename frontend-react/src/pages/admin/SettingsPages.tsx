@@ -182,8 +182,8 @@ export function UsersPage() {
       subtitle="Administrators who can sign in to this panel."
       endpoint="admin/settings/users"
       createLabel="Create user"
-      canEdit={false}
       createEndpoint="admin/settings/users"
+      updateEndpoint="admin/settings/users/{id}"
       deleteEndpoint="admin/settings/users/{id}"
       fields={[
         { name: 'id', label: 'ID', formHidden: true },
@@ -220,9 +220,9 @@ export function RolesPage() {
       subtitle="Permission groups assigned to administrators."
       endpoint="admin/settings/roles"
       createLabel="Create role"
-      canEdit={false}
-      canDelete={false}
       createEndpoint="admin/settings/roles"
+      updateEndpoint="admin/settings/roles/{id}"
+      deleteEndpoint="admin/settings/roles/{id}"
       fields={[
         { name: 'id', label: 'ID', formHidden: true },
         { name: 'name', label: 'Name', required: true, placeholder: 'Catalog manager' },

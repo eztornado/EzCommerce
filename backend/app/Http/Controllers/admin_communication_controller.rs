@@ -149,6 +149,37 @@ impl AdminCommunicationController {
         }
     }
 
+    /// `PUT /api/admin/marketing/communications/events/edit/{id}`.
+    pub async fn update_event(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let exists = db::find_by_id("marketing_events", id).await.ok().flatten();
+        if exists.is_none() {
+            return message(StatusCode::NOT_FOUND, "Event not found.");
+        }
+        let Some(name) = body["name"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("name".into(), "The name field is required.".into())]);
+        };
+        match db::update(
+            "marketing_events",
+            id,
+            &json!({
+                "name": name,
+                "description": body["description"].clone(),
+                "date": body["date"].clone(),
+                "updated_at": now(),
+            }),
+        )
+        .await
+        {
+            Ok(_) => resource(Value::Array(Vec::new()), "The event has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `DELETE /api/admin/marketing/communications/events/{id}`.
     pub async fn destroy_event(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         let _ = admin;

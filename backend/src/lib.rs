@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 #[path = "../config/mod.rs"]
 pub mod config;
 #[path = "../database/mod.rs"]

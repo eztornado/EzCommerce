@@ -194,6 +194,7 @@ pub fn routes() -> Router {
         .delete("/admin/seo/search-synonyms/{id}", AdminSeoController::destroy_search_synonym)
         // customers
         .post("/admin/customers", AdminCustomerController::grid)
+        .post("/admin/customers/store", AdminCustomerController::store)
         .get("/admin/customers/view/{id}", AdminCustomerController::view)
         .put("/admin/customers/edit/{id}", AdminCustomerController::update)
         .delete("/admin/customers/{id}", AdminCustomerController::destroy)
@@ -225,9 +226,12 @@ pub fn routes() -> Router {
         // settings
         .get("/admin/settings/users", AdminSettingController::users)
         .post("/admin/settings/users", AdminSettingController::store_user)
+        .put("/admin/settings/users/{id}", AdminSettingController::update_user)
         .delete("/admin/settings/users/{id}", AdminSettingController::destroy_user)
         .get("/admin/settings/roles", AdminSettingController::roles)
         .post("/admin/settings/roles", AdminSettingController::store_role)
+        .put("/admin/settings/roles/{id}", AdminSettingController::update_role)
+        .delete("/admin/settings/roles/{id}", AdminSettingController::destroy_role)
         .get("/admin/settings/locales", AdminSettingController::locales)
         .post("/admin/settings/locales", AdminSettingController::store_locale)
         .put("/admin/settings/locales/edit/{id}", AdminSettingController::update_locale)
@@ -272,6 +276,7 @@ pub fn routes() -> Router {
         .delete("/admin/marketing/communications/templates/{id}", AdminCommunicationController::destroy_template)
         .get("/admin/marketing/communications/events", AdminCommunicationController::events)
         .post("/admin/marketing/communications/events/store", AdminCommunicationController::store_event)
+        .put("/admin/marketing/communications/events/edit/{id}", AdminCommunicationController::update_event)
         .delete("/admin/marketing/communications/events/{id}", AdminCommunicationController::destroy_event)
         .get("/admin/marketing/communications/campaigns", AdminCommunicationController::campaigns)
         .post("/admin/marketing/communications/campaigns/store", AdminCommunicationController::store_campaign)

@@ -1190,6 +1190,11 @@ const es: Record<string, string> = {
   "Dispute status": "Estado de la disputa",
   "Dispute reason": "Motivo de la disputa",
   "Dispute ID": "ID de la disputa",
+
+  // Clientes: alta desde el panel.
+  "Create customer": "Crear cliente",
+  "The customer has been created.": "El cliente se ha creado.",
+  "Unable to create the customer.": "No se pudo crear el cliente.",
 };
 
 export default es;

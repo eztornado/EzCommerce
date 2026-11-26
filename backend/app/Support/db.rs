@@ -301,9 +301,21 @@ pub async fn scalar_i64(sql: &str, binds: &[Value]) -> ApiResult<i64> {
 
 pub async fn execute(sql: &str, binds: &[Value]) -> ApiResult<u64> {
     let db_pool = pool()?;
-    // `INSERT OR IGNORE` es sintaxis de SQLite; MySQL la rechaza. Se reescribe
-    // para que los upserts escritos para SQLite funcionen en ambos motores.
-    let sql = sql.replace("INSERT OR IGNORE INTO", "INSERT IGNORE INTO");
+    // `INSERT OR IGNORE` es sintaxis de SQLite. MySQL necesita `INSERT
+    // IGNORE` y PostgreSQL `ON CONFLICT DO NOTHING`; se traduce aquí para
+    // que los upserts escritos para SQLite funcionen en los tres motores.
+    let sql = if sql.contains("INSERT OR IGNORE INTO") {
+        match backend() {
+            Backend::Sqlite => sql.to_string(),
+            Backend::MySql => sql.replace("INSERT OR IGNORE INTO", "INSERT IGNORE INTO"),
+            Backend::Postgres => format!(
+                "{} ON CONFLICT DO NOTHING",
+                sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
+            ),
+        }
+    } else {
+        sql.to_string()
+    };
     let mut query = sqlx::query(&sql);
     for value in binds {
         query = bind_value(query, value);

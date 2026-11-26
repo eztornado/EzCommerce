@@ -69,6 +69,59 @@ impl AdminSettingController {
         }
     }
 
+    /// `PUT /api/admin/settings/users/{id}` - update name/email/role/status and,
+    /// optionally, the password. A user cannot disable their own account.
+    pub async fn update_user(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let exists = db::find_by_id("admins", id).await.ok().flatten();
+        if exists.is_none() {
+            return message(StatusCode::NOT_FOUND, "User not found.");
+        }
+        let status = body["status"].as_i64().unwrap_or(1);
+        if id == admin.id && status == 0 {
+            return message(StatusCode::FORBIDDEN, "You cannot disable your own account.");
+        }
+        let mut row = json!({"updated_at": now()});
+        for key in ["name", "email"] {
+            if let Some(value) = body[key].as_str().map(str::trim).filter(|s| !s.is_empty()) {
+                row[key] = json!(value);
+            }
+        }
+        if let Some(email) = body["email"].as_str() {
+            let email = email.trim().to_lowercase();
+            let taken = db::select_one(
+                "SELECT `id` FROM `admins` WHERE `email` = ? AND `id` <> ? LIMIT 1",
+                &[Value::String(email.clone()), Value::from(id)],
+            )
+            .await
+            .ok()
+            .flatten();
+            if taken.is_some() {
+                return validation_error(vec![("email".into(), "The email has already been taken.".into())]);
+            }
+            row["email"] = json!(email);
+        }
+        if !body["role_id"].is_null() {
+            row["role_id"] = json!(body["role_id"].as_i64().unwrap_or(1));
+        }
+        if !body["status"].is_null() {
+            row["status"] = json!(status);
+        }
+        if let Some(password) = body["password"].as_str().filter(|p| !p.is_empty()) {
+            let Ok(hash) = crate::support::auth::hash_password(password) else {
+                return message(StatusCode::INTERNAL_SERVER_ERROR, "Unable to hash the password.");
+            };
+            row["password"] = json!(hash);
+        }
+        match db::update("admins", id, &row).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The user has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
     /// `DELETE /api/admin/settings/users/{id}` (self-deletion blocked).
     pub async fn destroy_user(admin: auth::Admin, Path(id): Path<i64>) -> Response {
         if id == admin.id {
@@ -108,6 +161,62 @@ impl AdminSettingController {
         .await
         {
             Ok(_) => resource(Value::Array(Vec::new()), "The role has been created successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `PUT /api/admin/settings/roles/{id}`.
+    pub async fn update_role(
+        admin: auth::Admin,
+        Path(id): Path<i64>,
+        Json(body): Json<Value>,
+    ) -> Response {
+        let _ = admin;
+        let exists = db::find_by_id("roles", id).await.ok().flatten();
+        if exists.is_none() {
+            return message(StatusCode::NOT_FOUND, "Role not found.");
+        }
+        let Some(name) = body["name"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+            return validation_error(vec![("name".into(), "The name field is required.".into())]);
+        };
+        let mut row = json!({"name": name, "updated_at": now()});
+        if !body["description"].is_null() {
+            row["description"] = body["description"].clone();
+        }
+        if let Some(permission_type) = body["permission_type"].as_str() {
+            row["permission_type"] = json!(permission_type);
+        }
+        if !body["permissions"].is_null() {
+            row["permissions"] = body["permissions"].clone();
+        }
+        match db::update("roles", id, &row).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The role has been updated successfully."),
+            Err(error) => error.into(),
+        }
+    }
+
+    /// `DELETE /api/admin/settings/roles/{id}` - blocked while assigned to an
+    /// administrator.
+    pub async fn destroy_role(admin: auth::Admin, Path(id): Path<i64>) -> Response {
+        let _ = admin;
+        let exists = db::find_by_id("roles", id).await.ok().flatten();
+        if exists.is_none() {
+            return message(StatusCode::NOT_FOUND, "Role not found.");
+        }
+        let in_use = db::scalar_i64(
+            "SELECT COUNT(*) FROM `admins` WHERE `role_id` = ?",
+            &[Value::from(id)],
+        )
+        .await
+        .unwrap_or(0);
+        if in_use > 0 {
+            return validation_error(vec![(
+                "id".into(),
+                "The role is assigned to administrators and cannot be deleted.".into(),
+            )]);
+        }
+        match db::delete("roles", id).await {
+            Ok(_) => resource(Value::Array(Vec::new()), "The role has been deleted successfully."),
             Err(error) => error.into(),
         }
     }

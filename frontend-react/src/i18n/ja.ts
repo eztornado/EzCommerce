@@ -1190,6 +1190,11 @@ const ja: Record<string, string> = {
   "Dispute status": "異議申し立ての状況",
   "Dispute reason": "異議申し立ての理由",
   "Dispute ID": "異議申し立てID",
+
+  // Clientes: alta desde el panel.
+  "Create customer": "顧客を作成",
+  "The customer has been created.": "顧客を作成しました。",
+  "Unable to create the customer.": "顧客を作成できませんでした。",
 };
 
 export default ja;

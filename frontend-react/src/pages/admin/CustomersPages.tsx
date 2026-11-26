@@ -1,27 +1,132 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconCheck, IconX } from '@tabler/icons-react';
+import { Modal } from '@mantine/core';
+import { IconCheck, IconPlus, IconX } from '@tabler/icons-react';
 import DataGrid from '../../components/admin/DataGrid';
 import ResourcePage from '../../components/admin/ResourcePage';
 import { AdminPageHeader } from '../../components/admin/ui';
 import { api } from '../../api/client';
+import { t } from '../../i18n';
 
 export function CustomersPage() {
   const navigate = useNavigate();
+  const [version, setVersion] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [values, setValues] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    phone: '',
+  });
+
+  const startCreate = () => {
+    setError('');
+    setMessage('');
+    setValues({ first_name: '', last_name: '', email: '', password: '', phone: '' });
+    setOpen(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await api.adminPost('admin/customers/store', values);
+      setOpen(false);
+      setMessage(t('The customer has been created.'));
+      setVersion((current) => current + 1);
+    } catch (requestError: any) {
+      const detail = requestError?.errors
+        ? Object.values(requestError.errors).flat().join(' ')
+        : requestError?.message;
+      setError(detail || t('Unable to create the customer.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div>
       <AdminPageHeader
         title="Customers"
         subtitle="Manage customer accounts, groups and their order history."
+        actions={
+          <button type="button" className="admin-button primary" onClick={startCreate}>
+            <IconPlus size={15} /> {t('Create customer')}
+          </button>
+        }
       />
+      {message && <div className="admin-alert success">{message}</div>}
       <div className="admin-card admin-card-pad">
         <DataGrid
+          key={version}
           path="admin/customers"
           hideColumn={['id']}
           emptyLabel="No customers found."
           onRowClick={(record) => navigate(`/admin/customers/view/${record.__primary ?? record.id}`)}
         />
       </div>
+
+      <Modal opened={open} onClose={() => setOpen(false)} title={t('Create customer')} centered>
+        <div className="admin-modal-form">
+          {error && <div className="admin-alert danger">{error}</div>}
+          <div className="admin-form-grid">
+            <label className="admin-field">
+              <span className="admin-field-label">{t('First name')}</span>
+              <input
+                className="admin-input"
+                value={values.first_name}
+                onChange={(event) => setValues((current) => ({ ...current, first_name: event.target.value }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">{t('Last name')}</span>
+              <input
+                className="admin-input"
+                value={values.last_name}
+                onChange={(event) => setValues((current) => ({ ...current, last_name: event.target.value }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">{t('Email')}</span>
+              <input
+                type="email"
+                className="admin-input"
+                value={values.email}
+                onChange={(event) => setValues((current) => ({ ...current, email: event.target.value }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">{t('Phone')}</span>
+              <input
+                className="admin-input"
+                value={values.phone}
+                onChange={(event) => setValues((current) => ({ ...current, phone: event.target.value }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">{t('Password')}</span>
+              <input
+                type="password"
+                className="admin-input"
+                value={values.password}
+                onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-button" onClick={() => setOpen(false)} disabled={saving}>
+              {t('Cancel')}
+            </button>
+            <button type="button" className="admin-button primary" onClick={save} disabled={saving}>
+              {saving ? t('Saving…') : t('Save')}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

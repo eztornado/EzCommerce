@@ -292,9 +292,24 @@ collections use the standard form `{data, links, meta}`.
   `initialize`, `tools/list` and `tools/call`; it is documented in the OpenAPI
   document with its tools and JWT security scheme.
 
-MCP tools: `list_products`, `get_product`, `list_orders`, `get_order`,
-`create_invoice`, `cancel_order`, `list_customers`, `list_transactions`,
-`list_refunds` and `sales_summary`.
+MCP tools (full schemas are returned by `tools/list` and shown in the OpenAPI
+`x-mcp-tools` extension):
+
+- Catalog: `list_products`, `get_product`, `list_categories`, `get_category`,
+  `list_attributes`, `list_attribute_families`, `get_product_stock`,
+  `low_stock_products`, `create_product`, `update_product`, `delete_product`,
+  `set_product_stock`, `create_category`, `update_category`, `delete_category`.
+- Sales: `list_orders`, `get_order`, `create_invoice`, `cancel_order`,
+  `list_invoices`, `get_invoice`, `list_shipments`, `get_shipment`,
+  `create_shipment`, `create_refund`, `add_order_comment`,
+  `list_transactions`, `list_refunds`, `sales_summary`.
+- Customers: `list_customers`, `get_customer`, `create_customer`,
+  `update_customer`.
+- Marketing and content: `list_cart_rules`, `get_cart_rule`,
+  `list_catalog_rules`, `get_catalog_rule`, `list_cms_pages`, `get_cms_page`,
+  `list_reviews`, `create_cms_page`, `update_cms_page`, `delete_cms_page`.
+- Store settings: `list_channels`, `list_locales`, `list_currencies`,
+  `list_tax_rates`, `list_inventory_sources`, `save_configuration`.
 
 ```bash
 curl -X POST http://<host>/api/mcp \
@@ -614,9 +629,24 @@ colecciones paginadas usan la forma estándar `{data, links, meta}`.
   Soporta `initialize`, `tools/list` y `tools/call`; aparece documentado en el
   OpenAPI con sus herramientas y el esquema de seguridad JWT.
 
-Herramientas MCP: `list_products`, `get_product`, `list_orders`, `get_order`,
-`create_invoice`, `cancel_order`, `list_customers`, `list_transactions`,
-`list_refunds` y `sales_summary`.
+Herramientas MCP (los esquemas completos se devuelven en `tools/list` y se
+muestran en la extensión `x-mcp-tools` del OpenAPI):
+
+- Catálogo: `list_products`, `get_product`, `list_categories`, `get_category`,
+  `list_attributes`, `list_attribute_families`, `get_product_stock`,
+  `low_stock_products`, `create_product`, `update_product`, `delete_product`,
+  `set_product_stock`, `create_category`, `update_category`, `delete_category`.
+- Ventas: `list_orders`, `get_order`, `create_invoice`, `cancel_order`,
+  `list_invoices`, `get_invoice`, `list_shipments`, `get_shipment`,
+  `create_shipment`, `create_refund`, `add_order_comment`,
+  `list_transactions`, `list_refunds`, `sales_summary`.
+- Clientes: `list_customers`, `get_customer`, `create_customer`,
+  `update_customer`.
+- Marketing y contenido: `list_cart_rules`, `get_cart_rule`,
+  `list_catalog_rules`, `get_catalog_rule`, `list_cms_pages`, `get_cms_page`,
+  `list_reviews`, `create_cms_page`, `update_cms_page`, `delete_cms_page`.
+- Configuración: `list_channels`, `list_locales`, `list_currencies`,
+  `list_tax_rates`, `list_inventory_sources`, `save_configuration`.
 
 ```bash
 curl -X POST http://<host>/api/mcp \
@@ -866,9 +896,23 @@ GitHub Actions（`.github/workflows/ci.yml`）は各プッシュ時に検証し�
 - OpenAPI 3.0 JSON：`http://<host>/api/openapi.json`。
 - MCPサーバー：`POST /api/mcp`、HTTP上のJSON-RPC 2.0。管理APIと同じ管理者JWTで認証します（`Authorization: Bearer <token>`）。`initialize`、`tools/list`、`tools/call`に対応し、OpenAPIドキュメントにツールとJWTセキュリティスキームが記載されます。
 
-MCPツール：`list_products`、`get_product`、`list_orders`、`get_order`、
-`create_invoice`、`cancel_order`、`list_customers`、`list_transactions`、
-`list_refunds`、`sales_summary`。
+MCPツール（完全なスキーマは`tools/list`とOpenAPIの`x-mcp-tools`で確認できます）：
+
+- カタログ：`list_products`、`get_product`、`list_categories`、`get_category`、
+  `list_attributes`、`list_attribute_families`、`get_product_stock`、
+  `low_stock_products`、`create_product`、`update_product`、`delete_product`、
+  `set_product_stock`、`create_category`、`update_category`、`delete_category`。
+- 販売：`list_orders`、`get_order`、`create_invoice`、`cancel_order`、
+  `list_invoices`、`get_invoice`、`list_shipments`、`get_shipment`、
+  `create_shipment`、`create_refund`、`add_order_comment`、
+  `list_transactions`、`list_refunds`、`sales_summary`。
+- 顧客：`list_customers`、`get_customer`、`create_customer`、
+  `update_customer`。
+- マーケティングとコンテンツ：`list_cart_rules`、`get_cart_rule`、
+  `list_catalog_rules`、`get_catalog_rule`、`list_cms_pages`、`get_cms_page`、
+  `list_reviews`、`create_cms_page`、`update_cms_page`、`delete_cms_page`。
+- ストア設定：`list_channels`、`list_locales`、`list_currencies`、
+  `list_tax_rates`、`list_inventory_sources`、`save_configuration`。
 
 ```bash
 curl -X POST http://<host>/api/mcp \

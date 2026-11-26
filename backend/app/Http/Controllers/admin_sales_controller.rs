@@ -14,15 +14,11 @@ use crate::support::auth;
 use crate::support::core;
 use crate::support::datagrid;
 use crate::support::db;
-use crate::support::response::{csv_response, message, resource, validation_error};
+use crate::support::response::{csv_response, message, resource};
 use crate::support::sales;
 use crate::support::stripe;
 
 pub struct AdminSalesController;
-
-fn now() -> String {
-    db::now_db()
-}
 
 /// Etiqueta capitalizada para las pills de estado del grid.
 fn status_label(row: &db::RowMap) -> Value {
@@ -1143,25 +1139,19 @@ impl AdminSalesController {
         Path(order_id): Path<i64>,
         Json(body): Json<Value>,
     ) -> Response {
-        let _ = admin;
-        let Some(comment) = body["comment"].as_str().map(str::trim).filter(|c| !c.is_empty()) else {
-            return validation_error(vec![("comment".into(), "The comment field is required.".into())]);
-        };
-        match db::insert(
-            "order_comments",
-            &json!({
-                "order_id": order_id,
-                "comment": comment,
-                "customer_notified": body["customer_notified"].as_bool().unwrap_or(false) as i64,
-                "user_id": admin.id,
-                "created_at": now(),
-                "updated_at": now(),
-            })
-            ,
+        let comment = body["comment"].as_str().unwrap_or_default();
+        match crate::support::admin_crud::add_order_comment(
+            order_id,
+            admin.id,
+            comment,
+            body["customer_notified"].as_bool().unwrap_or(false),
         )
         .await
         {
-            Ok(_) => resource(Value::Array(Vec::new()), "The comment has been added successfully."),
+            Ok(_) => resource(
+                Value::Array(Vec::new()),
+                "The comment has been added successfully.",
+            ),
             Err(error) => error.into(),
         }
     }
@@ -1200,93 +1190,7 @@ impl AdminSalesController {
         Json(body): Json<Value>,
     ) -> Response {
         let _ = admin;
-        let requested = body["items"].as_object().cloned().unwrap_or_default();
-        let adjustment_refund = body["adjustment_refund"].as_f64().unwrap_or(0.0);
-        let adjustment_fee = body["adjustment_fee"].as_f64().unwrap_or(0.0);
-
-        let preview =
-            match sales::refund_preview(order_id, &requested, adjustment_refund, adjustment_fee)
-                .await
-            {
-                Ok(preview) => preview,
-                Err(error) => return error.into(),
-            };
-        if preview.amount <= 0.0 {
-            return message(StatusCode::BAD_REQUEST, "Nothing to refund.");
-        }
-
-        // Stripe: devolver el dinero primero y registrar después el reembolso
-        // local con el id `re_...` y el estado real de la pasarela.
-        if preview.method == "stripe" {
-            let stripe_refund = match stripe::refund_payment(
-                order_id,
-                preview.amount,
-                &preview.currency,
-                "requested_by_customer",
-            )
-            .await
-            {
-                Ok(refund) => refund,
-                Err(error) => return error.into(),
-            };
-            let transaction_id = stripe_refund["id"].as_str().unwrap_or_default().to_string();
-            let state = match stripe_refund["status"].as_str().unwrap_or("succeeded") {
-                "succeeded" => "refunded",
-                "pending" => "pending",
-                "failed" | "canceled" => {
-                    return message(
-                        StatusCode::BAD_REQUEST,
-                        "Stripe rejected the refund.",
-                    );
-                }
-                _ => "pending",
-            };
-            return match sales::create_refund(
-                order_id,
-                &requested,
-                adjustment_refund,
-                adjustment_fee,
-                Some(&transaction_id),
-                state,
-            )
-            .await
-            {
-                Ok(refund) => resource(refund, "The refund has been created successfully."),
-                Err(error) => {
-                    // El dinero ya se devolvió: deja al menos la traza en el
-                    // libro de transacciones si falla el registro local.
-                    let _ = db::insert(
-                        "order_transactions",
-                        &json!({
-                            "transaction_id": transaction_id,
-                            "status": stripe_refund["status"],
-                            "type": "refund",
-                            "amount": preview.amount,
-                            "base_amount": preview.amount,
-                            "payment_method": "stripe",
-                            "currency_code": preview.currency,
-                            "data": stripe_refund,
-                            "order_id": order_id,
-                            "created_at": now(),
-                            "updated_at": now(),
-                        }),
-                    )
-                    .await;
-                    error.into()
-                }
-            };
-        }
-
-        match sales::create_refund(
-            order_id,
-            &requested,
-            adjustment_refund,
-            adjustment_fee,
-            None,
-            "refunded",
-        )
-        .await
-        {
+        match crate::support::admin_crud::create_refund(order_id, &body).await {
             Ok(refund) => resource(refund, "The refund has been created successfully."),
             Err(error) => error.into(),
         }

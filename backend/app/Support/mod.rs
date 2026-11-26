@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod admin_crud;
 pub mod cart;
 pub mod cart_rules;
 pub mod catalog_rules;
