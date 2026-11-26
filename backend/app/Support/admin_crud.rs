@@ -301,15 +301,19 @@ pub async fn update_category(id: i64, locale: &str, body: &Value) -> ApiResult<(
     )
     .await?;
 
-    let name = body["name"].as_str().unwrap_or_default();
-    let translation = json!({
-        "name": body["name"].clone(),
-        "slug": crate::support::slug::slugify(name),
-        "description": body["description"].clone(),
-        "meta_title": body["meta_title"].clone(),
-        "meta_description": body["meta_description"].clone(),
-        "updated_at": now(),
-    });
+    // Only overwrite the translated fields actually present in the payload:
+    // a status/position-only update must not wipe the category name.
+    let mut translation = Map::new();
+    translation.insert("updated_at".into(), json!(now()));
+    if let Some(name) = body["name"].as_str().map(str::trim).filter(|name| !name.is_empty()) {
+        translation.insert("name".into(), json!(name));
+        translation.insert("slug".into(), json!(crate::support::slug::slugify(name)));
+    }
+    for key in ["description", "meta_title", "meta_description"] {
+        if !body[key].is_null() {
+            translation.insert(key.to_string(), body[key].clone());
+        }
+    }
     let existing = db::select_one(
         "SELECT `id` FROM `category_translations` WHERE `category_id` = ? AND `locale` = ? LIMIT 1",
         &[Value::from(id), Value::String(locale.to_string())],
@@ -320,12 +324,16 @@ pub async fn update_category(id: i64, locale: &str, body: &Value) -> ApiResult<(
             db::update(
                 "category_translations",
                 row["id"].as_i64().unwrap_or(0),
-                &translation,
+                &Value::Object(translation),
             )
             .await?;
         }
         None => {
-            let mut translation = db::to_map(translation);
+            if !translation.contains_key("name") {
+                return Err(ApiError::unprocessable(
+                    "The name field is required for a new locale.",
+                ));
+            }
             translation.insert("category_id".into(), json!(id));
             translation.insert("locale".into(), json!(locale));
             translation.insert("created_at".into(), json!(now()));
