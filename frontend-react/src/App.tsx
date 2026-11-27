@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useShop, useAuth } from './store';
 import I18nBridge from './i18n/I18nBridge';
 import { mediaUrl } from './lib/format';
+import ErrorBoundary from './components/ErrorBoundary';
+import RouteSkeleton from './components/RouteSkeleton';
 
 import ShopLayout from './components/shop/ShopLayout';
 import HomePage from './pages/shop/HomePage';
@@ -149,10 +151,49 @@ export default function App() {
     link.href = mediaUrl(favicon);
   }, [favicon]);
 
+  // Prefetch en idle de las páginas de la tienda (#39): elimina el flash en
+  // blanco al navegar. Se hace tras 'load' y con requestIdleCallback para no
+  // competir con el render inicial ni con el LCP; el panel sigue bajo demanda.
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | null = null;
+    const start = () => {
+      const run = () => {
+        void import('./pages/shop/CategoryPage');
+        void import('./pages/shop/SearchPage');
+        void import('./pages/shop/ProductPage');
+        void import('./pages/shop/CartPage');
+        void import('./pages/shop/CheckoutPage');
+        void import('./pages/shop/SuccessPage');
+        void import('./pages/shop/SignInPage');
+        void import('./pages/shop/RegisterPage');
+        void import('./pages/shop/AccountPage');
+      };
+      if (w.requestIdleCallback) {
+        idleId = w.requestIdleCallback(run, { timeout: 4000 });
+      } else {
+        idleId = window.setTimeout(run, 2000);
+      }
+    };
+    if (document.readyState === 'complete') {
+      start();
+    } else {
+      window.addEventListener('load', start, { once: true });
+      return () => window.removeEventListener('load', start);
+    }
+    return () => {
+      if (idleId !== null && w.cancelIdleCallback) w.cancelIdleCallback(idleId);
+    };
+  }, []);
+
   return (
     <I18nBridge>
       <BrowserRouter>
-      <Suspense fallback={<div style={{ minHeight: '60vh' }} aria-busy="true" />}>
+      <ErrorBoundary>
+      <Suspense fallback={<RouteSkeleton />}>
       <Routes>
         {/* Storefront */}
         <Route element={<ShopLayout />}>
@@ -240,6 +281,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
       </BrowserRouter>
     </I18nBridge>
   );

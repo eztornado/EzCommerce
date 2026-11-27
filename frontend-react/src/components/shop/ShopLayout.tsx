@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import ErrorBoundary from '../ErrorBoundary';
+import RouteSkeleton from '../RouteSkeleton';
 import {
   IconChevronDown,
   IconHeart,
@@ -286,7 +288,13 @@ export default function ShopLayout() {
       </header>
 
       <main>
-        <Outlet />
+        {/* El boundary/suspense vive aquí dentro (#39): el header y el footer
+            permanecen mientras baja el chunk de una página lazy o si falla. */}
+        <ErrorBoundary>
+          <Suspense fallback={<RouteSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <footer className="shop-footer">

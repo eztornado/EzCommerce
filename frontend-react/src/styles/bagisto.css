@@ -2845,6 +2845,80 @@ a {
   }
 }
 
+/* Skeleton de ruta (#39): sustituye al div vacío del Suspense que causaba
+   el flash blanco durante la descarga de un chunk de página. */
+.route-skeleton {
+  min-height: 55vh;
+  padding: 24px 0;
+}
+
+.route-skeleton .route-skeleton-hero {
+  height: min(360px, 55vw);
+  border-radius: 12px;
+  background: linear-gradient(100deg, #eef1f6 30%, #f8fafc 50%, #eef1f6 70%);
+  background-size: 200% 100%;
+  animation: shop-skeleton 1.4s ease infinite;
+}
+
+.route-skeleton .route-skeleton-line {
+  height: 14px;
+  width: 62%;
+  border-radius: 6px;
+  margin-top: 18px;
+  background: #eef1f6;
+  animation: shop-skeleton 1.4s ease infinite;
+}
+
+.route-skeleton .route-skeleton-line.short {
+  width: 38%;
+  margin-top: 10px;
+}
+
+.route-skeleton .route-skeleton-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.route-skeleton .route-skeleton-grid > div {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  background: #eef1f6;
+  animation: shop-skeleton 1.4s ease infinite;
+}
+
+@media (max-width: 768px) {
+  .route-skeleton .route-skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Error de carga de ruta (#39): mensaje con reintento en vez de página en
+   blanco cuando un chunk no llega. */
+.route-error {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.route-error h2 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--navy);
+}
+
+.route-error p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shop-hero-skeleton {
     animation: none;

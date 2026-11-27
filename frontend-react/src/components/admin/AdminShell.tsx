@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import '@mantine/core/styles.css';
 import '../../styles/admin.css';
 import { MantineProvider, Menu } from '@mantine/core';
 import { bagistoTheme } from '../../theme';
+import ErrorBoundary from '../ErrorBoundary';
+import RouteSkeleton from '../RouteSkeleton';
 import {
   IconBell,
   IconBox,
@@ -394,7 +396,11 @@ export default function AdminShell() {
             <span key={crumb}>{t(crumb)}</span>,
           ])}
         </div>
-        <Outlet />
+        <ErrorBoundary>
+          <Suspense fallback={<RouteSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
     </MantineProvider>
