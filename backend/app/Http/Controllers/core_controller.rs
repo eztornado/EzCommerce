@@ -13,6 +13,7 @@ use larust_support::serde_json::{json, Value};
 use crate::support::auth;
 use crate::support::core;
 use crate::support::db;
+use crate::support::images;
 use crate::support::response::{json_ok, message, resource, validation_error, ApiResult};
 
 pub struct CoreController;
@@ -113,13 +114,21 @@ impl CoreController {
             return message(StatusCode::NOT_FOUND, "File not found.");
         };
         let mime = mime_guess::from_path(&full).first_or_octet_stream().to_string();
+        // Las variantes optimizadas llevan hash en el nombre: pueden cachearse
+        // de forma inmutable. El resto mantiene el TTL corto.
+        let immutable = folder == "products" && file.contains("-w");
+        let cache_control = if immutable {
+            "public, max-age=31536000, immutable"
+        } else {
+            "public, max-age=86400"
+        };
         (
             StatusCode::OK,
             [
                 (larust_support::axum::http::header::CONTENT_TYPE, mime),
                 (
                     larust_support::axum::http::header::CACHE_CONTROL,
-                    "public, max-age=86400".to_string(),
+                    cache_control.to_string(),
                 ),
                 (
                     larust_support::axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -218,12 +227,33 @@ impl CoreController {
             return message(StatusCode::PAYLOAD_TOO_LARGE, "The file is too large (max 8 MB).");
         }
 
+        // Product images are decoded, oriented, resized and re-encoded. This
+        // runs on the blocking pool because AVIF encoding is CPU-bound.
+        if images::is_product_folder(&folder) {
+            let filename = filename.clone();
+            return match tokio::task::spawn_blocking(move || {
+                images::process_product_image(&bytes, &filename)
+            })
+            .await
+            {
+                Ok(Ok(result)) => json_ok(result),
+                Ok(Err(error)) => error.into(),
+                Err(_) => message(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Unable to process the image.",
+                ),
+            };
+        }
+
         let extension = std::path::Path::new(&filename)
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_ascii_lowercase())
             .unwrap_or_else(|| "bin".to_string());
-        let allowed = ["png", "jpg", "jpeg", "webp", "gif", "svg", "ico", "pdf", "mp4"];
+        let allowed = [
+            "png", "jpg", "jpeg", "webp", "avif", "gif", "bmp", "tif", "tiff", "svg", "ico", "pdf",
+            "mp4",
+        ];
         if !allowed.contains(&extension.as_str()) {
             return crate::support::response::validation_error(vec![(
                 "filename".into(),

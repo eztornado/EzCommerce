@@ -13,6 +13,7 @@ use super::cart;
 use super::catalog_rules;
 use super::core;
 use super::db::{self, RowMap};
+use super::images;
 
 /// Unidades disponibles del producto en el canal por defecto. Un
 /// configurable no tiene inventario propio: se suma el de sus variantes.
@@ -100,16 +101,20 @@ pub async fn card_in(
         on_sale = true;
     }
 
-    let images = db::select(
+    let image_rows = db::select(
         "SELECT `path` FROM `product_images` WHERE `product_id` = ? ORDER BY `position`, `id`",
         &[Value::from(product_id)],
     )
     .await
     .unwrap_or_default();
-    let base_image = images
+    let product_name = attributes["name"].as_str().unwrap_or("");
+    let image_paths: Vec<String> = image_rows
+        .iter()
+        .filter_map(|row| row["path"].as_str().map(str::to_string))
+        .collect();
+    let base_image = image_paths
         .first()
-        .and_then(|row| row["path"].as_str())
-        .map(str::to_string);
+        .map(|path| images::image_resource(path, product_name));
 
     let ratings = db::select_one(
         "SELECT COALESCE(CAST(AVG(`rating`) AS DOUBLE), 0) AS average, COUNT(*) AS total FROM `product_reviews` \
@@ -154,8 +159,11 @@ pub async fn card_in(
         "is_new": attributes["new"].as_i64().unwrap_or(0) == 1,
         "is_featured": attributes["featured"].as_i64().unwrap_or(0) == 1,
         "is_saleable": saleable,
-        "base_image": base_image.map(|path| json!({"url": format!("/storage/{path}")})),
-        "images": images.iter().map(|row| json!({"url": format!("/storage/{}", row["path"].as_str().unwrap_or_default())})).collect::<Vec<_>>(),
+        "base_image": base_image,
+        "images": image_paths
+            .iter()
+            .map(|path| images::image_resource(path, product_name))
+            .collect::<Vec<_>>(),
         "in_stock": available > 0,
         "quantity": available,
         "short_description": attributes["short_description"],

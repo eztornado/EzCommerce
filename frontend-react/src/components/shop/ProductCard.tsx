@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { IconHeart, IconShoppingBag, IconEye } from '@tabler/icons-react';
-import { mediaUrl, stripHtml } from '../../lib/format';
-import { fallbackImage } from '../../lib/cart';
+import { stripHtml } from '../../lib/format';
 import Stars from './Stars';
+import ProductImage from './ProductImage';
 import { t } from '../../i18n';
 import type { ProductCard as ProductCardModel } from '../../types';
 
@@ -16,13 +16,17 @@ export default function ProductCard({ product, className = '', list = false }: P
   const href = `/product/${product.url_key ?? product.id}`;
   const rating = product.ratings?.average ?? 0;
   const reviews = product.ratings?.total ?? product.reviews?.total ?? 0;
-  const image = product.base_image?.url ?? product.images?.[0]?.url ?? '';
+  const image = product.base_image ?? product.images?.[0] ?? null;
 
   if (list) {
     return (
       <div className={`shop-list-card ${className}`}>
         <Link to={href} className="media">
-          <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? t('Product')} loading="lazy" />
+          <ProductImage
+            image={image}
+            alt={product.name ?? t('Product')}
+            sizes="(max-width: 900px) 100vw, 220px"
+          />
         </Link>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Link to={href}>
@@ -61,7 +65,11 @@ export default function ProductCard({ product, className = '', list = false }: P
   return (
     <div className={`product-card ${className}`}>
       <Link to={href} className="product-card-media" aria-label={product.name ?? 'Product'}>
-        <img src={mediaUrl(image) || fallbackImage} alt={product.name ?? t('Product')} loading="lazy" />
+        <ProductImage
+          image={image}
+          alt={product.name ?? t('Product')}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        />
         {product.on_sale && <span className="product-badge sale">{t('Sale')}</span>}
         {!product.on_sale && product.is_new && <span className="product-badge new">{t('New')}</span>}
         {reviews > 0 && (

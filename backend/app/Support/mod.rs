@@ -6,6 +6,7 @@ pub mod catalog_rules;
 pub mod core;
 pub mod datagrid;
 pub mod db;
+pub mod images;
 pub mod mailer;
 pub mod mcp;
 pub mod openapi;

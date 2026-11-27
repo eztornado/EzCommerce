@@ -1195,6 +1195,7 @@ const es: Record<string, string> = {
   "Create customer": "Crear cliente",
   "The customer has been created.": "El cliente se ha creado.",
   "Unable to create the customer.": "No se pudo crear el cliente.",
+  "Upload JPG, PNG, WebP, AVIF, GIF, BMP or TIFF. Images are resized to 160/360/720/1200 px and served as AVIF with JPEG/PNG fallback. The first image is the base image.": "Sube JPG, PNG, WebP, AVIF, GIF, BMP o TIFF. Las imágenes se redimensionan a 160/360/720/1200 px y se sirven en AVIF con respaldo JPEG/PNG. La primera imagen es la imagen base.",
 };
 
 export default es;

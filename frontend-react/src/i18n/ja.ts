@@ -1195,6 +1195,7 @@ const ja: Record<string, string> = {
   "Create customer": "顧客を作成",
   "The customer has been created.": "顧客を作成しました。",
   "Unable to create the customer.": "顧客を作成できませんでした。",
+  "Upload JPG, PNG, WebP, AVIF, GIF, BMP or TIFF. Images are resized to 160/360/720/1200 px and served as AVIF with JPEG/PNG fallback. The first image is the base image.": "JPG、PNG、WebP、AVIF、GIF、BMP、TIFFをアップロードできます。画像は160/360/720/1200 pxにリサイズされ、AVIF（JPEG/PNGフォールバック付き）で配信されます。最初の画像がベース画像になります。",
 };
 
 export default ja;

@@ -3,13 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { IconHeart, IconMinus, IconPlus, IconShoppingBag, IconTruck, IconRefresh, IconShieldCheck } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import { shopQuery, useAuth } from '../../store';
-import { formatLabel, mediaUrl, money, stripHtml } from '../../lib/format';
-import { addToCart, fallbackImage } from '../../lib/cart';
+import { formatLabel, money, stripHtml } from '../../lib/format';
+import { addToCart } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
 import { intlLocale, t } from '../../i18n';
 import Stars from '../../components/shop/Stars';
 import ProductCard from '../../components/shop/ProductCard';
-import type { ProductCard as ProductCardModel } from '../../types';
+import ProductImage from '../../components/shop/ProductImage';
+import type { ProductCard as ProductCardModel, ProductImageModel } from '../../types';
 
 export default function ProductPage() {
   const { key } = useParams();
@@ -55,7 +56,7 @@ export default function ProductPage() {
   }, [key, reload]);
 
   const images = useMemo(() => {
-    const list = [product?.base_image, ...(product?.images ?? [])].filter(Boolean) as { url: string }[];
+    const list = [product?.base_image, ...(product?.images ?? [])].filter(Boolean) as ProductImageModel[];
     const unique = new Map(list.map((image) => [image.url, image]));
     return Array.from(unique.values());
   }, [product]);
@@ -172,14 +173,20 @@ export default function ProductPage() {
                 onClick={() => setActiveImage(index)}
                 aria-label={t('View image {number}', { number: index + 1 })}
               >
-                <img src={mediaUrl(image.url)} alt={`${product.name} ${index + 1}`} />
+                <ProductImage
+                  image={image}
+                  alt={`${product.name} ${index + 1}`}
+                  sizes="80px"
+                />
               </button>
             ))}
           </div>
           <div className="product-main-image">
-            <img
-              src={mediaUrl(images[activeImage]?.url) || fallbackImage}
+            <ProductImage
+              image={images[activeImage]}
               alt={product.name}
+              sizes="(max-width: 900px) 100vw, 520px"
+              loading="eager"
             />
             {product.on_sale && <span className="product-badge sale">{t('Sale')}</span>}
           </div>

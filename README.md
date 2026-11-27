@@ -16,6 +16,8 @@ Designed to be deployed with Docker (Docker Compose / Coolify) using
 - Catalog with search, attribute and price filters, sorting
 - Product detail page with gallery, configurable variants with color swatches
   and grouped products
+- Responsive product images (AVIF + JPEG/PNG fallback, `srcset`, lazy loading)
+  with SEO-friendly file names and no layout shift
 - Guest cart (signed cart token) and registered customer cart, coupons and
   shipping estimation
 - One-page checkout: address, shipping method, payment method, review and
@@ -62,6 +64,8 @@ Designed to be deployed with Docker (Docker Compose / Coolify) using
 - Localization by language and currency conversion with exchange rates
 - Bookings by slots for booking-type products
 - SQL migrations with dual dialect (SQLite/MySQL) and idempotent seeders
+- Product image pipeline: EXIF orientation, responsive resizing and
+  AVIF/JPEG/PNG encoding with immutable caching
 - OpenAPI 3.0 document, Swagger UI and a JWT-protected MCP tool server
 - Service health at `/up` and image storage with static serving
 
@@ -342,6 +346,8 @@ Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
 - Catálogo con búsqueda, filtros por atributos y precio, ordenación
 - Ficha de producto con galería, variantes configurables con swatches de
   color y productos agrupados
+- Imágenes de producto responsivas (AVIF + respaldo JPEG/PNG, `srcset`, carga
+  diferida) con nombres SEO y sin saltos de layout
 - Carrito para invitados (token de carrito firmado) y clientes registrados,
   cupones y estimación de envío
 - Checkout de una página: dirección, método de envío, método de pago,
@@ -392,6 +398,8 @@ Diseñado para desplegarse dockerizado (Docker Compose / Coolify) con
 - Localización por idioma y conversión de moneda con tasas de cambio
 - Reservas (bookings) por slots para productos de tipo booking
 - Migraciones SQL con doble dialecto (SQLite/MySQL) y seeders idempotentes
+- Pipeline de imágenes de producto: orientación EXIF, redimensionado
+  responsivo y codificación AVIF/JPEG/PNG con caché inmutable
 - Documento OpenAPI 3.0, Swagger UI y servidor de herramientas MCP protegido
   por JWT
 - Salud del servicio en `/up` y almacenamiento de imágenes con servir estático
@@ -674,6 +682,7 @@ Docker（Docker Compose / Coolify）でデプロイ可能で、本番環境で�
 - セクション（画像カルーセル、商品・カテゴリ、コンテンツバナー）で構成可能なホーム画面
 - 検索、属性・価格フィルター、ソート機能付きカタログ
 - ギャラリー、カラーバッチ付き設定可能なバリエーション、グループ化商品を含む商品詳細ページ
+- レスポンシブ商品画像（AVIF + JPEG/PNGフォールバック、`srcset`、遅延読み込み）。SEO向けファイル名とレイアウトシフトなし
 - ゲストカート（署名付きカートトークン）と登録顧客カート、クーポン、送料見積もり
 - ワンページチェックアウト：住所、配送方法、支払い方法、確認・完了
 - Stripe Checkout（ホスト型リダイレクト）によるカード・ウォレット決済
@@ -705,6 +714,7 @@ Docker（Docker Compose / Coolify）でデプロイ可能で、本番環境で�
 - 言語別ローカライゼーションと為替レート付き通貨変換
 - ブッキングタイプ商品のスロット別予約
 - SQLite/MySQLの二重ダイアレクト対応SQLマイグレーションと冪等なシーダー
+- 商品画像パイプライン：EXIF向き補正、レスポンシブリサイズ、AVIF/JPEG/PNGエンコード、イミュータブルキャッシュ
 - OpenAPI 3.0ドキュメント、Swagger UI、JWTで保護されたMCPツールサーバー
 - `/up`でのサービスヘルスチェックと静的配信付き画像ストレージ
 

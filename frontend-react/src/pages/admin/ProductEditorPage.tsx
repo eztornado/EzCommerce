@@ -532,7 +532,7 @@ export default function ProductEditorPage() {
                 </label>
               </div>
               <p className="admin-muted" style={{ fontSize: 12, marginTop: 12 }}>
-                {t('Recommended: square images at least 800×800 px. The first image is used as the base image.')}
+                {t('Upload JPG, PNG, WebP, AVIF, GIF, BMP or TIFF. Images are resized to 160/360/720/1200 px and served as AVIF with JPEG/PNG fallback. The first image is the base image.')}
               </p>
             </div>
           )}

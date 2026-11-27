@@ -1,11 +1,22 @@
+export interface ProductImageModel {
+  url: string;
+  alt?: string | null;
+  width?: number | null;
+  height?: number | null;
+  srcset?: string | null;
+  avif_srcset?: string | null;
+  mime?: string | null;
+  variants?: { width: number; height: number; src?: string; avif?: string }[];
+}
+
 export interface ProductCard {
   id: number;
   name?: string | null;
   sku?: string | null;
   type?: string;
   url_key?: string | null;
-  base_image?: { url: string } | null;
-  images?: { url: string }[];
+  base_image?: ProductImageModel | null;
+  images?: ProductImageModel[];
   formatted_price?: string;
   formatted_regular_price?: string;
   price?: number;
@@ -40,7 +51,7 @@ export interface CartItem {
   name: string;
   sku: string;
   quantity: number;
-  base_image?: { url: string } | null;
+  base_image?: ProductImageModel | null;
   formatted_price?: string;
   formatted_total?: string;
   price?: number;

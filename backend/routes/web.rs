@@ -3,10 +3,17 @@ use larust_support::axum::response::Redirect;
 use larust_support::axum::Json;
 use larust_support::serde_json::json;
 
+use crate::controllers::CoreController;
+
 /// The API has no browser-facing pages; this keeps `/` informative and lets
 /// deployment health checks use either `/` or `/up`.
 pub fn routes() -> Router {
-    Route::get("/", index).get("/docs", docs_redirect)
+    Route::get("/", index)
+        .get("/docs", docs_redirect)
+        // `/storage/...` must go through the controller (instead of the
+        // ServeDir fallback) to set long-lived cache headers for optimized
+        // product variants.
+        .get("/storage/{folder}/{file}", CoreController::storage)
 }
 
 async fn index() -> Json<larust_support::serde_json::Value> {
