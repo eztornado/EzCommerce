@@ -6,7 +6,7 @@ use larust_http::{Route, Router};
 
 use crate::controllers::{
     AdminAppearanceController, AdminAuthController, AdminCommunicationController, AdminCartRuleController, AdminCatalogController, AdminCatalogRuleController, AdminCmsController, AdminCustomerController, AdminDashboardController, AdminDataTransferController,
-    AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AuthController, CartController,
+    AdminReportingController, AdminSalesController, AdminSeoController, AdminSettingController, AgenticController, AuthController, CartController,
     CategoryController, CheckoutController, CoreController, CustomerController, DocsController, McpController, ProductController,
     RmaGdprController, StripeController,
 };
@@ -26,6 +26,12 @@ pub fn routes() -> Router {
         .get("/docs", DocsController::swagger_ui)
         .get("/docs/openapi.json", DocsController::openapi)
         .get("/openapi.json", DocsController::openapi)
+        // Navegación agéntica (#40): llms.txt y manifiesto ARD. nginx mapea
+        // las rutas raíz del dominio a estos endpoints.
+        .get("/llms.txt", AgenticController::llms_txt)
+        .get("/ai-catalog.json", AgenticController::ai_catalog)
+        .get("/.well-known/ard.json", AgenticController::ai_catalog)
+        .get("/.well-known/ai-catalog.json", AgenticController::ai_catalog)
         .post("/mcp", McpController::handle)
         .post("/webhooks/stripe", StripeController::webhook)
         // ------------------------------------------------------------------

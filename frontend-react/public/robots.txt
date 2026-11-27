@@ -3,3 +3,6 @@ Allow: /
 Disallow: /admin
 Disallow: /account
 Disallow: /checkout
+
+# Navegación agéntica (#40): manifiesto ARD para agentes de IA.
+Agentmap: /.well-known/ard.json

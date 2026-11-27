@@ -6,9 +6,22 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: { '/api': 'http://127.0.0.1:34187', '/storage': 'http://127.0.0.1:34187' },
+    proxy: {
+      '/api': 'http://127.0.0.1:34187',
+      '/storage': 'http://127.0.0.1:34187',
+      // Navegación agéntica (#40): mismos mapeos que nginx en producción.
+      '/llms.txt': 'http://127.0.0.1:34187',
+      '/ai-catalog.json': 'http://127.0.0.1:34187',
+      '/.well-known': 'http://127.0.0.1:34187',
+    },
   },
   preview: {
-    proxy: { '/api': 'http://127.0.0.1:34187', '/storage': 'http://127.0.0.1:34187' },
+    proxy: {
+      '/api': 'http://127.0.0.1:34187',
+      '/storage': 'http://127.0.0.1:34187',
+      '/llms.txt': 'http://127.0.0.1:34187',
+      '/ai-catalog.json': 'http://127.0.0.1:34187',
+      '/.well-known': 'http://127.0.0.1:34187',
+    },
   },
 });
