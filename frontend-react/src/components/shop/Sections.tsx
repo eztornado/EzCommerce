@@ -8,6 +8,7 @@ import { fallbackImage } from '../../lib/cart';
 import { useShopReload } from '../../lib/hooks';
 import { t } from '../../i18n';
 import ProductCard from './ProductCard';
+import ProductImage from './ProductImage';
 import type { Category, ProductCard as ProductCardModel } from '../../types';
 
 export function SectionHead({ title, href, linkLabel = 'View all' }: { title: string; href?: string; linkLabel?: string }) {
@@ -55,22 +56,68 @@ export function useTrackScroll() {
   return { ref, scroll };
 }
 
+export function CarouselSkeleton({
+  title,
+  variant = 'product',
+}: {
+  title?: string;
+  variant?: 'product' | 'category';
+}) {
+  return (
+    <section className="shop-section" aria-hidden="true">
+      <div className="shop-container">
+        <div className="shop-section-head">
+          <h2 className="shop-heading">{title ?? '\u00a0'}</h2>
+        </div>
+        <div className="shop-carousel-track">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div className="shop-carousel-item" key={index}>
+              <div className={`shop-skeleton-media${variant === 'category' ? ' category' : ''}`} />
+              <div className="shop-skeleton-line" />
+              <div className="shop-skeleton-line short" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function HeroSkeleton() {
+  return <div className="shop-hero-skeleton" aria-hidden="true" />;
+}
+
+export function PromoSkeleton() {
+  return (
+    <section className="shop-section" aria-hidden="true">
+      <div className="shop-container">
+        <div className="promo-skeleton" />
+      </div>
+    </section>
+  );
+}
+
 export function ProductCarousel({ title, params, href }: { title: string; params?: Record<string, string | number>; href?: string }) {
   const reload = useShopReload();
   const [products, setProducts] = useState<ProductCardModel[]>([]);
+  const [loading, setLoading] = useState(true);
   const { ref, scroll } = useTrackScroll();
 
   useEffect(() => {
+    setLoading(true);
     api
       .get(`products${shopQuery({ per_page: 8, ...params })}`)
       .then((data) => {
         const list: ProductCardModel[] = data?.data ?? (Array.isArray(data) ? data : []);
         setProducts(list.filter((product) => product?.name));
       })
-      .catch(() => setProducts([]));
+      .catch(() => setProducts([]))
+      .finally(() => setLoading(false));
   }, [reload, JSON.stringify(params)]);
 
-  if (!products.length) return null;
+  if (!products.length) {
+    return loading ? <CarouselSkeleton title={t(title)} /> : null;
+  }
 
   return (
     <section className="shop-section">
@@ -101,16 +148,21 @@ export function ProductCarousel({ title, params, href }: { title: string; params
 export function CategoryCarousel({ title, limit = 8 }: { title: string; limit?: number }) {
   const reload = useShopReload();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const { ref, scroll } = useTrackScroll();
 
   useEffect(() => {
+    setLoading(true);
     api
       .get(`categories${shopQuery({ per_page: limit })}`)
       .then((data) => setCategories(data?.data ?? (Array.isArray(data) ? data : [])))
-      .catch(() => setCategories([]));
+      .catch(() => setCategories([]))
+      .finally(() => setLoading(false));
   }, [reload, limit]);
 
-  if (!categories.length) return null;
+  if (!categories.length) {
+    return loading ? <CarouselSkeleton title={t(title)} variant="category" /> : null;
+  }
 
   return (
     <section className="shop-section">
@@ -151,20 +203,28 @@ export function HeroCarousel({ slides }: { slides: any[] }) {
     <section className="shop-hero" aria-label={t('Featured collections')}>
       {slides.map((slide, index) => (
         <div className="shop-hero-slide" data-active={index === active} key={index} aria-hidden={index !== active}>
-          <img src={mediaUrl(slide.image)} alt={slide.title ?? t('Collection')} />
+          <ProductImage
+            image={slide.image_data ?? (slide.image ? { url: slide.image, alt: slide.title } : null)}
+            alt={slide.title ?? t('Collection')}
+            sizes="100vw"
+            loading={index === 0 ? 'eager' : 'lazy'}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+          />
           <div className="shop-hero-overlay" />
           <div className="shop-container" style={{ height: '100%' }}>
             <div className="shop-hero-content">
               <span className="shop-hero-eyebrow">{t('EzCommerce · New season')}</span>
               <h1 className="shop-hero-title">{slide.title ? t(slide.title) : ''}</h1>
               <p className="shop-hero-subtitle">{slide.subtitle ? t(slide.subtitle) : ''}</p>
-              <Link
-                to={slide.link ?? slide.button?.link ?? '/products'}
-                className="shop-primary-button"
-                style={{ background: '#fff', color: '#060C3B', borderColor: '#fff' }}
-              >
-                {slide.button?.title ? t(slide.button.title) : t('Shop now')}
-              </Link>
+              {index === active && (
+                <Link
+                  to={slide.link ?? slide.button?.link ?? '/products'}
+                  className="shop-primary-button"
+                  style={{ background: '#fff', color: '#060C3B', borderColor: '#fff' }}
+                >
+                  {slide.button?.title ? t(slide.button.title) : t('Shop now')}
+                </Link>
+              )}
             </div>
           </div>
         </div>

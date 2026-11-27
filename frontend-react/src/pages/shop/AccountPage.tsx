@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Modal } from '@mantine/core';
 import {
   IconChevronRight,
   IconHeart,
@@ -18,6 +17,7 @@ import { useAuth, shopQuery } from '../../store';
 import { formatDate, initials, mediaUrl, statusColor } from '../../lib/format';
 import { addToCart } from '../../lib/cart';
 import Stars from '../../components/shop/Stars';
+import ShopModal from '../../components/shop/ShopModal';
 import { t } from '../../i18n';
 
 const NAV = [
@@ -313,7 +313,7 @@ function OrdersPanel() {
         </p>
       )}
 
-      <Modal opened={!!detail} onClose={() => setDetail(null)} size="lg" title={t('Order #{id}', { id: detail?.increment_id ?? '' })} centered>
+      <ShopModal open={!!detail} onClose={() => setDetail(null)} size="lg" title={t('Order #{id}', { id: detail?.increment_id ?? '' })}>
         {detail && (
           <div>
             <div className="order-detail-meta">
@@ -378,7 +378,7 @@ function OrdersPanel() {
             )}
           </div>
         )}
-      </Modal>
+      </ShopModal>
     </div>
   );
 }
@@ -551,7 +551,7 @@ function AddressesPanel() {
         </div>
       )}
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={editing ? t('Edit address') : t('New address')} centered size="lg">
+      <ShopModal open={open} onClose={() => setOpen(false)} title={editing ? t('Edit address') : t('New address')} size="lg">
         <form onSubmit={submit}>
           <div className="checkout-form-grid">
             <div>
@@ -602,7 +602,7 @@ function AddressesPanel() {
             {t('Save address')}
           </button>
         </form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Menu } from '@mantine/core';
 import {
   IconChevronDown,
   IconHeart,
@@ -88,40 +87,52 @@ export default function ShopLayout() {
     <div className="shop-shell">
       <div className="shop-topbar">
         <div className="shop-container shop-topbar-inner">
-          <Menu shadow="md" width={200} position="bottom-start">
-            <Menu.Target>
-              <button type="button" className="topbar-select">
-                {activeCurrency ? `${activeCurrency.symbol} ${activeCurrency.code}` : 'EUR €'} <IconChevronDown size={14} />
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
+          <details className="shop-select">
+            <summary className="topbar-select">
+              {activeCurrency ? `${activeCurrency.symbol} ${activeCurrency.code}` : 'EUR €'} <IconChevronDown size={14} />
+            </summary>
+            <div className="shop-select-panel">
               {context?.currencies.map((currency) => (
-                <Menu.Item key={currency.code} onClick={() => changeCurrency(currency.code)}>
+                <button
+                  type="button"
+                  className="shop-select-option"
+                  key={currency.code}
+                  onClick={(event) => {
+                    void changeCurrency(currency.code);
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                >
                   {currency.symbol} {currency.code} — {currency.name}
-                </Menu.Item>
+                </button>
               ))}
-            </Menu.Dropdown>
-          </Menu>
+            </div>
+          </details>
 
           <p className="topbar-offer">
             {context?.header_offer ?? t('Free shipping on all orders over €100')}
             <Link to="/products"> {t('Shop now')}</Link>
           </p>
 
-          <Menu shadow="md" width={180} position="bottom-end">
-            <Menu.Target>
-              <button type="button" className="topbar-select">
-                {uiLocaleName(locale)} <IconChevronDown size={14} />
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
+          <details className="shop-select" data-align="end">
+            <summary className="topbar-select">
+              {uiLocaleName(locale)} <IconChevronDown size={14} />
+            </summary>
+            <div className="shop-select-panel">
               {(['en', 'es', 'ja'] as UiLocale[]).map((code) => (
-                <Menu.Item key={code} onClick={() => chooseLanguage(code)}>
+                <button
+                  type="button"
+                  className="shop-select-option"
+                  key={code}
+                  onClick={(event) => {
+                    void chooseLanguage(code);
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                >
                   {uiLocaleName(code)}
-                </Menu.Item>
+                </button>
               ))}
-            </Menu.Dropdown>
-          </Menu>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -188,47 +199,69 @@ export default function ShopLayout() {
                 <IconHeart size={21} />
               </Link>
 
-              <Menu shadow="md" width={230} position="bottom-end">
-                <Menu.Target>
-                  <button type="button" className="shop-icon-button" aria-label={t('Account')}>
-                    <IconUser size={21} />
-                  </button>
-                </Menu.Target>
-                <Menu.Dropdown>
+              <details className="shop-select shop-account-select">
+                <summary className="shop-icon-button" aria-label={t('Account')}>
+                  <IconUser size={21} />
+                </summary>
+                <div className="shop-select-panel">
                   {loggedIn ? (
                     <>
-                      <Menu.Label>{t('Welcome, {name}', { name: customer?.first_name ?? t('Customer') })}</Menu.Label>
-                      <Menu.Item component={Link} to="/account">
+                      <div className="shop-select-label">
+                        {t('Welcome, {name}', { name: customer?.first_name ?? t('Customer') })}
+                      </div>
+                      <Link
+                        className="shop-select-option"
+                        to="/account"
+                        onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')}
+                      >
                         {t('My profile')}
-                      </Menu.Item>
-                      <Menu.Item component={Link} to="/account/orders">
+                      </Link>
+                      <Link
+                        className="shop-select-option"
+                        to="/account/orders"
+                        onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')}
+                      >
                         {t('My orders')}
-                      </Menu.Item>
-                      <Menu.Item component={Link} to="/account/wishlist">
+                      </Link>
+                      <Link
+                        className="shop-select-option"
+                        to="/account/wishlist"
+                        onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')}
+                      >
                         {t('Wishlist')}
-                      </Menu.Item>
-                      <Menu.Item
+                      </Link>
+                      <button
+                        type="button"
+                        className="shop-select-option"
                         onClick={async () => {
                           await useAuth.getState().logout();
                           navigate('/');
                         }}
                       >
                         {t('Sign out')}
-                      </Menu.Item>
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Menu.Label>{t('Welcome to EzCommerce')}</Menu.Label>
-                      <Menu.Item component={Link} to="/login">
+                      <div className="shop-select-label">{t('Welcome to EzCommerce')}</div>
+                      <Link
+                        className="shop-select-option"
+                        to="/login"
+                        onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')}
+                      >
                         {t('Sign in')}
-                      </Menu.Item>
-                      <Menu.Item component={Link} to="/register">
+                      </Link>
+                      <Link
+                        className="shop-select-option"
+                        to="/register"
+                        onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')}
+                      >
                         {t('Create an account')}
-                      </Menu.Item>
+                      </Link>
                     </>
                   )}
-                </Menu.Dropdown>
-              </Menu>
+                </div>
+              </details>
 
               <Link to="/cart" className="shop-icon-button" aria-label={t('Shopping cart')}>
                 <IconShoppingBag size={21} />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../../styles/admin.css';
 import { IconLock, IconMail, IconShoppingBag } from '@tabler/icons-react';
 import { useAdminAuth } from '../../store';
 import { t } from '../../i18n';

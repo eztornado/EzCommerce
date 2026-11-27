@@ -89,7 +89,21 @@ impl CoreController {
                         .unwrap_or(Value::Null);
                     row.insert("options".into(), parsed);
                 }
-                Value::Object(row)
+                let mut value = Value::Object(row);
+                if value["type"].as_str() == Some("image_carousel") {
+                    if let Some(slides) = value["options"]["slides"].as_array_mut() {
+                        for slide in slides {
+                            if let Some(image) = slide["image"].as_str() {
+                                let path = image
+                                    .strip_prefix("/storage/")
+                                    .unwrap_or(image);
+                                let alt = slide["title"].as_str().unwrap_or("");
+                                slide["image_data"] = images::image_resource(path, alt);
+                            }
+                        }
+                    }
+                }
+                value
             })
             .collect();
         json_ok(json!({"data": sections, "message": Value::Null}))
@@ -116,7 +130,8 @@ impl CoreController {
         let mime = mime_guess::from_path(&full).first_or_octet_stream().to_string();
         // Las variantes optimizadas llevan hash en el nombre: pueden cachearse
         // de forma inmutable. El resto mantiene el TTL corto.
-        let immutable = folder == "products" && file.contains("-w");
+        let immutable =
+            (folder == "products" || folder == "hero") && file.contains("-w");
         let cache_control = if immutable {
             "public, max-age=31536000, immutable"
         } else {
@@ -229,12 +244,15 @@ impl CoreController {
 
         // Product images are decoded, oriented, resized and re-encoded. This
         // runs on the blocking pool because AVIF encoding is CPU-bound.
-        if images::is_product_folder(&folder) {
+        if images::is_responsive_folder(&folder) {
             let filename = filename.clone();
-            return match tokio::task::spawn_blocking(move || {
-                images::process_product_image(&bytes, &filename)
-            })
-            .await
+            let processor: fn(&[u8], &str) -> ApiResult<Value> = if folder == "hero" {
+                images::process_hero_image
+            } else {
+                images::process_product_image
+            };
+            return match tokio::task::spawn_blocking(move || processor(&bytes, &filename))
+                .await
             {
                 Ok(Ok(result)) => json_ok(result),
                 Ok(Err(error)) => error.into(),

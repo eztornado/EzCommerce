@@ -9,6 +9,7 @@ interface Props {
   className?: string;
   loading?: 'lazy' | 'eager';
   decoding?: 'async' | 'sync' | 'auto';
+  fetchPriority?: 'high' | 'low' | 'auto';
 }
 
 /**
@@ -22,6 +23,7 @@ export default function ProductImage({
   className,
   loading = 'lazy',
   decoding = 'async',
+  fetchPriority,
 }: Props) {
   const src = mediaUrl(image?.url) || fallbackImage;
   const hasSrcset = Boolean(image?.srcset || image?.avif_srcset);
@@ -37,6 +39,7 @@ export default function ProductImage({
       height={image?.height ?? undefined}
       loading={loading}
       decoding={decoding}
+      fetchPriority={fetchPriority}
       className={className}
     />
   );

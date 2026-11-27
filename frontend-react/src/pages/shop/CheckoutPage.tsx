@@ -337,7 +337,7 @@ export default function CheckoutPage() {
       </div>
 
       {paymentCanceled && (
-        <div className="admin-alert danger" style={{ marginBottom: 18 }}>
+        <div className="shop-alert danger" style={{ marginBottom: 18 }}>
           {t('Payment was canceled. Your cart has been restored.')}
         </div>
       )}

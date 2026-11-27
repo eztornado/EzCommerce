@@ -41,7 +41,7 @@ const OPTION_TEMPLATES: Record<string, any> = {
   image_carousel: {
     slides: [
       {
-        image: '/storage/hero/hero-1.jpg',
+        image: '/storage/hero/hero-1-7d6e9ed2-w1600.jpg',
         title: 'The Autumn Edit',
         subtitle: 'Considered essentials for the season ahead.',
         link: '/products',

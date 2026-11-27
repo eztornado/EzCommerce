@@ -64,7 +64,7 @@ export default function ProductCard({ product, className = '', list = false }: P
 
   return (
     <div className={`product-card ${className}`}>
-      <Link to={href} className="product-card-media" aria-label={product.name ?? 'Product'}>
+      <Link to={href} className="product-card-media">
         <ProductImage
           image={image}
           alt={product.name ?? t('Product')}

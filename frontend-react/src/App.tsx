@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useShop, useAuth } from './store';
 import I18nBridge from './i18n/I18nBridge';
@@ -6,54 +6,127 @@ import { mediaUrl } from './lib/format';
 
 import ShopLayout from './components/shop/ShopLayout';
 import HomePage from './pages/shop/HomePage';
-import CategoryPage from './pages/shop/CategoryPage';
-import SearchPage from './pages/shop/SearchPage';
-import ProductPage from './pages/shop/ProductPage';
-import CartPage from './pages/shop/CartPage';
-import CheckoutPage from './pages/shop/CheckoutPage';
-import SuccessPage from './pages/shop/SuccessPage';
-import SignInPage from './pages/shop/SignInPage';
-import RegisterPage from './pages/shop/RegisterPage';
-import AccountPage from './pages/shop/AccountPage';
 
-import AdminShell from './components/admin/AdminShell';
-import AdminLoginPage from './pages/admin/LoginPage';
-import DashboardPage from './pages/admin/DashboardPage';
-import ProductsPage from './pages/admin/ProductsPage';
-import ProductEditorPage from './pages/admin/ProductEditorPage';
-import { AttributesPage, FamiliesPage } from './pages/admin/CatalogPages';
-import CategoriesPage from './pages/admin/CategoriesPage';
-import { OrdersPage, InvoicesPage, ShipmentsPage, RefundsPage } from './pages/admin/SalesPages';
-import OrderViewPage from './pages/admin/OrderViewPage';
-import { CustomersPage, GroupsPage, ReviewsPage } from './pages/admin/CustomersPages';
-import CustomerViewPage from './pages/admin/CustomerViewPage';
-import { RmaPage, GdprPage } from './pages/admin/RmaGdprPage';
-import { CartRulesPage, CatalogRulesPage } from './pages/admin/MarketingPages';
-import CartRuleEditorPage from './pages/admin/CartRuleEditorPage';
-import CatalogRuleEditorPage from './pages/admin/CatalogRuleEditorPage';
-import {
-  TemplatesPage,
-  EventsPage,
-  CampaignsPage,
-  SubscribersPage,
-} from './pages/admin/CommunicationPages';
-import { UrlRewritesPage, SearchTermsPage, SearchSynonymsPage } from './pages/admin/SeoPages';
-import { CmsPagesPage, CmsEditorPage } from './pages/admin/CmsPages';
-import {
-  LocalesPage,
-  CurrenciesPage,
-  ExchangeRatesPage,
-  ChannelsPage,
-  UsersPage,
-  RolesPage,
-  TaxCategoriesPage,
-  TaxRatesPage,
-  InventorySourcesPage,
-} from './pages/admin/SettingsPages';
-import ConfigurationPage from './pages/admin/ConfigurationPage';
-import DataTransferPage from './pages/admin/DataTransferPage';
-import AppearancePage from './pages/admin/AppearancePage';
-import ReportingPage from './pages/admin/ReportingPage';
+// Rutas secundarias y todo el panel se cargan bajo demanda: el storefront
+// inicial solo descarga lo necesario para el home.
+const CategoryPage = lazy(() => import('./pages/shop/CategoryPage'));
+const SearchPage = lazy(() => import('./pages/shop/SearchPage'));
+const ProductPage = lazy(() => import('./pages/shop/ProductPage'));
+const CartPage = lazy(() => import('./pages/shop/CartPage'));
+const CheckoutPage = lazy(() => import('./pages/shop/CheckoutPage'));
+const SuccessPage = lazy(() => import('./pages/shop/SuccessPage'));
+const SignInPage = lazy(() => import('./pages/shop/SignInPage'));
+const RegisterPage = lazy(() => import('./pages/shop/RegisterPage'));
+const AccountPage = lazy(() => import('./pages/shop/AccountPage'));
+
+const AdminShell = lazy(() => import('./components/admin/AdminShell'));
+const AdminLoginPage = lazy(() => import('./pages/admin/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
+const ProductsPage = lazy(() => import('./pages/admin/ProductsPage'));
+const ProductEditorPage = lazy(() => import('./pages/admin/ProductEditorPage'));
+const CategoriesPage = lazy(() => import('./pages/admin/CategoriesPage'));
+const OrderViewPage = lazy(() => import('./pages/admin/OrderViewPage'));
+const CustomerViewPage = lazy(() => import('./pages/admin/CustomerViewPage'));
+const CartRuleEditorPage = lazy(() => import('./pages/admin/CartRuleEditorPage'));
+const CatalogRuleEditorPage = lazy(() => import('./pages/admin/CatalogRuleEditorPage'));
+const ConfigurationPage = lazy(() => import('./pages/admin/ConfigurationPage'));
+const DataTransferPage = lazy(() => import('./pages/admin/DataTransferPage'));
+const AppearancePage = lazy(() => import('./pages/admin/AppearancePage'));
+const ReportingPage = lazy(() => import('./pages/admin/ReportingPage'));
+
+const AttributesPage = lazy(() =>
+  import('./pages/admin/CatalogPages').then((module) => ({ default: module.AttributesPage })),
+);
+const FamiliesPage = lazy(() =>
+  import('./pages/admin/CatalogPages').then((module) => ({ default: module.FamiliesPage })),
+);
+const OrdersPage = lazy(() =>
+  import('./pages/admin/SalesPages').then((module) => ({ default: module.OrdersPage })),
+);
+const InvoicesPage = lazy(() =>
+  import('./pages/admin/SalesPages').then((module) => ({ default: module.InvoicesPage })),
+);
+const ShipmentsPage = lazy(() =>
+  import('./pages/admin/SalesPages').then((module) => ({ default: module.ShipmentsPage })),
+);
+const RefundsPage = lazy(() =>
+  import('./pages/admin/SalesPages').then((module) => ({ default: module.RefundsPage })),
+);
+const CustomersPage = lazy(() =>
+  import('./pages/admin/CustomersPages').then((module) => ({ default: module.CustomersPage })),
+);
+const GroupsPage = lazy(() =>
+  import('./pages/admin/CustomersPages').then((module) => ({ default: module.GroupsPage })),
+);
+const ReviewsPage = lazy(() =>
+  import('./pages/admin/CustomersPages').then((module) => ({ default: module.ReviewsPage })),
+);
+const RmaPage = lazy(() =>
+  import('./pages/admin/RmaGdprPage').then((module) => ({ default: module.RmaPage })),
+);
+const GdprPage = lazy(() =>
+  import('./pages/admin/RmaGdprPage').then((module) => ({ default: module.GdprPage })),
+);
+const CartRulesPage = lazy(() =>
+  import('./pages/admin/MarketingPages').then((module) => ({ default: module.CartRulesPage })),
+);
+const CatalogRulesPage = lazy(() =>
+  import('./pages/admin/MarketingPages').then((module) => ({ default: module.CatalogRulesPage })),
+);
+const TemplatesPage = lazy(() =>
+  import('./pages/admin/CommunicationPages').then((module) => ({ default: module.TemplatesPage })),
+);
+const EventsPage = lazy(() =>
+  import('./pages/admin/CommunicationPages').then((module) => ({ default: module.EventsPage })),
+);
+const CampaignsPage = lazy(() =>
+  import('./pages/admin/CommunicationPages').then((module) => ({ default: module.CampaignsPage })),
+);
+const SubscribersPage = lazy(() =>
+  import('./pages/admin/CommunicationPages').then((module) => ({ default: module.SubscribersPage })),
+);
+const UrlRewritesPage = lazy(() =>
+  import('./pages/admin/SeoPages').then((module) => ({ default: module.UrlRewritesPage })),
+);
+const SearchTermsPage = lazy(() =>
+  import('./pages/admin/SeoPages').then((module) => ({ default: module.SearchTermsPage })),
+);
+const SearchSynonymsPage = lazy(() =>
+  import('./pages/admin/SeoPages').then((module) => ({ default: module.SearchSynonymsPage })),
+);
+const CmsPagesPage = lazy(() =>
+  import('./pages/admin/CmsPages').then((module) => ({ default: module.CmsPagesPage })),
+);
+const CmsEditorPage = lazy(() =>
+  import('./pages/admin/CmsPages').then((module) => ({ default: module.CmsEditorPage })),
+);
+const LocalesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.LocalesPage })),
+);
+const CurrenciesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.CurrenciesPage })),
+);
+const ExchangeRatesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.ExchangeRatesPage })),
+);
+const ChannelsPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.ChannelsPage })),
+);
+const UsersPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.UsersPage })),
+);
+const RolesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.RolesPage })),
+);
+const TaxCategoriesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.TaxCategoriesPage })),
+);
+const TaxRatesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.TaxRatesPage })),
+);
+const InventorySourcesPage = lazy(() =>
+  import('./pages/admin/SettingsPages').then((module) => ({ default: module.InventorySourcesPage })),
+);
 
 export default function App() {
   const loadContext = useShop((state) => state.loadContext);
@@ -79,6 +152,7 @@ export default function App() {
   return (
     <I18nBridge>
       <BrowserRouter>
+      <Suspense fallback={<div style={{ minHeight: '60vh' }} aria-busy="true" />}>
       <Routes>
         {/* Storefront */}
         <Route element={<ShopLayout />}>
@@ -165,6 +239,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </BrowserRouter>
     </I18nBridge>
   );

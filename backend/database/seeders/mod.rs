@@ -1108,17 +1108,17 @@ async fn seed_demo_media() -> Result<(), AppError> {
     }
 
     let product_images: &[(&str, &[&str])] = &[
-        ("EZ-WATCH-01", &["products/watch.jpg", "products/watch-2.jpg"]),
-        ("EZ-HEAD-01", &["products/headphones.jpg", "products/headphones-2.jpg"]),
-        ("EZ-TEE-01", &["products/tshirt.jpg", "products/tshirt-2.jpg"]),
-        ("EZ-JEAN-01", &["products/jeans.jpg", "products/jeans-2.jpg"]),
-        ("EZ-DRESS-01", &["products/dress.jpg", "products/dress-2.jpg"]),
-        ("EZ-BAG-01", &["products/bag.jpg", "products/bag-2.jpg"]),
-        ("EZ-MUG-01", &["products/mug.jpg"]),
-        ("EZ-LAMP-01", &["products/lamp.jpg", "products/lamp-2.jpg"]),
-        ("EZ-SNEAKER-01", &["products/sneaker.jpg", "products/sneaker-2.jpg"]),
-        ("EZ-IMPORT-01", &["products/keyboard.jpg"]),
-        ("EZ-IMPORT-02", &["products/camera.jpg"]),
+        ("EZ-WATCH-01", &["products/watch-78f68494-w900.jpg", "products/watch-2-998015fb-w900.jpg"]),
+        ("EZ-HEAD-01", &["products/headphones-b8797959-w900.jpg", "products/headphones-2-153e21d1-w900.jpg"]),
+        ("EZ-TEE-01", &["products/tshirt-66c74e23-w900.jpg", "products/tshirt-2-4d09831b-w900.jpg"]),
+        ("EZ-JEAN-01", &["products/jeans-55b79845-w900.jpg", "products/jeans-2-1cdbf33d-w900.jpg"]),
+        ("EZ-DRESS-01", &["products/dress-03c291ee-w900.jpg", "products/dress-2-23857d22-w900.jpg"]),
+        ("EZ-BAG-01", &["products/bag-32b55730-w900.jpg", "products/bag-2-638b8fb2-w900.jpg"]),
+        ("EZ-MUG-01", &["products/mug-c14c7d69-w900.jpg"]),
+        ("EZ-LAMP-01", &["products/lamp-44c4cab9-w900.jpg", "products/lamp-2-b6194607-w900.jpg"]),
+        ("EZ-SNEAKER-01", &["products/sneaker-dda7917f-w900.jpg", "products/sneaker-2-9d8fc420-w900.jpg"]),
+        ("EZ-IMPORT-01", &["products/keyboard-0212cae5-w900.jpg"]),
+        ("EZ-IMPORT-02", &["products/camera-7c0690fb-w900.jpg"]),
     ];
 
     for (sku, paths) in product_images {
@@ -1169,21 +1169,21 @@ async fn seed_demo_media() -> Result<(), AppError> {
     let slides = json!({
         "slides": [
             {
-                "image": "/storage/hero/hero-1.jpg",
+                "image": "/storage/hero/hero-1-7d6e9ed2-w1600.jpg",
                 "title": "The Autumn Edit",
                 "subtitle": "Considered essentials for the season ahead.",
                 "button": {"title": "Shop the collection", "link": "/category/3"},
                 "link": "/category/3"
             },
             {
-                "image": "/storage/hero/hero-2.jpg",
+                "image": "/storage/hero/hero-2-8a6dd1a1-w1600.jpg",
                 "title": "Technology, refined",
                 "subtitle": "Headphones, watches and everyday carry.",
                 "button": {"title": "Shop electronics", "link": "/category/2"},
                 "link": "/category/2"
             },
             {
-                "image": "/storage/hero/hero-3.jpg",
+                "image": "/storage/hero/hero-3-44f34641-w1600.jpg",
                 "title": "New season, new you",
                 "subtitle": "Up to 30% off selected styles this week.",
                 "button": {"title": "Shop women", "link": "/category/4"},

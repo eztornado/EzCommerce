@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Menu } from '@mantine/core';
+import '@mantine/core/styles.css';
+import '../../styles/admin.css';
+import { MantineProvider, Menu } from '@mantine/core';
+import { bagistoTheme } from '../../theme';
 import {
   IconBell,
   IconBox,
@@ -225,6 +228,7 @@ export default function AdminShell() {
   const initialsValue = initials(user?.name ?? 'Admin');
 
   return (
+    <MantineProvider theme={bagistoTheme} defaultColorScheme="light">
     <div className="admin-shell">
       <header className="admin-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
@@ -393,5 +397,6 @@ export default function AdminShell() {
         <Outlet />
       </main>
     </div>
+    </MantineProvider>
   );
 }

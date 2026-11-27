@@ -8,4 +8,7 @@ export default defineConfig({
   server: {
     proxy: { '/api': 'http://127.0.0.1:34187', '/storage': 'http://127.0.0.1:34187' },
   },
+  preview: {
+    proxy: { '/api': 'http://127.0.0.1:34187', '/storage': 'http://127.0.0.1:34187' },
+  },
 });

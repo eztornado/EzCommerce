@@ -20,10 +20,11 @@ use larust_support::serde_json::{json, Value};
 use super::response::{ApiError, ApiResult};
 use super::slug;
 
-const TARGET_WIDTHS: [u32; 4] = [160, 360, 720, 1200];
+const PRODUCT_TARGET_WIDTHS: [u32; 4] = [160, 360, 720, 1200];
+const HERO_TARGET_WIDTHS: [u32; 4] = [640, 960, 1280, 1600];
 const MAX_WIDTH: u32 = 1600;
 const JPEG_QUALITY: u8 = 82;
-const AVIF_SPEED: u8 = 8;
+const AVIF_SPEED: u8 = 10;
 const AVIF_QUALITY: u8 = 60;
 
 static METADATA_CACHE: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
@@ -32,8 +33,9 @@ fn cache() -> &'static Mutex<HashMap<String, Value>> {
     METADATA_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-pub fn is_product_folder(folder: &str) -> bool {
-    matches!(folder, "product" | "products")
+/// Folders whose uploads go through the responsive image pipeline.
+pub fn is_responsive_folder(folder: &str) -> bool {
+    matches!(folder, "product" | "products" | "hero")
 }
 
 fn encode_jpeg(image: &DynamicImage) -> ApiResult<Vec<u8>> {
@@ -101,8 +103,8 @@ fn apply_exif_orientation(image: DynamicImage, bytes: &[u8]) -> DynamicImage {
     }
 }
 
-fn target_widths(source_width: u32) -> Vec<u32> {
-    let mut widths: Vec<u32> = TARGET_WIDTHS
+fn target_widths(source_width: u32, targets: &[u32]) -> Vec<u32> {
+    let mut widths: Vec<u32> = targets
         .iter()
         .copied()
         .filter(|width| *width < source_width)
@@ -140,12 +142,31 @@ fn base_stem(filename: &str) -> String {
 /// Processes a product upload synchronously (call it inside
 /// `spawn_blocking`). Returns the main path plus responsive variants.
 pub fn process_product_image(bytes: &[u8], original_filename: &str) -> ApiResult<Value> {
+    process_responsive_image(
+        bytes,
+        original_filename,
+        "products",
+        &PRODUCT_TARGET_WIDTHS,
+    )
+}
+
+/// Responsive hero/banner upload (same pipeline, wider sizes).
+pub fn process_hero_image(bytes: &[u8], original_filename: &str) -> ApiResult<Value> {
+    process_responsive_image(bytes, original_filename, "hero", &HERO_TARGET_WIDTHS)
+}
+
+fn process_responsive_image(
+    bytes: &[u8],
+    original_filename: &str,
+    folder: &str,
+    target_widths_list: &[u32],
+) -> ApiResult<Value> {
     let stem = format!(
         "{}-{}",
         base_stem(original_filename),
         &uuid::Uuid::new_v4().simple().to_string()[..8]
     );
-    let dir = crate::paths().join("public/storage").join("products");
+    let dir = crate::paths().join("public/storage").join(folder);
     std::fs::create_dir_all(&dir)
         .map_err(|error| ApiError::internal(format!("Unable to create the image folder: {error}")))?;
 
@@ -153,7 +174,7 @@ pub fn process_product_image(bytes: &[u8], original_filename: &str) -> ApiResult
     if looks_like_svg(bytes, original_filename) {
         let filename = format!("{stem}.svg");
         write_file(&dir.join(&filename), bytes)?;
-        let path = format!("products/{filename}");
+        let path = format!("{folder}/{filename}");
         return Ok(json!({
             "path": path,
             "url": format!("/storage/{path}"),
@@ -191,7 +212,7 @@ pub fn process_product_image(bytes: &[u8], original_filename: &str) -> ApiResult
     let mut main_width = source_width;
     let mut main_height = source_height;
 
-    for width in target_widths(source_width) {
+    for width in target_widths(source_width, target_widths_list) {
         let height = ((source_height as f64 * width as f64) / source_width as f64)
             .round()
             .max(1.0) as u32;
@@ -215,10 +236,10 @@ pub fn process_product_image(bytes: &[u8], original_filename: &str) -> ApiResult
         variants.push(json!({
             "width": width,
             "height": height,
-            "src": format!("products/{fallback_name}"),
-            "avif": format!("products/{avif_name}")
+            "src": format!("{folder}/{fallback_name}"),
+            "avif": format!("{folder}/{avif_name}")
         }));
-        main_path = format!("products/{fallback_name}");
+        main_path = format!("{folder}/{fallback_name}");
         main_width = width;
         main_height = height;
     }
